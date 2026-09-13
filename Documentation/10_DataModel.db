@@ -1,0 +1,219 @@
+title Entity Relationship Diagram
+notation chen
+User {
+  user_id int pk
+  name varchar
+  email varchar unique
+  password_hash varchar
+  phone varchar
+  role varchar
+  status varchar
+  profile_image varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Club {
+  club_id int pk
+  owner_id int fk
+  name varchar
+  logo varchar
+  description text
+  region varchar
+  district varchar
+  city varchar
+  contact_email varchar
+  contact_phone varchar
+  representative_name varchar
+  status varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Team {
+  team_id int pk
+  club_id int fk
+  owner_id int fk
+  home_venue_id int fk
+  name varchar
+  logo varchar
+  gender varchar
+  region varchar
+  district varchar
+  city varchar
+  description text
+  contact_email varchar
+  contact_phone varchar
+  team_type varchar
+  status varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Player {
+  player_id int pk
+  name varchar
+  profile_photo varchar
+  date_of_birth date
+  gender varchar
+  position varchar
+  phone varchar
+  nationality varchar
+  registration_number varchar unique
+  status varchar
+  created_at timestamp
+  updated_at timestamp
+}
+TeamPlayer {
+  team_player_id int pk
+  team_id int fk
+  player_id int fk
+  jersey_number int
+  joined_at date
+  left_at date
+  status varchar
+  created_at timestamp
+  updated_at timestamp
+}
+Season {
+  season_id int pk
+  name varchar
+  start_date date
+  end_date date
+  status varchar
+  description text
+  created_at timestamp
+  updated_at timestamp
+}
+Competition {
+  competition_id int pk
+  season_id int fk
+  name varchar
+  gender varchar
+  description text
+  registration_fee decimal
+  registration_start_date date
+  registration_end_date date
+  competition_start_date date
+  competition_end_date date
+  max_teams int
+  squad_size int
+  format varchar
+  eligibility_rules text
+  refund_policy text
+  status varchar
+  created_at timestamp
+  updated_at timestamp
+}
+CompetitionRegistration {
+  registration_id int pk
+  competition_id int fk
+  team_id int fk
+  registered_by int fk
+  registration_status varchar
+  payment_status varchar
+  registration_date timestamp
+  approved_at timestamp
+  rejection_reason text
+  created_at timestamp
+  updated_at timestamp
+}
+UNIQUE (competition_id, team_id)
+
+CompetitionPlayer {
+  competition_player_id int pk
+  registration_id int fk
+  player_id int fk
+  status varchar
+  registered_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+Payment {
+  payment_id int pk
+  registration_id int fk
+  amount decimal
+  payment_method varchar
+  transaction_reference varchar unique
+  payment_status varchar
+  paid_at timestamp
+  refund_amount decimal
+  refunded_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+Venue {
+  venue_id int pk
+  name varchar
+  region varchar
+  district varchar
+  city varchar
+  address text
+  capacity int
+  surface_type varchar
+  contact_phone varchar
+  status varchar
+  created_at timestamp
+  updated_at timestamp
+}
+Match {
+  match_id int pk
+  competition_id int fk
+  season_id int fk
+  home_team_id int fk
+  away_team_id int fk
+  venue_id int fk
+  referee_id int
+  match_date date
+  start_time time
+  status varchar
+  home_score int
+  away_score int
+  match_notes text
+  created_at timestamp
+  updated_at timestamp
+}
+News {
+  news_id int pk
+  author_id int fk
+  title varchar
+  content text
+  featured_image varchar
+  category varchar
+  status varchar
+  published_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+User.user_id<Club.owner_id
+
+Club.club_id<Team.club_id
+User.user_id<Team.owner_id
+Venue.venue_id<Team.home_venue_id
+
+Team.team_id<TeamPlayer.team_id
+Player.player_id<TeamPlayer.player_id
+
+Season.season_id<Competition.season_id
+
+Competition.competition_id<CompetitionRegistration.competition_id
+Team.team_id<CompetitionRegistration.team_id
+User.user_id<CompetitionRegistration.registered_by
+
+CompetitionRegistration.registration_id<Payment.registration_id
+
+CompetitionRegistration.registration_id<CompetitionPlayer.registration_id
+Player.player_id<CompetitionPlayer.player_id
+
+Venue.venue_id<Match.venue_id
+Team.team_id<Match.home_team_id
+Team.team_id<Match.away_team_id
+Competition.competition_id<Match.competition_id
+Season.season_id<Match.season_id
+
+User.user_id<News.author_id
+
+UNIQUE (competition_id, team_id)
+
+home_team_id != away_team_id
