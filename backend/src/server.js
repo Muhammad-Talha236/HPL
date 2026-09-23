@@ -2,6 +2,9 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import prisma from "./database/prisma.js";
+
+import authRoutes from "./modules/auth/auth.routes.js";
+
 const app = express();
 
 app.use(cors());
@@ -13,6 +16,7 @@ app.get("/", (req, res) => {
   });
 });
 
+app.use("/api/auth", authRoutes);
 
 app.get("/api/test-db", async (req, res) => {
   try {
