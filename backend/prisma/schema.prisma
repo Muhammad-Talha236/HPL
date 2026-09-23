@@ -1,0 +1,491 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// USER
+// ============================================================
+
+model User {
+  user_id       Int     @id @default(autoincrement())
+  name          String
+  email         String  @unique
+  password_hash String
+  phone         String?
+  role          String
+  status        String
+  profile_image String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  owned_clubs      Club[]                        @relation("ClubOwner")
+  owned_teams      Team[]                        @relation("TeamOwner")
+  registrations    CompetitionRegistration[]     @relation("RegistrationUser")
+  approval_reviews RegistrationApprovalHistory[] @relation("ApprovalReviewer")
+  news             News[]                        @relation("NewsAuthor")
+  notifications    Notification[]
+}
+
+// ============================================================
+// CLUB
+// ============================================================
+
+model Club {
+  club_id             Int     @id @default(autoincrement())
+  owner_id            Int
+  name                String
+  logo                String?
+  description         String?
+  region              String?
+  district            String?
+  city                String?
+  contact_email       String?
+  contact_phone       String?
+  representative_name String?
+  status              String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  owner User   @relation("ClubOwner", fields: [owner_id], references: [user_id])
+  teams Team[]
+}
+
+// ============================================================
+// TEAM
+// ============================================================
+
+model Team {
+  team_id       Int     @id @default(autoincrement())
+  club_id       Int
+  owner_id      Int
+  home_venue_id Int
+  name          String
+  logo          String?
+  gender        String
+  region        String?
+  district      String?
+  city          String?
+  description   String?
+  contact_email String?
+  contact_phone String?
+  team_type     String
+  status        String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  club       Club  @relation(fields: [club_id], references: [club_id])
+  owner      User  @relation("TeamOwner", fields: [owner_id], references: [user_id])
+  home_venue Venue @relation("TeamHomeVenue", fields: [home_venue_id], references: [venue_id])
+
+  team_players  TeamPlayer[]
+  registrations CompetitionRegistration[]
+  standings     TeamStanding[]
+  match_players MatchPlayer[]
+  match_events  MatchEvent[]
+  home_matches  Match[]                   @relation("HomeTeam")
+  away_matches  Match[]                   @relation("AwayTeam")
+}
+
+// ============================================================
+// PLAYER
+// ============================================================
+
+model Player {
+  player_id           Int      @id @default(autoincrement())
+  name                String
+  profile_photo       String?
+  date_of_birth       DateTime @db.Date
+  gender              String
+  position            String?
+  phone               String?
+  nationality         String?
+  registration_number String   @unique
+  status              String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  team_players        TeamPlayer[]
+  competition_players CompetitionPlayer[]
+  match_players       MatchPlayer[]
+  match_events        MatchEvent[]        @relation("EventPlayer")
+  related_events      MatchEvent[]        @relation("RelatedEventPlayer")
+}
+
+// ============================================================
+// TEAM PLAYER
+// ============================================================
+
+model TeamPlayer {
+  team_player_id Int       @id @default(autoincrement())
+  team_id        Int
+  player_id      Int
+  jersey_number  Int?
+  joined_at      DateTime  @db.Date
+  left_at        DateTime? @db.Date
+  status         String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  team   Team   @relation(fields: [team_id], references: [team_id])
+  player Player @relation(fields: [player_id], references: [player_id])
+}
+
+// ============================================================
+// SEASON
+// ============================================================
+
+model Season {
+  season_id   Int      @id @default(autoincrement())
+  name        String
+  start_date  DateTime @db.Date
+  end_date    DateTime @db.Date
+  status      String
+  description String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  competitions Competition[]
+  matches      Match[]
+}
+
+// ============================================================
+// COMPETITION
+// ============================================================
+
+model Competition {
+  competition_id          Int      @id @default(autoincrement())
+  season_id               Int
+  name                    String
+  gender                  String
+  description             String?
+  registration_fee        Decimal  @db.Decimal(12, 2)
+  registration_start_date DateTime @db.Date
+  registration_end_date   DateTime @db.Date
+  competition_start_date  DateTime @db.Date
+  competition_end_date    DateTime @db.Date
+  max_teams               Int?
+  squad_size              Int?
+  format                  String
+  eligibility_rules       String?
+  refund_policy           String?
+  status                  String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  season              Season                    @relation(fields: [season_id], references: [season_id])
+  registrations       CompetitionRegistration[]
+  competition_players CompetitionPlayer[]
+  standings           TeamStanding[]
+  matches             Match[]
+}
+
+// ============================================================
+// COMPETITION REGISTRATION
+// ============================================================
+
+model CompetitionRegistration {
+  registration_id     Int       @id @default(autoincrement())
+  competition_id      Int
+  team_id             Int
+  registered_by       Int
+  registration_status String
+  payment_status      String
+  registration_date   DateTime
+  approved_at         DateTime?
+  rejection_reason    String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  competition     Competition @relation(fields: [competition_id], references: [competition_id])
+  team            Team        @relation(fields: [team_id], references: [team_id])
+  registered_user User        @relation("RegistrationUser", fields: [registered_by], references: [user_id])
+
+  players          CompetitionPlayer[]
+  payments         Payment[]
+  approval_history RegistrationApprovalHistory[]
+
+  @@unique([competition_id, team_id])
+}
+
+// ============================================================
+// COMPETITION PLAYER
+// ============================================================
+
+model CompetitionPlayer {
+  competition_player_id Int      @id @default(autoincrement())
+  competition_id        Int
+  registration_id       Int
+  player_id             Int
+  status                String
+  registered_at         DateTime
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  competition  Competition             @relation(fields: [competition_id], references: [competition_id])
+  registration CompetitionRegistration @relation(fields: [registration_id], references: [registration_id])
+  player       Player                  @relation(fields: [player_id], references: [player_id])
+
+  // A player cannot be registered twice in the same competition
+  @@unique([competition_id, player_id])
+}
+
+// ============================================================
+// PAYMENT
+// ============================================================
+
+model Payment {
+  payment_id            Int       @id @default(autoincrement())
+  registration_id       Int
+  amount                Decimal   @db.Decimal(12, 2)
+  payment_method        String
+  transaction_reference String    @unique
+  payment_status        String
+  paid_at               DateTime?
+  refund_amount         Decimal?  @db.Decimal(12, 2)
+  refunded_at           DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  registration CompetitionRegistration @relation(fields: [registration_id], references: [registration_id])
+}
+
+// ============================================================
+// VENUE
+// ============================================================
+
+model Venue {
+  venue_id      Int     @id @default(autoincrement())
+  name          String
+  region        String?
+  district      String?
+  city          String?
+  address       String?
+  capacity      Int?
+  surface_type  String?
+  contact_phone String?
+  status        String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  home_teams Team[]  @relation("TeamHomeVenue")
+  matches    Match[]
+}
+
+// ============================================================
+// REFEREE
+// ============================================================
+
+model Referee {
+  referee_id     Int     @id @default(autoincrement())
+  name           String
+  profile_photo  String?
+  phone          String?
+  region         String?
+  district       String?
+  city           String?
+  license_number String  @unique
+  status         String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  matches Match[]
+}
+
+// ============================================================
+// MATCH
+// ============================================================
+
+model Match {
+  match_id       Int      @id @default(autoincrement())
+  competition_id Int
+  season_id      Int
+  home_team_id   Int
+  away_team_id   Int
+  venue_id       Int
+  referee_id     Int
+  match_date     DateTime @db.Date
+  start_time     DateTime @db.Time(0)
+  status         String
+  home_score     Int      @default(0)
+  away_score     Int      @default(0)
+  match_notes    String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  competition Competition @relation(fields: [competition_id], references: [competition_id])
+  season      Season      @relation(fields: [season_id], references: [season_id])
+  home_team   Team        @relation("HomeTeam", fields: [home_team_id], references: [team_id])
+  away_team   Team        @relation("AwayTeam", fields: [away_team_id], references: [team_id])
+  venue       Venue       @relation(fields: [venue_id], references: [venue_id])
+  referee     Referee     @relation(fields: [referee_id], references: [referee_id])
+
+  players MatchPlayer[]
+  events  MatchEvent[]
+}
+
+// ============================================================
+// MATCH PLAYER
+// ============================================================
+
+model MatchPlayer {
+  match_player_id Int     @id @default(autoincrement())
+  match_id        Int
+  team_id         Int
+  player_id       Int
+  starting_status String
+  position        String?
+  shirt_number    Int?
+  minutes_played  Int?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  match  Match  @relation(fields: [match_id], references: [match_id])
+  team   Team   @relation(fields: [team_id], references: [team_id])
+  player Player @relation(fields: [player_id], references: [player_id])
+
+  // A player can appear only once in a match
+  @@unique([match_id, player_id])
+}
+
+// ============================================================
+// MATCH EVENT
+// ============================================================
+
+model MatchEvent {
+  event_id          Int     @id @default(autoincrement())
+  match_id          Int
+  team_id           Int
+  player_id         Int
+  related_player_id Int?
+  event_type        String
+  minute            Int
+  extra_time        Int?
+  description       String?
+
+  created_at DateTime @default(now())
+
+  // Relationships
+  match          Match   @relation(fields: [match_id], references: [match_id])
+  team           Team    @relation(fields: [team_id], references: [team_id])
+  player         Player  @relation("EventPlayer", fields: [player_id], references: [player_id])
+  related_player Player? @relation("RelatedEventPlayer", fields: [related_player_id], references: [player_id])
+}
+
+// ============================================================
+// TEAM STANDING
+// ============================================================
+
+model TeamStanding {
+  standing_id     Int  @id @default(autoincrement())
+  competition_id  Int
+  team_id         Int
+  played          Int  @default(0)
+  wins            Int  @default(0)
+  draws           Int  @default(0)
+  losses          Int  @default(0)
+  goals_for       Int  @default(0)
+  goals_against   Int  @default(0)
+  goal_difference Int  @default(0)
+  points          Int  @default(0)
+  position        Int?
+
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  competition Competition @relation(fields: [competition_id], references: [competition_id])
+  team        Team        @relation(fields: [team_id], references: [team_id])
+
+  // One standing record per team per competition
+  @@unique([competition_id, team_id])
+}
+
+// ============================================================
+// REGISTRATION APPROVAL HISTORY
+// ============================================================
+
+model RegistrationApprovalHistory {
+  approval_history_id Int     @id @default(autoincrement())
+  registration_id     Int
+  reviewed_by         Int
+  action              String
+  remarks             String?
+
+  created_at DateTime @default(now())
+
+  // Relationships
+  registration CompetitionRegistration @relation(fields: [registration_id], references: [registration_id])
+  reviewer     User                    @relation("ApprovalReviewer", fields: [reviewed_by], references: [user_id])
+}
+
+// ============================================================
+// NEWS
+// ============================================================
+
+model News {
+  news_id        Int       @id @default(autoincrement())
+  author_id      Int
+  title          String
+  content        String
+  featured_image String?
+  category       String
+  status         String
+  published_at   DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relationships
+  author User @relation("NewsAuthor", fields: [author_id], references: [user_id])
+}
+
+// ============================================================
+// NOTIFICATION
+// ============================================================
+
+model Notification {
+  notification_id   Int     @id @default(autoincrement())
+  user_id           Int
+  title             String
+  message           String
+  notification_type String
+  reference_type    String?
+  reference_id      Int?
+  is_read           Boolean @default(false)
+
+  created_at DateTime @default(now())
+
+  // Relationships
+  user User @relation(fields: [user_id], references: [user_id])
+}
