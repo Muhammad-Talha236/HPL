@@ -4,6 +4,7 @@ import cors from "cors";
 import prisma from "./database/prisma.js";
 
 import authRoutes from "./modules/auth/auth.routes.js";
+import clubRoutes from "./modules/clubs/club.routes.js";
 
 const app = express();
 
@@ -17,7 +18,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
-
+app.use("/api/clubs", clubRoutes);
 app.get("/api/test-db", async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
