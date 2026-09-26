@@ -193,3 +193,70 @@ export const getMe = async (req, res) => {
     });
   }
 };
+
+export const updateUserRole = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const { role } = req.body;
+
+    // Validate role
+    const allowedRoles = [
+      ROLES.SUPER_ADMIN,
+      ROLES.CLUB_OWNER,
+      ROLES.TEAM_OWNER,
+      ROLES.USER,
+    ];
+
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role",
+      });
+    }
+
+    // Prevent changing own role
+    if (Number(user_id) === req.user.user_id) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot change your own role",
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: {
+        user_id: Number(user_id),
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: {
+        user_id: Number(user_id),
+      },
+      data: {
+        role,
+      },
+    });
+
+    const { password_hash: _, ...userWithoutPassword } = updatedUser;
+
+    return res.status(200).json({
+      success: true,
+      message: "User role updated successfully",
+      data: userWithoutPassword,
+    });
+  } catch (error) {
+    console.error("Update user role error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while updating user role",
+    });
+  }
+};
