@@ -7,6 +7,8 @@ import authRoutes from "./modules/auth/auth.routes.js";
 import clubRoutes from "./modules/clubs/club.routes.js";
 import teamRoutes from "./modules/teams/team.routes.js";
 import venueRoutes from "./modules/venues/venue.routes.js";
+import playerRoutes from "./modules/players/player.routes.js";
+
 const app = express();
 
 app.use(cors());
@@ -22,6 +24,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/clubs", clubRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/venues", venueRoutes);
+app.use("/api/players", playerRoutes);
 
 app.get("/api/test-db", async (req, res) => {
   try {
