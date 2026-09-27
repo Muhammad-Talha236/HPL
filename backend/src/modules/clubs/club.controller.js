@@ -1,5 +1,16 @@
 import prisma from "../../database/prisma.js";
+
 import { ROLES } from "../../constants/roles.js";
+import { USER_STATUS } from "../../constants/statuses.js";
+
+import { createAuditLog } from "../../utils/auditLog.util.js";
+import { AUDIT_ACTIONS } from "../../constants/auditActions.js";
+
+
+// ======================================================
+// CREATE CLUB
+// ======================================================
+
 export const createClub = async (req, res) => {
   try {
     const {
@@ -56,7 +67,19 @@ export const createClub = async (req, res) => {
       },
     });
 
-    // 5. Return created club
+    // 5. Create audit log
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.CLUB_CREATED,
+      entity_type: "CLUB",
+      entity_id: club.club_id,
+      details: {
+        name: club.name,
+        owner_id: club.owner_id,
+      },
+    });
+
+    // 6. Return created club
     return res.status(201).json({
       success: true,
       message: "Club created successfully",
@@ -73,6 +96,11 @@ export const createClub = async (req, res) => {
   }
 };
 
+
+// ======================================================
+// GET ALL CLUBS
+// ======================================================
+
 export const getClubs = async (req, res) => {
   try {
     const clubs = await prisma.club.findMany({
@@ -85,6 +113,7 @@ export const getClubs = async (req, res) => {
       success: true,
       data: clubs,
     });
+
   } catch (error) {
     console.error("Get clubs error:", error);
 
@@ -94,6 +123,11 @@ export const getClubs = async (req, res) => {
     });
   }
 };
+
+
+// ======================================================
+// GET CLUB BY ID
+// ======================================================
 
 export const getClubById = async (req, res) => {
   try {
@@ -116,6 +150,7 @@ export const getClubById = async (req, res) => {
       success: true,
       data: club,
     });
+
   } catch (error) {
     console.error("Get club error:", error);
 
@@ -125,6 +160,11 @@ export const getClubById = async (req, res) => {
     });
   }
 };
+
+
+// ======================================================
+// UPDATE CLUB
+// ======================================================
 
 export const updateClub = async (req, res) => {
   try {
@@ -194,11 +234,24 @@ export const updateClub = async (req, res) => {
       },
     });
 
+    // Create audit log
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.CLUB_UPDATED,
+      entity_type: "CLUB",
+      entity_id: Number(club_id),
+      details: {
+        previous_name: club.name,
+        new_name: updatedClub.name,
+      },
+    });
+
     return res.status(200).json({
       success: true,
       message: "Club updated successfully",
       data: updatedClub,
     });
+
   } catch (error) {
     console.error("Update club error:", error);
 
@@ -208,6 +261,11 @@ export const updateClub = async (req, res) => {
     });
   }
 };
+
+
+// ======================================================
+// TRANSFER CLUB OWNERSHIP
+// ======================================================
 
 export const transferClubOwnership = async (req, res) => {
   try {
@@ -224,7 +282,10 @@ export const transferClubOwnership = async (req, res) => {
     const clubId = Number(club_id);
     const newOwnerId = Number(owner_id);
 
-    if (!Number.isInteger(clubId) || !Number.isInteger(newOwnerId)) {
+    if (
+      !Number.isInteger(clubId) ||
+      !Number.isInteger(newOwnerId)
+    ) {
       return res.status(400).json({
         success: false,
         message: "Club ID and owner ID must be valid numbers",
@@ -257,10 +318,19 @@ export const transferClubOwnership = async (req, res) => {
       });
     }
 
+    // New owner must have CLUB_OWNER role
     if (newOwner.role !== ROLES.CLUB_OWNER) {
       return res.status(400).json({
         success: false,
         message: "Selected user must have CLUB_OWNER role",
+      });
+    }
+
+    // New owner must have an active account
+    if (newOwner.status !== USER_STATUS.ACTIVE) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected user account is not active",
       });
     }
 
@@ -271,6 +341,9 @@ export const transferClubOwnership = async (req, res) => {
       });
     }
 
+    // Store old owner for audit logging
+    const oldOwnerId = club.owner_id;
+
     const updatedClub = await prisma.club.update({
       where: {
         club_id: clubId,
@@ -280,20 +353,39 @@ export const transferClubOwnership = async (req, res) => {
       },
     });
 
+    // Create audit log
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.CLUB_OWNERSHIP_TRANSFERRED,
+      entity_type: "CLUB",
+      entity_id: clubId,
+      details: {
+        old_owner_id: oldOwnerId,
+        new_owner_id: newOwnerId,
+      },
+    });
+
     return res.status(200).json({
       success: true,
       message: "Club ownership transferred successfully",
       data: updatedClub,
     });
+
   } catch (error) {
     console.error("Transfer club ownership error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while transferring club ownership",
+      message:
+        "Something went wrong while transferring club ownership",
     });
   }
 };
+
+
+// ======================================================
+// DEACTIVATE CLUB
+// ======================================================
 
 export const deactivateClub = async (req, res) => {
   try {
@@ -349,20 +441,39 @@ export const deactivateClub = async (req, res) => {
       },
     });
 
+    // Create audit log
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.CLUB_DEACTIVATED,
+      entity_type: "CLUB",
+      entity_id: clubId,
+      details: {
+        previous_status: club.status,
+        new_status: "INACTIVE",
+      },
+    });
+
     return res.status(200).json({
       success: true,
       message: "Club deactivated successfully",
       data: updatedClub,
     });
+
   } catch (error) {
     console.error("Deactivate club error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while deactivating the club",
+      message:
+        "Something went wrong while deactivating the club",
     });
   }
 };
+
+
+// ======================================================
+// ACTIVATE CLUB
+// ======================================================
 
 export const activateClub = async (req, res) => {
   try {
@@ -406,17 +517,31 @@ export const activateClub = async (req, res) => {
       },
     });
 
+    // Create audit log
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.CLUB_ACTIVATED,
+      entity_type: "CLUB",
+      entity_id: clubId,
+      details: {
+        previous_status: club.status,
+        new_status: "ACTIVE",
+      },
+    });
+
     return res.status(200).json({
       success: true,
       message: "Club activated successfully",
       data: updatedClub,
     });
+
   } catch (error) {
     console.error("Activate club error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while activating the club",
+      message:
+        "Something went wrong while activating the club",
     });
   }
 };

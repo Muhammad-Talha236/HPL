@@ -1,5 +1,13 @@
 import prisma from "../../database/prisma.js";
 
+import { createAuditLog } from "../../utils/auditLog.util.js";
+import { AUDIT_ACTIONS } from "../../constants/auditActions.js";
+
+
+// ======================================================
+// CREATE VENUE
+// ======================================================
+
 export const createVenue = async (req, res) => {
   try {
     const {
@@ -59,6 +67,18 @@ export const createVenue = async (req, res) => {
       },
     });
 
+    // Create audit log
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.VENUE_CREATED,
+      entity_type: "VENUE",
+      entity_id: venue.venue_id,
+      details: {
+        name: venue.name,
+        city: venue.city,
+      },
+    });
+
     return res.status(201).json({
       success: true,
       message: "Venue created successfully",
@@ -73,6 +93,11 @@ export const createVenue = async (req, res) => {
     });
   }
 };
+
+
+// ======================================================
+// GET ALL VENUES
+// ======================================================
 
 export const getVenues = async (req, res) => {
   try {
@@ -95,6 +120,11 @@ export const getVenues = async (req, res) => {
     });
   }
 };
+
+
+// ======================================================
+// GET VENUE BY ID
+// ======================================================
 
 export const getVenueById = async (req, res) => {
   try {
@@ -133,6 +163,11 @@ export const getVenueById = async (req, res) => {
     });
   }
 };
+
+
+// ======================================================
+// UPDATE VENUE
+// ======================================================
 
 export const updateVenue = async (req, res) => {
   try {
@@ -196,9 +231,25 @@ export const updateVenue = async (req, res) => {
         ...(district !== undefined && { district }),
         ...(city !== undefined && { city }),
         ...(address !== undefined && { address }),
-        ...(capacity !== undefined && { capacity: Number(capacity) }),
+        ...(capacity !== undefined && {
+          capacity: Number(capacity),
+        }),
         ...(surface_type !== undefined && { surface_type }),
         ...(contact_phone !== undefined && { contact_phone }),
+      },
+    });
+
+    // Create audit log
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.VENUE_UPDATED,
+      entity_type: "VENUE",
+      entity_id: venueId,
+      details: {
+        previous_name: venue.name,
+        new_name: updatedVenue.name,
+        previous_city: venue.city,
+        new_city: updatedVenue.city,
       },
     });
 
@@ -216,6 +267,11 @@ export const updateVenue = async (req, res) => {
     });
   }
 };
+
+
+// ======================================================
+// DEACTIVATE VENUE
+// ======================================================
 
 export const deactivateVenue = async (req, res) => {
   try {
@@ -271,6 +327,11 @@ export const deactivateVenue = async (req, res) => {
     });
   }
 };
+
+
+// ======================================================
+// ACTIVATE VENUE
+// ======================================================
 
 export const activateVenue = async (req, res) => {
   try {

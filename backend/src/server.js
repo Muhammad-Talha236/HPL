@@ -13,13 +13,15 @@ import playerRoutes from "./modules/players/player.routes.js";
 import { errorHandler } from "./middleware/auth/error.middleware.js";
 import { ENV } from "./config/env.js";
 
+import auditLogRoutes from "./modules/auditLogs/auditLog.routes.js";
+
 // API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/clubs", clubRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/venues", venueRoutes);
 app.use("/api/players", playerRoutes);
-
+app.use("/api/audit-logs", auditLogRoutes);
 // Database test route
 // Database test route - development only
 if (ENV.NODE_ENV === "development") {
@@ -55,6 +57,43 @@ app.use(errorHandler);
 
 const PORT = ENV.PORT;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const server = app.listen(PORT, () => {
+  console.log(
+    `Server running on port ${PORT} (${ENV.NODE_ENV})`
+  );
+});
+
+
+// ======================================================
+// GRACEFUL SHUTDOWN
+// ======================================================
+
+const shutdown = async (signal) => {
+  console.log(`${signal} received. Shutting down server...`);
+
+  server.close(async () => {
+    try {
+      await prisma.$disconnect();
+
+      console.log("Database connection closed.");
+      process.exit(0);
+    } catch (error) {
+      console.error(
+        "Error while closing database connection:",
+        error
+      );
+
+      process.exit(1);
+    }
+  });
+};
+
+
+// Handle termination signals
+process.on("SIGTERM", () => {
+  shutdown("SIGTERM");
+});
+
+process.on("SIGINT", () => {
+  shutdown("SIGINT");
 });

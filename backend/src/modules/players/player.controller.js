@@ -1,4 +1,13 @@
+import crypto from "crypto";
+
 import prisma from "../../database/prisma.js";
+
+import { createAuditLog } from "../../utils/auditLog.util.js";
+import { AUDIT_ACTIONS } from "../../constants/auditActions.js";
+
+// ======================================================
+// CREATE PLAYER
+// ======================================================
 
 export const createPlayer = async (req, res) => {
   try {
@@ -12,31 +21,65 @@ export const createPlayer = async (req, res) => {
       nationality,
     } = req.body;
 
-    // Required fields
-    if (!name || !date_of_birth || !gender || !position) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Name, date of birth, gender and position are required",
-      });
-    }
+    // ==================================================
+    // GENERATE UNIQUE REGISTRATION NUMBER
+    // ==================================================
 
-    // Generate a unique registration number
-    const registrationNumber = `HPL-${Date.now()}-${Math.floor(
-      Math.random() * 1000
-    )}`;
+    const registrationNumber = `HPL-${crypto
+      .randomUUID()
+      .replace(/-/g, "")
+      .substring(0, 12)
+      .toUpperCase()}`;
+
+    // ==================================================
+    // CREATE PLAYER
+    // ==================================================
 
     const player = await prisma.player.create({
       data: {
         name: name.trim(),
-        profile_photo,
+
+        profile_photo:
+          profile_photo !== undefined
+            ? profile_photo.trim()
+            : undefined,
+
         date_of_birth: new Date(date_of_birth),
-        gender,
-        position,
-        phone,
-        nationality,
-        registration_number: registrationNumber,
+
+        gender: gender.trim(),
+
+        position: position.trim(),
+
+        phone:
+          phone !== undefined
+            ? phone.trim()
+            : undefined,
+
+        nationality:
+          nationality !== undefined
+            ? nationality.trim()
+            : undefined,
+
+        registration_number:
+          registrationNumber,
+
         status: "ACTIVE",
+      },
+    });
+
+    // ==================================================
+    // AUDIT LOG
+    // ==================================================
+
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.PLAYER_CREATED,
+      entity_type: "PLAYER",
+      entity_id: player.player_id,
+      details: {
+        name: player.name,
+        gender: player.gender,
+        position: player.position,
       },
     });
 
@@ -50,10 +93,15 @@ export const createPlayer = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while creating the player",
+      message:
+        "Something went wrong while creating the player",
     });
   }
 };
+
+// ======================================================
+// GET ALL PLAYERS
+// ======================================================
 
 export const getPlayers = async (req, res) => {
   try {
@@ -72,16 +120,21 @@ export const getPlayers = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while fetching players",
+      message:
+        "Something went wrong while fetching players",
     });
   }
 };
+
+// ======================================================
+// GET PLAYER BY ID
+// ======================================================
 
 export const getPlayerById = async (req, res) => {
   try {
     const playerId = Number(req.params.player_id);
 
-    if (!Number.isInteger(playerId)) {
+    if (!Number.isInteger(playerId) || playerId < 1) {
       return res.status(400).json({
         success: false,
         message: "Invalid player ID",
@@ -110,7 +163,8 @@ export const getPlayerById = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while fetching the player",
+      message:
+        "Something went wrong while fetching the player",
     });
   }
 };

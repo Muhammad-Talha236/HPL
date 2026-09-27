@@ -10,14 +10,32 @@ import { authenticate } from "../../middleware/auth/auth.middleware.js";
 import { authorize } from "../../middleware/auth/role.middleware.js";
 import { ROLES } from "../../constants/roles.js";
 
+import {
+  playerIdValidation,
+  createPlayerValidation,
+} from "./player.validation.js";
+
+import { handleValidationErrors } from "../../middleware/auth/validation.middleware.js";
+
 const router = express.Router();
 
-// Public
+// ======================================================
+// PUBLIC ROUTES
+// ======================================================
+
 router.get("/", getPlayers);
 
-router.get("/:player_id", getPlayerById);
+router.get(
+  "/:player_id",
+  playerIdValidation,
+  handleValidationErrors,
+  getPlayerById
+);
 
-// Any authenticated user can create a player profile
+// ======================================================
+// CREATE PLAYER
+// ======================================================
+
 router.post(
   "/",
   authenticate,
@@ -27,6 +45,8 @@ router.post(
     ROLES.CLUB_OWNER,
     ROLES.SUPER_ADMIN
   ),
+  createPlayerValidation,
+  handleValidationErrors,
   createPlayer
 );
 

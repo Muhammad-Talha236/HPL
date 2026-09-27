@@ -23,6 +23,7 @@ model User {
   notifications    Notification[]
   approval_reviews RegistrationApprovalHistory[] @relation("ApprovalReviewer")
   owned_teams      Team[]                        @relation("TeamOwner")
+  audit_logs       AuditLog[]
 }
 
 model Club {
@@ -369,4 +370,21 @@ model PlayerInvitation {
   @@index([invited_email])
   @@index([player_id])
   @@index([expires_at])
+}
+
+model AuditLog {
+  audit_id      Int      @id @default(autoincrement())
+  actor_user_id Int?
+  action        String
+  entity_type   String
+  entity_id     Int?
+  details       Json?
+  created_at    DateTime @default(now())
+
+  actor User? @relation(fields: [actor_user_id], references: [user_id], onDelete: SetNull)
+
+  @@index([actor_user_id])
+  @@index([action])
+  @@index([entity_type])
+  @@index([created_at])
 }

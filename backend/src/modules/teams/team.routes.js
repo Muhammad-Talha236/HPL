@@ -86,12 +86,16 @@ router.patch(
 
 // Transfer Team Ownership
 router.patch(
-  "/:team_id/activate",
+  "/:team_id/owner",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
-  teamIdValidation,
+  authorize(
+    ROLES.TEAM_OWNER,
+    ROLES.CLUB_OWNER,
+    ROLES.SUPER_ADMIN
+  ),
+  transferTeamOwnershipValidation,
   handleValidationErrors,
-  activateTeam
+  transferTeamOwnership
 );
 
 export default router;

@@ -1,5 +1,14 @@
 import prisma from "../../database/prisma.js";
+
 import { ROLES } from "../../constants/roles.js";
+
+import { createAuditLog } from "../../utils/auditLog.util.js";
+import { AUDIT_ACTIONS } from "../../constants/auditActions.js";
+
+
+// ======================================================
+// CREATE TEAM
+// ======================================================
 
 export const createTeam = async (req, res) => {
   try {
@@ -114,12 +123,11 @@ export const createTeam = async (req, res) => {
      *
      * For Super Admin:
      * owner_id = club owner.
-     *
-     * This prevents Super Admin from accidentally becoming
-     * the owner of every team they create.
      */
     const teamOwnerId =
-      req.user.role === ROLES.SUPER_ADMIN ? club.owner_id : req.user.user_id;
+      req.user.role === ROLES.SUPER_ADMIN
+        ? club.owner_id
+        : req.user.user_id;
 
     const team = await prisma.team.create({
       data: {
@@ -142,6 +150,19 @@ export const createTeam = async (req, res) => {
       },
     });
 
+    // Create audit log
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.TEAM_CREATED,
+      entity_type: "TEAM",
+      entity_id: team.team_id,
+      details: {
+        name: team.name,
+        club_id: team.club_id,
+        owner_id: team.owner_id,
+      },
+    });
+
     return res.status(201).json({
       success: true,
       message: "Team created successfully",
@@ -156,6 +177,11 @@ export const createTeam = async (req, res) => {
     });
   }
 };
+
+
+// ======================================================
+// GET ALL TEAMS
+// ======================================================
 
 export const getTeams = async (req, res) => {
   try {
@@ -197,6 +223,11 @@ export const getTeams = async (req, res) => {
   }
 };
 
+
+// ======================================================
+// GET TEAM BY ID
+// ======================================================
+
 export const getTeamById = async (req, res) => {
   try {
     const teamId = Number(req.params.team_id);
@@ -226,6 +257,7 @@ export const getTeamById = async (req, res) => {
           select: {
             venue_id: true,
             name: true,
+            logo: true,
             city: true,
             address: true,
           },
@@ -254,6 +286,11 @@ export const getTeamById = async (req, res) => {
   }
 };
 
+
+// ======================================================
+// UPDATE TEAM
+// ======================================================
+
 export const updateTeam = async (req, res) => {
   try {
     const teamId = Number(req.params.team_id);
@@ -278,7 +315,6 @@ export const updateTeam = async (req, res) => {
       });
     }
 
-    // Only team owner or Super Admin can update
     // Ownership / authorization check
     if (req.user.role !== ROLES.SUPER_ADMIN) {
       // TEAM_OWNER can update only their own team
@@ -408,6 +444,18 @@ export const updateTeam = async (req, res) => {
       },
     });
 
+    // Create audit log
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.TEAM_UPDATED,
+      entity_type: "TEAM",
+      entity_id: teamId,
+      details: {
+        previous_name: team.name,
+        new_name: updatedTeam.name,
+      },
+    });
+
     return res.status(200).json({
       success: true,
       message: "Team updated successfully",
@@ -422,6 +470,11 @@ export const updateTeam = async (req, res) => {
     });
   }
 };
+
+
+// ======================================================
+// DEACTIVATE TEAM
+// ======================================================
 
 export const deactivateTeam = async (req, res) => {
   try {
@@ -483,6 +536,18 @@ export const deactivateTeam = async (req, res) => {
       },
     });
 
+    // Create audit log
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.TEAM_DEACTIVATED,
+      entity_type: "TEAM",
+      entity_id: teamId,
+      details: {
+        previous_status: team.status,
+        new_status: "INACTIVE",
+      },
+    });
+
     return res.status(200).json({
       success: true,
       message: "Team deactivated successfully",
@@ -493,10 +558,16 @@ export const deactivateTeam = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while deactivating the team",
+      message:
+        "Something went wrong while deactivating the team",
     });
   }
 };
+
+
+// ======================================================
+// ACTIVATE TEAM
+// ======================================================
 
 export const activateTeam = async (req, res) => {
   try {
@@ -567,6 +638,18 @@ export const activateTeam = async (req, res) => {
       },
     });
 
+    // Create audit log
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.TEAM_ACTIVATED,
+      entity_type: "TEAM",
+      entity_id: teamId,
+      details: {
+        previous_status: team.status,
+        new_status: "ACTIVE",
+      },
+    });
+
     return res.status(200).json({
       success: true,
       message: "Team activated successfully",
@@ -581,6 +664,11 @@ export const activateTeam = async (req, res) => {
     });
   }
 };
+
+
+// ======================================================
+// TRANSFER TEAM OWNERSHIP
+// ======================================================
 
 export const transferTeamOwnership = async (req, res) => {
   try {
@@ -656,6 +744,7 @@ export const transferTeamOwnership = async (req, res) => {
         message: "New owner not found",
       });
     }
+
     // New team owner must have TEAM_OWNER role
     if (newOwner.role !== ROLES.TEAM_OWNER) {
       return res.status(400).json({
@@ -672,12 +761,27 @@ export const transferTeamOwnership = async (req, res) => {
       });
     }
 
+    // Store old owner for audit logging
+    const oldOwnerId = team.owner_id;
+
     const updatedTeam = await prisma.team.update({
       where: {
         team_id: teamId,
       },
       data: {
         owner_id: newOwnerId,
+      },
+    });
+
+    // Create audit log
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.TEAM_OWNERSHIP_TRANSFERRED,
+      entity_type: "TEAM",
+      entity_id: teamId,
+      details: {
+        old_owner_id: oldOwnerId,
+        new_owner_id: newOwnerId,
       },
     });
 
@@ -691,7 +795,8 @@ export const transferTeamOwnership = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while transferring team ownership",
+      message:
+        "Something went wrong while transferring team ownership",
     });
   }
 };

@@ -10,6 +10,9 @@ import { validatePassword } from "../../utils/password.util.js";
 import { SECURITY } from "../../config/security.js";
 import { ENV } from "../../config/env.js";
 
+import { createAuditLog } from "../../utils/auditLog.util.js";
+import { AUDIT_ACTIONS } from "../../constants/auditActions.js";
+
 // ============================================================
 // REGISTER
 // ============================================================
@@ -285,24 +288,27 @@ export const updateUserRole = async (req, res) => {
     }
 
     // 4. Prevent modifying an existing Super Admin
-if (user.role === ROLES.SUPER_ADMIN) {
-  return res.status(403).json({
-    success: false,
-    message:
-      "SUPER_ADMIN account cannot be modified through this endpoint",
-  });
-}
+    if (user.role === ROLES.SUPER_ADMIN) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "SUPER_ADMIN account cannot be modified through this endpoint",
+      });
+    }
 
-// 5. Prevent creating a new Super Admin
-if (role === ROLES.SUPER_ADMIN) {
-  return res.status(403).json({
-    success: false,
-    message:
-      "SUPER_ADMIN role cannot be assigned through this endpoint",
-  });
-}
+    // 5. Prevent creating a new Super Admin
+    if (role === ROLES.SUPER_ADMIN) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "SUPER_ADMIN role cannot be assigned through this endpoint",
+      });
+    }
 
-    // 4. Update role
+    // Store old role for audit logging
+    const oldRole = user.role;
+
+    // 6. Update role
     const updatedUser = await prisma.user.update({
       where: {
         user_id: userId,
@@ -312,13 +318,25 @@ if (role === ROLES.SUPER_ADMIN) {
       },
     });
 
-    // 5. Never send password_hash
+    // 7. Create audit log
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.USER_ROLE_UPDATED,
+      entity_type: "USER",
+      entity_id: userId,
+      details: {
+        old_role: oldRole,
+        new_role: role,
+      },
+    });
+
+    // 8. Never send password_hash
     const {
       password_hash: _,
       ...userWithoutPassword
     } = updatedUser;
 
-    // 6. Send response
+    // 9. Send response
     return res.status(200).json({
       success: true,
       message: "User role updated successfully",
