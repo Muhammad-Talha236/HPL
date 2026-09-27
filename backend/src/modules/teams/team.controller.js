@@ -119,9 +119,7 @@ export const createTeam = async (req, res) => {
      * the owner of every team they create.
      */
     const teamOwnerId =
-      req.user.role === ROLES.SUPER_ADMIN
-        ? club.owner_id
-        : req.user.user_id;
+      req.user.role === ROLES.SUPER_ADMIN ? club.owner_id : req.user.user_id;
 
     const team = await prisma.team.create({
       data: {
@@ -281,14 +279,41 @@ export const updateTeam = async (req, res) => {
     }
 
     // Only team owner or Super Admin can update
-    if (
-      req.user.role !== ROLES.SUPER_ADMIN &&
-      team.owner_id !== req.user.user_id
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only update your own team",
-      });
+    // Ownership / authorization check
+    if (req.user.role !== ROLES.SUPER_ADMIN) {
+      // TEAM_OWNER can update only their own team
+      if (req.user.role === ROLES.TEAM_OWNER) {
+        if (team.owner_id !== req.user.user_id) {
+          return res.status(403).json({
+            success: false,
+            message: "You can only update your own team",
+          });
+        }
+      }
+
+      // CLUB_OWNER can update teams belonging to their own club
+      else if (req.user.role === ROLES.CLUB_OWNER) {
+        const club = await prisma.club.findUnique({
+          where: {
+            club_id: team.club_id,
+          },
+        });
+
+        if (!club || club.owner_id !== req.user.user_id) {
+          return res.status(403).json({
+            success: false,
+            message: "You can only update teams in your own club",
+          });
+        }
+      }
+
+      // Any unexpected role is denied
+      else {
+        return res.status(403).json({
+          success: false,
+          message: "You do not have permission to update this team",
+        });
+      }
     }
 
     const {
@@ -473,7 +498,6 @@ export const deactivateTeam = async (req, res) => {
   }
 };
 
-
 export const activateTeam = async (req, res) => {
   try {
     const teamId = Number(req.params.team_id);
@@ -632,8 +656,15 @@ export const transferTeamOwnership = async (req, res) => {
         message: "New owner not found",
       });
     }
+    // New team owner must have TEAM_OWNER role
+    if (newOwner.role !== ROLES.TEAM_OWNER) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected user must have TEAM_OWNER role",
+      });
+    }
 
-    // Block inactive/blocked users
+    // New owner must have an active account
     if (newOwner.status !== "ACTIVE") {
       return res.status(400).json({
         success: false,

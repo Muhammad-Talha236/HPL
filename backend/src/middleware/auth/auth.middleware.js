@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import prisma from "../../database/prisma.js";
 import { USER_STATUS } from "../../constants/statuses.js";
-
+import { ENV } from "../../config/env.js";
 export const authenticate = async (req, res, next) => {
   try {
     // 1. Get Authorization header
@@ -34,24 +34,15 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
-    // 6. Make sure JWT secret exists
-    if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET is not configured");
+  
 
-      return res.status(500).json({
-        success: false,
-        message: "Authentication service is not configured",
-      });
-    }
-
-    // 7. Verify JWT
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET,
-      {
-        algorithms: ["HS256"],
-      }
-    );
+   const decoded = jwt.verify(
+  token,
+  ENV.JWT_SECRET,
+  {
+    algorithms: ["HS256"],
+  }
+);
 
     // 8. Validate user ID from token
     if (!decoded.user_id) {

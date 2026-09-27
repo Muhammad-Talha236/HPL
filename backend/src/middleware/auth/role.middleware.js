@@ -1,6 +1,6 @@
 export const authorize = (...allowedRoles) => {
   return (req, res, next) => {
-    // Authentication middleware should run first
+    // User must already be authenticated
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -8,7 +8,15 @@ export const authorize = (...allowedRoles) => {
       });
     }
 
-    // Check whether user's role is allowed
+    // Make sure the user's role exists
+    if (!req.user.role) {
+      return res.status(403).json({
+        success: false,
+        message: "User role is not assigned",
+      });
+    }
+
+    // Check whether the user's role is allowed
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
