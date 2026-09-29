@@ -27,6 +27,7 @@ const ALLOWED_ENTITY_TYPES = new Set([
   "PLAYER",
   "SEASON",
   "COMPETITION",
+  "REGISTRATION",
 ]);
 
 
