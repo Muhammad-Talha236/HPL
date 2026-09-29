@@ -25,7 +25,11 @@ const ALLOWED_ENTITY_TYPES = new Set([
   "TEAM",
   "VENUE",
   "PLAYER",
+  "SEASON",
+  "COMPETITION",
 ]);
+
+
 
 // ======================================================
 // GET AUDIT LOGS

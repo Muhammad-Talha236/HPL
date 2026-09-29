@@ -14,6 +14,8 @@ import { errorHandler } from "./middleware/auth/error.middleware.js";
 import { ENV } from "./config/env.js";
 
 import auditLogRoutes from "./modules/auditLogs/auditLog.routes.js";
+import seasonRoutes from "./modules/seasons/season.routes.js";
+import competitionRoutes from "./modules/competitions/competition.routes.js";
 
 // API routes
 app.use("/api/auth", authRoutes);
@@ -22,6 +24,8 @@ app.use("/api/teams", teamRoutes);
 app.use("/api/venues", venueRoutes);
 app.use("/api/players", playerRoutes);
 app.use("/api/audit-logs", auditLogRoutes);
+app.use("/api/seasons", seasonRoutes);
+app.use("/api/competitions", competitionRoutes);
 // Database test route
 // Database test route - development only
 if (ENV.NODE_ENV === "development") {
