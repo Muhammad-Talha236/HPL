@@ -18,6 +18,9 @@ import seasonRoutes from "./modules/seasons/season.routes.js";
 import competitionRoutes from "./modules/competitions/competition.routes.js";
 import registrationRoutes from "./modules/registrations/registration.routes.js";
 import paymentRoutes from "./modules/payments/payment.routes.js";
+import registrationRoutes from "./modules/registrations/registration.routes.js";
+
+
 // API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/clubs", clubRoutes);
@@ -29,6 +32,7 @@ app.use("/api/seasons", seasonRoutes);
 app.use("/api/competitions", competitionRoutes);
 app.use("/api/registrations", registrationRoutes);
 app.use("/api/payments",paymentRoutes);
+app.use("/api/referees", refereeRoutes);
 // Database test route
 // Database test route - development only
 if (ENV.NODE_ENV === "development") {
