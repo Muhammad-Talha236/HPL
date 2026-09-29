@@ -327,42 +327,44 @@ export const createMatchPlayer = async (
     // 13. CREATE MATCH PLAYER
     // ==================================================
 
-    const matchPlayer =
-      await prisma.matchPlayer.create({
-        data: {
-          match_id: matchId,
+const matchPlayer =
+  await prisma.matchPlayer.create({
+    data: {
+      match_id: matchId,
 
-          team_id: teamId,
+      team_id: teamId,
 
-          player_id: playerId,
+      player_id: playerId,
 
-          starting_status:
-            starting_status,
+      starting_status:
+        starting_status,
 
-          position:
-            position?.trim() || null,
+      is_on_field:
+        starting_status === "STARTER",
 
-          shirt_number:
-            shirt_number !== undefined &&
-            shirt_number !== null
-              ? Number(shirt_number)
-              : null,
+      position:
+        position?.trim() || null,
 
-          minutes_played: 0,
+      shirt_number:
+        shirt_number !== undefined &&
+        shirt_number !== null
+          ? Number(shirt_number)
+          : null,
+
+      minutes_played: 0,
+    },
+
+    include: {
+      player: {
+        select: {
+          player_id: true,
+          name: true,
+          profile_photo: true,
+          position: true,
         },
-
-        include: {
-          player: {
-            select: {
-              player_id: true,
-              name: true,
-              profile_photo: true,
-              position: true,
-            },
-          },
-        },
-      });
-
+      },
+    },
+  });
     // ==================================================
     // 14. AUDIT LOG
     // ==================================================

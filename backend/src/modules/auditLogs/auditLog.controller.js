@@ -32,6 +32,7 @@ const ALLOWED_ENTITY_TYPES = new Set([
   "REFEREE",
   "MATCH",
   "MATCH_PLAYER",
+  "MATCH_EVENT",
 ]);
 
 

@@ -18,10 +18,10 @@ import seasonRoutes from "./modules/seasons/season.routes.js";
 import competitionRoutes from "./modules/competitions/competition.routes.js";
 import registrationRoutes from "./modules/registrations/registration.routes.js";
 import paymentRoutes from "./modules/payments/payment.routes.js";
-import registrationRoutes from "./modules/registrations/registration.routes.js";
+import refereeRoutes from "./modules/referees/referee.routes.js";
 import matchRoutes from "./modules/matches/match.routes.js";
 import matchPlayerRoutes from "./modules/matchPlayers/matchPlayer.routes.js";
-
+import matchEventRoutes from "./modules/MatchEvent/matchEvent.routes.js";
 // API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/clubs", clubRoutes);
@@ -39,6 +39,10 @@ app.use(
   matchRoutes
 );
 app.use("/api/match-players", matchPlayerRoutes);
+app.use(
+  "/api/match-events",
+  matchEventRoutes
+);
 // Database test route
 // Database test route - development only
 if (ENV.NODE_ENV === "development") {
