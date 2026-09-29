@@ -30,6 +30,7 @@ const ALLOWED_ENTITY_TYPES = new Set([
   "REGISTRATION",
   "PAYMENT",
   "REFEREE",
+  "MATCH",
 ]);
 
 
