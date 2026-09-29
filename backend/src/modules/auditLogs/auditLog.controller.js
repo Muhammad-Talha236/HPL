@@ -31,6 +31,7 @@ const ALLOWED_ENTITY_TYPES = new Set([
   "PAYMENT",
   "REFEREE",
   "MATCH",
+  "MATCH_PLAYER",
 ]);
 
 
