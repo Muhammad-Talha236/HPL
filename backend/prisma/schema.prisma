@@ -106,10 +106,15 @@ model TeamPlayer {
   status         String
   created_at     DateTime  @default(now())
   updated_at     DateTime  @updatedAt
-  player         Player    @relation(fields: [player_id], references: [player_id])
-  team           Team      @relation(fields: [team_id], references: [team_id])
+
+  player Player @relation(fields: [player_id], references: [player_id])
+  team   Team   @relation(fields: [team_id], references: [team_id])
 
   @@unique([team_id, player_id])
+  @@index([team_id])
+  @@index([player_id])
+  @@index([team_id, status])
+  @@index([team_id, jersey_number, status])
 }
 
 model Season {
