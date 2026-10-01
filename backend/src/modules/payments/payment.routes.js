@@ -5,22 +5,32 @@ import {
   reviewPayment,
 } from "./payment.controller.js";
 
-import { authenticate } from "../../middleware/auth/auth.middleware.js";
-import { authorize } from "../../middleware/auth/role.middleware.js";
-import { ROLES } from "../../constants/roles.js";
+import {
+  authenticate,
+} from "../../middleware/auth/auth.middleware.js";
 
+import {
+  authorize,
+} from "../../middleware/auth/role.middleware.js";
+
+import {
+  ROLES,
+} from "../../constants/roles.js";
 
 import {
   createPaymentValidation,
   reviewPaymentValidation,
 } from "./payment.validation.js";
 
-import { handleValidationErrors } from "../../middleware/auth/validation.middleware.js";
+import {
+  handleValidationErrors,
+} from "../../middleware/auth/validation.middleware.js";
 
 const router = express.Router();
 
 // ======================================================
 // CREATE PAYMENT
+// USER / TEAM OWNER / CLUB OWNER / SUPER ADMIN
 // ======================================================
 
 router.post(
@@ -45,7 +55,9 @@ router.post(
 router.patch(
   "/:payment_id/review",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
   reviewPaymentValidation,
   handleValidationErrors,
   reviewPayment

@@ -9,10 +9,17 @@ import {
   activateVenue,
 } from "./venue.controller.js";
 
-import { authenticate } from "../../middleware/auth/auth.middleware.js";
-import { authorize } from "../../middleware/auth/role.middleware.js";
-import { ROLES } from "../../constants/roles.js";
+import {
+  authenticate,
+} from "../../middleware/auth/auth.middleware.js";
 
+import {
+  authorize,
+} from "../../middleware/auth/role.middleware.js";
+
+import {
+  ROLES,
+} from "../../constants/roles.js";
 
 import {
   venueIdValidation,
@@ -20,13 +27,20 @@ import {
   updateVenueValidation,
 } from "./venue.validation.js";
 
-import { handleValidationErrors } from "../../middleware/auth/validation.middleware.js";
-
+import {
+  handleValidationErrors,
+} from "../../middleware/auth/validation.middleware.js";
 
 const router = express.Router();
 
-// Public
-router.get("/", getVenues);
+// ======================================================
+// PUBLIC ROUTES
+// ======================================================
+
+router.get(
+  "/",
+  getVenues
+);
 
 router.get(
   "/:venue_id",
@@ -35,19 +49,27 @@ router.get(
   getVenueById
 );
 
-// Super Admin only
+// ======================================================
+// SUPER ADMIN ONLY
+// ======================================================
+
 router.post(
   "/",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
   createVenueValidation,
   handleValidationErrors,
   createVenue
 );
+
 router.patch(
   "/:venue_id",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
   updateVenueValidation,
   handleValidationErrors,
   updateVenue
@@ -56,7 +78,9 @@ router.patch(
 router.patch(
   "/:venue_id/deactivate",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
   venueIdValidation,
   handleValidationErrors,
   deactivateVenue
@@ -65,7 +89,9 @@ router.patch(
 router.patch(
   "/:venue_id/activate",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
   venueIdValidation,
   handleValidationErrors,
   activateVenue

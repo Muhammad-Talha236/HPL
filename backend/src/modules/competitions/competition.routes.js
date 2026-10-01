@@ -9,9 +9,17 @@ import {
   activateCompetition,
 } from "./competition.controller.js";
 
-import { authenticate } from "../../middleware/auth/auth.middleware.js";
-import { authorize } from "../../middleware/auth/role.middleware.js";
-import { ROLES } from "../../constants/roles.js";
+import {
+  authenticate,
+} from "../../middleware/auth/auth.middleware.js";
+
+import {
+  authorize,
+} from "../../middleware/auth/role.middleware.js";
+
+import {
+  ROLES,
+} from "../../constants/roles.js";
 
 import {
   competitionIdValidation,
@@ -19,7 +27,9 @@ import {
   updateCompetitionValidation,
 } from "./competition.validation.js";
 
-import { handleValidationErrors } from "../../middleware/auth/validation.middleware.js";
+import {
+  handleValidationErrors,
+} from "../../middleware/auth/validation.middleware.js";
 
 const router = express.Router();
 
@@ -27,10 +37,18 @@ const router = express.Router();
 // PUBLIC ROUTES
 // ======================================================
 
+// ------------------------------------------------------
+// GET ALL COMPETITIONS
+// ------------------------------------------------------
+
 router.get(
   "/",
   getCompetitions
 );
+
+// ------------------------------------------------------
+// GET COMPETITION BY ID
+// ------------------------------------------------------
 
 router.get(
   "/:competition_id",
@@ -43,44 +61,64 @@ router.get(
 // SUPER ADMIN ROUTES
 // ======================================================
 
-// CREATE
+// ------------------------------------------------------
+// CREATE COMPETITION
+// ------------------------------------------------------
+
 router.post(
   "/",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
   createCompetitionValidation,
   handleValidationErrors,
   createCompetition
 );
 
-// UPDATE
-router.patch(
-  "/:competition_id",
-  authenticate,
-  authorize(ROLES.SUPER_ADMIN),
-  updateCompetitionValidation,
-  handleValidationErrors,
-  updateCompetition
-);
+// ------------------------------------------------------
+// DEACTIVATE COMPETITION
+// ------------------------------------------------------
 
-// DEACTIVATE
 router.patch(
   "/:competition_id/deactivate",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
   competitionIdValidation,
   handleValidationErrors,
   deactivateCompetition
 );
 
-// ACTIVATE
+// ------------------------------------------------------
+// ACTIVATE COMPETITION
+// ------------------------------------------------------
+
 router.patch(
   "/:competition_id/activate",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
   competitionIdValidation,
   handleValidationErrors,
   activateCompetition
+);
+
+// ------------------------------------------------------
+// UPDATE COMPETITION
+// ------------------------------------------------------
+
+router.patch(
+  "/:competition_id",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
+  updateCompetitionValidation,
+  handleValidationErrors,
+  updateCompetition
 );
 
 export default router;

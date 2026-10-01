@@ -15,6 +15,14 @@ const PAYMENT_STATUS = {
 };
 
 // ======================================================
+// REGISTRATION STATUS
+// ======================================================
+
+const REGISTRATION_STATUS = {
+  PENDING: "PENDING",
+};
+
+// ======================================================
 // CHECK REGISTRATION OWNERSHIP
 // ======================================================
 
@@ -23,7 +31,10 @@ const canManageRegistration = (
   user
 ) => {
   // SUPER_ADMIN can manage any registration
-  if (user.role === ROLES.SUPER_ADMIN) {
+  if (
+    user.role ===
+    ROLES.SUPER_ADMIN
+  ) {
     return true;
   }
 
@@ -63,169 +74,198 @@ export const createPayment = async (
   res
 ) => {
   try {
-    const registrationId = Number(
-      req.body.registration_id
-    );
-
-    const amount = req.body.amount;
-
-    const paymentMethod =
-      req.body.payment_method;
-
-    const transactionReference =
-      req.body.transaction_reference.trim();
-
-    // --------------------------------------------------
-    // FIND REGISTRATION
-    // --------------------------------------------------
-
-    const registration =
-      await prisma.competitionRegistration.findUnique(
-        {
-          where: {
-            registration_id:
-              registrationId,
-          },
-
-          include: {
-            competition: {
-              select: {
-                competition_id: true,
-                name: true,
-                registration_fee: true,
-              },
-            },
-
-            team: {
-              select: {
-                team_id: true,
-                name: true,
-                owner_id: true,
-
-                club: {
-                  select: {
-                    club_id: true,
-                    name: true,
-                    owner_id: true,
-                  },
-                },
-              },
-            },
-          },
-        }
+    const registrationId =
+      Number(
+        req.body.registration_id
       );
 
-    if (!registration) {
-      return res.status(404).json({
-        success: false,
-        message: "Registration not found",
-      });
-    }
+    const paymentMethod =
+      typeof req.body.payment_method ===
+      "string"
+        ? req.body.payment_method.trim()
+        : "";
 
-    // --------------------------------------------------
-    // OWNERSHIP CHECK
-    // --------------------------------------------------
-
-    if (
-      !canManageRegistration(
-        registration,
-        req.user
-      )
-    ) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "You do not have permission to submit payment for this registration",
-      });
-    }
-
-    // --------------------------------------------------
-    // REGISTRATION STATUS CHECK
-    // --------------------------------------------------
-
-    if (
-      registration.registration_status !==
-      "PENDING"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Payment can only be submitted for a pending registration",
-      });
-    }
-
-    // --------------------------------------------------
-    // PREVENT DUPLICATE PAYMENT
-    // --------------------------------------------------
-
-    const existingPayment =
-      await prisma.payment.findFirst({
-        where: {
-          registration_id:
-            registrationId,
-
-          payment_status: {
-            in: [
-              PAYMENT_STATUS.PENDING,
-              PAYMENT_STATUS.PAID,
-            ],
-          },
-        },
-      });
-
-    if (existingPayment) {
-      return res.status(409).json({
-        success: false,
-        message:
-          "A payment has already been submitted for this registration",
-      });
-    }
-
-    // --------------------------------------------------
-    // VERIFY ACTUAL COMPETITION FEE
-    // --------------------------------------------------
-
-    const requiredFee =
-      registration.competition
-        .registration_fee;
-
-    /*
-     * IMPORTANT:
-     *
-     * The amount received from the client
-     * is NOT trusted.
-     *
-     * The actual fee comes from the database.
-     */
-
-    const submittedAmount =
-      Number(amount);
-
-    const actualFee =
-      Number(requiredFee);
-
-    if (
-      !Number.isFinite(submittedAmount) ||
-      submittedAmount !== actualFee
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Payment amount does not match the competition registration fee",
-        data: {
-          required_amount:
-            actualFee,
-        },
-      });
-    }
-
-    // --------------------------------------------------
-    // CREATE PAYMENT
-    // --------------------------------------------------
+    const transactionReference =
+      typeof req.body.transaction_reference ===
+      "string"
+        ? req.body.transaction_reference.trim()
+        : "";
 
     const result =
       await prisma.$transaction(
         async (tx) => {
+          // ------------------------------------------------
+          // FIND REGISTRATION
+          // ------------------------------------------------
+
+          const registration =
+            await tx.competitionRegistration.findUnique(
+              {
+                where: {
+                  registration_id:
+                    registrationId,
+                },
+
+                select: {
+                  registration_id: true,
+                  registered_by: true,
+                  registration_status: true,
+                  payment_status: true,
+
+                  competition: {
+                    select: {
+                      competition_id: true,
+                      name: true,
+                      registration_fee: true,
+                    },
+                  },
+
+                  team: {
+                    select: {
+                      team_id: true,
+                      name: true,
+                      owner_id: true,
+
+                      club: {
+                        select: {
+                          club_id: true,
+                          name: true,
+                          owner_id: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              }
+            );
+
+          if (!registration) {
+            throw new Error(
+              "REGISTRATION_NOT_FOUND"
+            );
+          }
+
+          // ------------------------------------------------
+          // OWNERSHIP CHECK
+          // ------------------------------------------------
+
+          if (
+            !canManageRegistration(
+              registration,
+              req.user
+            )
+          ) {
+            throw new Error(
+              "PAYMENT_FORBIDDEN"
+            );
+          }
+
+          // ------------------------------------------------
+          // REGISTRATION STATUS CHECK
+          // ------------------------------------------------
+
+          if (
+            registration.registration_status !==
+            REGISTRATION_STATUS.PENDING
+          ) {
+            throw new Error(
+              "REGISTRATION_NOT_PENDING"
+            );
+          }
+
+          // ------------------------------------------------
+          // PAYMENT STATUS CHECK
+          // ------------------------------------------------
+
+          if (
+            registration.payment_status ===
+              PAYMENT_STATUS.PENDING ||
+            registration.payment_status ===
+              PAYMENT_STATUS.PAID
+          ) {
+            throw new Error(
+              "PAYMENT_ALREADY_SUBMITTED"
+            );
+          }
+
+          // ------------------------------------------------
+          // CHECK EXISTING PAYMENT
+          // ------------------------------------------------
+
+          const existingPayment =
+            await tx.payment.findFirst({
+              where: {
+                registration_id:
+                  registrationId,
+
+                payment_status: {
+                  in: [
+                    PAYMENT_STATUS.PENDING,
+                    PAYMENT_STATUS.PAID,
+                  ],
+                },
+              },
+
+              select: {
+                payment_id: true,
+                payment_status: true,
+              },
+            });
+
+          if (existingPayment) {
+            throw new Error(
+              "PAYMENT_ALREADY_SUBMITTED"
+            );
+          }
+
+          // ------------------------------------------------
+          // VERIFY PAYMENT AMOUNT
+          // ------------------------------------------------
+
+          /*
+           * The payment amount is deliberately NOT
+           * taken from the client.
+           *
+           * The competition registration fee stored
+           * in the database is the source of truth.
+           */
+
+          const requiredFee =
+            registration.competition
+              .registration_fee;
+
+          if (
+            req.body.amount ===
+            undefined ||
+            req.body.amount ===
+            null
+          ) {
+            throw new Error(
+              "PAYMENT_AMOUNT_MISSING"
+            );
+          }
+
+          const submittedAmount =
+            String(
+              req.body.amount
+            ).trim();
+
+          const requiredAmount =
+            requiredFee.toString();
+
+          if (
+            submittedAmount !==
+            requiredAmount
+          ) {
+            throw new Error(
+              "PAYMENT_AMOUNT_MISMATCH"
+            );
+          }
+
+          // ------------------------------------------------
+          // CREATE PAYMENT
+          // ------------------------------------------------
+
           const payment =
             await tx.payment.create({
               data: {
@@ -244,33 +284,69 @@ export const createPayment = async (
                 payment_status:
                   PAYMENT_STATUS.PENDING,
               },
+
+              select: {
+                payment_id: true,
+                registration_id: true,
+                amount: true,
+                payment_method: true,
+                transaction_reference: true,
+                payment_status: true,
+                paid_at: true,
+                created_at: true,
+                updated_at: true,
+              },
             });
 
-          // --------------------------------------------
+          // ------------------------------------------------
           // UPDATE REGISTRATION PAYMENT STATUS
-          // --------------------------------------------
+          // ------------------------------------------------
 
-          await tx.competitionRegistration.update(
-            {
-              where: {
-                registration_id:
-                  registrationId,
-              },
+          const registrationUpdate =
+            await tx.competitionRegistration.updateMany(
+              {
+                where: {
+                  registration_id:
+                    registrationId,
 
-              data: {
-                payment_status:
-                  PAYMENT_STATUS.PENDING,
-              },
-            }
-          );
+                  registration_status:
+                    REGISTRATION_STATUS.PENDING,
 
-          return payment;
+                  payment_status: {
+                    not: PAYMENT_STATUS.PENDING,
+                  },
+                },
+
+                data: {
+                  payment_status:
+                    PAYMENT_STATUS.PENDING,
+                },
+              }
+            );
+
+          if (
+            registrationUpdate.count !==
+            1
+          ) {
+            throw new Error(
+              "PAYMENT_STATE_CONFLICT"
+            );
+          }
+
+          return {
+            payment,
+            registration,
+          };
+        },
+        {
+          isolationLevel:
+            "Serializable",
         }
       );
 
-    // --------------------------------------------------
+    // ----------------------------------------------------
     // AUDIT LOG
-    // --------------------------------------------------
+    // ----------------------------------------------------
 
     await createAuditLog({
       actor_user_id:
@@ -279,65 +355,160 @@ export const createPayment = async (
       action:
         AUDIT_ACTIONS.PAYMENT_CREATED,
 
-      entity_type: "PAYMENT",
+      entity_type:
+        "PAYMENT",
 
       entity_id:
-        result.payment_id,
+        result.payment.payment_id,
 
       details: {
         registration_id:
-          registrationId,
+          result.payment
+            .registration_id,
 
         competition_id:
-          registration.competition
+          result.registration
+            .competition
             .competition_id,
 
         team_id:
-          registration.team.team_id,
+          result.registration
+            .team
+            .team_id,
 
         amount:
-          requiredFee.toString(),
+          result.payment.amount
+            .toString(),
 
         payment_method:
-          paymentMethod,
+          result.payment
+            .payment_method,
 
         payment_status:
-          PAYMENT_STATUS.PENDING,
+          result.payment
+            .payment_status,
       },
     });
 
-    // --------------------------------------------------
+    // ----------------------------------------------------
     // RESPONSE
-    // --------------------------------------------------
+    // ----------------------------------------------------
 
     return res.status(201).json({
       success: true,
       message:
         "Payment submitted successfully and is pending verification",
+
       data: {
         payment_id:
-          result.payment_id,
+          result.payment
+            .payment_id,
 
         registration_id:
-          result.registration_id,
+          result.payment
+            .registration_id,
 
         amount:
-          result.amount,
+          result.payment.amount,
 
         payment_method:
-          result.payment_method,
+          result.payment
+            .payment_method,
 
         transaction_reference:
-          result.transaction_reference,
+          result.payment
+            .transaction_reference,
 
         payment_status:
-          result.payment_status,
+          result.payment
+            .payment_status,
       },
     });
   } catch (error) {
-    // --------------------------------------------------
-    // UNIQUE TRANSACTION REFERENCE
-    // --------------------------------------------------
+    // ----------------------------------------------------
+    // KNOWN ERRORS
+    // ----------------------------------------------------
+
+    if (
+      error.message ===
+      "REGISTRATION_NOT_FOUND"
+    ) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Registration not found",
+      });
+    }
+
+    if (
+      error.message ===
+      "PAYMENT_FORBIDDEN"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "You do not have permission to submit payment for this registration",
+      });
+    }
+
+    if (
+      error.message ===
+      "REGISTRATION_NOT_PENDING"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Payment can only be submitted for a pending registration",
+      });
+    }
+
+    if (
+      error.message ===
+      "PAYMENT_ALREADY_SUBMITTED"
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "A payment has already been submitted for this registration",
+      });
+    }
+
+    if (
+      error.message ===
+      "PAYMENT_AMOUNT_MISSING"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Payment amount is required",
+      });
+    }
+
+    if (
+      error.message ===
+      "PAYMENT_AMOUNT_MISMATCH"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Payment amount does not match the competition registration fee",
+      });
+    }
+
+    if (
+      error.message ===
+      "PAYMENT_STATE_CONFLICT"
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Payment state changed during the request. Please try again.",
+      });
+    }
+
+    // ----------------------------------------------------
+    // UNIQUE CONSTRAINT
+    // ----------------------------------------------------
 
     if (
       error.code === "P2002"
@@ -346,6 +517,20 @@ export const createPayment = async (
         success: false,
         message:
           "This transaction reference has already been used",
+      });
+    }
+
+    // ----------------------------------------------------
+    // SERIALIZABLE CONFLICT
+    // ----------------------------------------------------
+
+    if (
+      error.code === "P2034"
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Payment request conflicted with another request. Please try again.",
       });
     }
 
@@ -362,10 +547,6 @@ export const createPayment = async (
   }
 };
 
-
-
-
-
 // ======================================================
 // REVIEW PAYMENT
 // SUPER ADMIN ONLY
@@ -376,25 +557,56 @@ export const reviewPayment = async (
   res
 ) => {
   try {
-    const paymentId = Number(
-      req.params.payment_id
-    );
+    const paymentId =
+      Number(
+        req.params.payment_id
+      );
 
-    const {
-      action,
-    } = req.body;
+    const action =
+      typeof req.body.action ===
+      "string"
+        ? req.body.action
+            .trim()
+            .toUpperCase()
+        : "";
 
-    // --------------------------------------------------
+    // ------------------------------------------------
+    // VALIDATE ACTION
+    // ------------------------------------------------
+
+    if (
+      ![
+        "APPROVE",
+        "REJECT",
+      ].includes(action)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Review action must be APPROVE or REJECT",
+      });
+    }
+
+    // ------------------------------------------------
     // FIND PAYMENT
-    // --------------------------------------------------
+    // ------------------------------------------------
 
     const payment =
       await prisma.payment.findUnique({
         where: {
-          payment_id: paymentId,
+          payment_id:
+            paymentId,
         },
 
-        include: {
+        select: {
+          payment_id: true,
+          registration_id: true,
+          amount: true,
+          payment_method: true,
+          transaction_reference: true,
+          payment_status: true,
+          paid_at: true,
+
           registration: {
             select: {
               registration_id: true,
@@ -422,13 +634,14 @@ export const reviewPayment = async (
     if (!payment) {
       return res.status(404).json({
         success: false,
-        message: "Payment not found",
+        message:
+          "Payment not found",
       });
     }
 
-    // --------------------------------------------------
+    // ------------------------------------------------
     // ONLY PENDING PAYMENTS CAN BE REVIEWED
-    // --------------------------------------------------
+    // ------------------------------------------------
 
     if (
       payment.payment_status !==
@@ -441,30 +654,37 @@ export const reviewPayment = async (
       });
     }
 
-    // --------------------------------------------------
+    // ------------------------------------------------
     // DETERMINE NEW STATUS
-    // --------------------------------------------------
+    // ------------------------------------------------
 
     const newPaymentStatus =
       action === "APPROVE"
         ? PAYMENT_STATUS.PAID
         : PAYMENT_STATUS.REJECTED;
 
-    // --------------------------------------------------
+    const reviewedAt =
+      new Date();
+
+    // ------------------------------------------------
     // TRANSACTION
-    // --------------------------------------------------
+    // ------------------------------------------------
 
     const result =
       await prisma.$transaction(
         async (tx) => {
           // --------------------------------------------
-          // UPDATE PAYMENT
+          // ATOMIC PAYMENT STATE TRANSITION
           // --------------------------------------------
 
-          const updatedPayment =
-            await tx.payment.update({
+          const updatedPaymentResult =
+            await tx.payment.updateMany({
               where: {
-                payment_id: paymentId,
+                payment_id:
+                  paymentId,
+
+                payment_status:
+                  PAYMENT_STATUS.PENDING,
               },
 
               data: {
@@ -474,37 +694,86 @@ export const reviewPayment = async (
                 paid_at:
                   newPaymentStatus ===
                   PAYMENT_STATUS.PAID
-                    ? new Date()
+                    ? reviewedAt
                     : null,
               },
             });
+
+          if (
+            updatedPaymentResult.count !==
+            1
+          ) {
+            throw new Error(
+              "PAYMENT_ALREADY_REVIEWED"
+            );
+          }
 
           // --------------------------------------------
           // UPDATE REGISTRATION PAYMENT STATUS
           // --------------------------------------------
 
-          await tx.competitionRegistration.update(
-            {
+          const registrationUpdate =
+            await tx.competitionRegistration.updateMany(
+              {
+                where: {
+                  registration_id:
+                    payment.registration_id,
+
+                  payment_status:
+                    PAYMENT_STATUS.PENDING,
+                },
+
+                data: {
+                  payment_status:
+                    newPaymentStatus,
+                },
+              }
+            );
+
+          if (
+            registrationUpdate.count !==
+            1
+          ) {
+            throw new Error(
+              "REGISTRATION_PAYMENT_STATE_CONFLICT"
+            );
+          }
+
+          // --------------------------------------------
+          // FETCH UPDATED PAYMENT
+          // --------------------------------------------
+
+          const updatedPayment =
+            await tx.payment.findUnique({
               where: {
-                registration_id:
-                  payment.registration
-                    .registration_id,
+                payment_id:
+                  paymentId,
               },
 
-              data: {
-                payment_status:
-                  newPaymentStatus,
+              select: {
+                payment_id: true,
+                registration_id: true,
+                amount: true,
+                payment_method: true,
+                transaction_reference: true,
+                payment_status: true,
+                paid_at: true,
+                created_at: true,
+                updated_at: true,
               },
-            }
-          );
+            });
 
           return updatedPayment;
+        },
+        {
+          isolationLevel:
+            "Serializable",
         }
       );
 
-    // --------------------------------------------------
+    // ----------------------------------------------------
     // AUDIT LOG
-    // --------------------------------------------------
+    // ----------------------------------------------------
 
     await createAuditLog({
       actor_user_id:
@@ -513,7 +782,8 @@ export const reviewPayment = async (
       action:
         AUDIT_ACTIONS.PAYMENT_REVIEWED,
 
-      entity_type: "PAYMENT",
+      entity_type:
+        "PAYMENT",
 
       entity_id:
         paymentId,
@@ -522,8 +792,7 @@ export const reviewPayment = async (
         action,
 
         registration_id:
-          payment.registration
-            .registration_id,
+          payment.registration_id,
 
         competition_id:
           payment.registration
@@ -540,12 +809,15 @@ export const reviewPayment = async (
 
         new_status:
           newPaymentStatus,
+
+        reviewed_at:
+          reviewedAt.toISOString(),
       },
     });
 
-    // --------------------------------------------------
+    // ----------------------------------------------------
     // RESPONSE
-    // --------------------------------------------------
+    // ----------------------------------------------------
 
     return res.status(200).json({
       success: true,
@@ -553,30 +825,45 @@ export const reviewPayment = async (
       message:
         `Payment ${action.toLowerCase()}d successfully`,
 
-      data: {
-        payment_id:
-          result.payment_id,
-
-        registration_id:
-          result.registration_id,
-
-        amount:
-          result.amount,
-
-        payment_method:
-          result.payment_method,
-
-        transaction_reference:
-          result.transaction_reference,
-
-        payment_status:
-          result.payment_status,
-
-        paid_at:
-          result.paid_at,
-      },
+      data: result,
     });
   } catch (error) {
+    // ----------------------------------------------------
+    // KNOWN ERRORS
+    // ----------------------------------------------------
+
+    if (
+      error.message ===
+      "PAYMENT_ALREADY_REVIEWED"
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Payment has already been reviewed or is no longer pending",
+      });
+    }
+
+    if (
+      error.message ===
+      "REGISTRATION_PAYMENT_STATE_CONFLICT"
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Registration payment state changed during the review. Please try again.",
+      });
+    }
+
+    if (
+      error.code === "P2034"
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Payment review conflicted with another request. Please try again.",
+      });
+    }
+
     console.error(
       "Review payment error:",
       error

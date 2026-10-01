@@ -2,15 +2,135 @@ import prisma from "../../database/prisma.js";
 
 import { ROLES } from "../../constants/roles.js";
 
-import { createAuditLog } from "../../utils/auditLog.util.js";
-import { AUDIT_ACTIONS } from "../../constants/auditActions.js";
+import {
+  createAuditLog,
+} from "../../utils/auditLog.util.js";
 
+import {
+  AUDIT_ACTIONS,
+} from "../../constants/auditActions.js";
+
+// ======================================================
+// TEAM STATUS
+// ======================================================
+
+const TEAM_STATUS = {
+  ACTIVE: "ACTIVE",
+  INACTIVE: "INACTIVE",
+};
+
+// ======================================================
+// MATCH STATUS
+// ======================================================
+
+const MATCH_STATUS = {
+  SCHEDULED: "SCHEDULED",
+  LIVE: "LIVE",
+};
+
+// ======================================================
+// TEAM SELECT
+// ======================================================
+
+const teamSelect = {
+  team_id: true,
+  club_id: true,
+  owner_id: true,
+  home_venue_id: true,
+
+  name: true,
+  logo: true,
+  gender: true,
+
+  region: true,
+  district: true,
+  city: true,
+
+  description: true,
+
+  contact_email: true,
+  contact_phone: true,
+
+  team_type: true,
+  status: true,
+
+  created_at: true,
+  updated_at: true,
+
+  club: {
+    select: {
+      club_id: true,
+      name: true,
+      logo: true,
+    },
+  },
+
+  home_venue: {
+    select: {
+      venue_id: true,
+      name: true,
+      city: true,
+      address: true,
+    },
+  },
+};
+
+// ======================================================
+// TEAM OWNERSHIP CHECK
+// ======================================================
+
+const canManageTeam = async ({
+  req,
+  team,
+}) => {
+  // Super Admin can manage every team
+  if (
+    req.user.role === ROLES.SUPER_ADMIN
+  ) {
+    return true;
+  }
+
+  // Team Owner can manage own team
+  if (
+    req.user.role === ROLES.TEAM_OWNER &&
+    team.owner_id === req.user.user_id
+  ) {
+    return true;
+  }
+
+  // Club Owner can manage teams
+  // belonging to their own club
+  if (
+    req.user.role === ROLES.CLUB_OWNER
+  ) {
+    const club =
+      await prisma.club.findUnique({
+        where: {
+          club_id: team.club_id,
+        },
+
+        select: {
+          owner_id: true,
+        },
+      });
+
+    return (
+      club &&
+      club.owner_id === req.user.user_id
+    );
+  }
+
+  return false;
+};
 
 // ======================================================
 // CREATE TEAM
 // ======================================================
 
-export const createTeam = async (req, res) => {
+export const createTeam = async (
+  req,
+  res
+) => {
   try {
     const {
       club_id,
@@ -27,32 +147,28 @@ export const createTeam = async (req, res) => {
       team_type,
     } = req.body;
 
-    // Required fields
-    if (!club_id || !home_venue_id || !name || !gender || !team_type) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Club ID, home venue ID, team name, gender and team type are required",
+    const clubId =
+      Number(club_id);
+
+    const venueId =
+      Number(home_venue_id);
+
+    // --------------------------------------------------
+    // FIND CLUB AND VENUE
+    // --------------------------------------------------
+
+    const club =
+      await prisma.club.findUnique({
+        where: {
+          club_id: clubId,
+        },
+
+        select: {
+          club_id: true,
+          owner_id: true,
+          status: true,
+        },
       });
-    }
-
-    const clubId = Number(club_id);
-    const venueId = Number(home_venue_id);
-
-    // Validate IDs
-    if (!Number.isInteger(clubId) || !Number.isInteger(venueId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid club ID or venue ID",
-      });
-    }
-
-    // Find club
-    const club = await prisma.club.findUnique({
-      where: {
-        club_id: clubId,
-      },
-    });
 
     if (!club) {
       return res.status(404).json({
@@ -61,214 +177,310 @@ export const createTeam = async (req, res) => {
       });
     }
 
-    // Club must be active
-    if (club.status !== "ACTIVE") {
+    if (
+      club.status !==
+      TEAM_STATUS.ACTIVE
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Cannot create a team under an inactive club",
+        message:
+          "Cannot create a team under an inactive club",
       });
     }
 
-    // Ownership check
+    // --------------------------------------------------
+    // OWNERSHIP CHECK
+    // --------------------------------------------------
+
     if (
-      req.user.role !== ROLES.SUPER_ADMIN &&
-      club.owner_id !== req.user.user_id
+      req.user.role !==
+        ROLES.SUPER_ADMIN &&
+      club.owner_id !==
+        req.user.user_id
     ) {
       return res.status(403).json({
         success: false,
-        message: "You can only create teams for your own club",
+        message:
+          "You can only create teams for your own club",
       });
     }
 
-    // Find venue
-    const venue = await prisma.venue.findUnique({
-      where: {
-        venue_id: venueId,
-      },
-    });
+    const venue =
+      await prisma.venue.findUnique({
+        where: {
+          venue_id: venueId,
+        },
+
+        select: {
+          venue_id: true,
+          status: true,
+        },
+      });
 
     if (!venue) {
       return res.status(404).json({
         success: false,
-        message: "Home venue not found",
+        message:
+          "Home venue not found",
       });
     }
 
-    // Venue must be active
-    if (venue.status !== "ACTIVE") {
+    if (
+      venue.status !==
+      TEAM_STATUS.ACTIVE
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Cannot assign an inactive venue to a team",
+        message:
+          "Cannot assign an inactive venue to a team",
       });
     }
 
-    // Prevent duplicate team name inside same club
-    const existingTeam = await prisma.team.findFirst({
-      where: {
-        club_id: clubId,
-        name: name.trim(),
-      },
-    });
+    // --------------------------------------------------
+    // TEAM OWNER
+    // --------------------------------------------------
 
-    if (existingTeam) {
-      return res.status(409).json({
-        success: false,
-        message: "A team with this name already exists in this club",
-      });
-    }
-
-    /*
-     * For a Club Owner:
-     * owner_id = authenticated user.
-     *
-     * For Super Admin:
-     * owner_id = club owner.
-     */
     const teamOwnerId =
-      req.user.role === ROLES.SUPER_ADMIN
+      req.user.role ===
+      ROLES.SUPER_ADMIN
         ? club.owner_id
         : req.user.user_id;
 
-    const team = await prisma.team.create({
-      data: {
-        club_id: clubId,
-        owner_id: teamOwnerId,
-        home_venue_id: venueId,
+    // --------------------------------------------------
+    // CREATE WITH TRANSACTION
+    // --------------------------------------------------
 
-        name: name.trim(),
-        logo,
-        gender,
-        region,
-        district,
-        city,
-        description,
-        contact_email,
-        contact_phone,
-        team_type,
+    try {
+      const team =
+        await prisma.$transaction(
+          async (tx) => {
+            const existingTeam =
+              await tx.team.findFirst({
+                where: {
+                  club_id: clubId,
+                  name: name.trim(),
+                },
 
-        status: "ACTIVE",
-      },
-    });
+                select: {
+                  team_id: true,
+                },
+              });
 
-    // Create audit log
-    await createAuditLog({
-      actor_user_id: req.user.user_id,
-      action: AUDIT_ACTIONS.TEAM_CREATED,
-      entity_type: "TEAM",
-      entity_id: team.team_id,
-      details: {
-        name: team.name,
-        club_id: team.club_id,
-        owner_id: team.owner_id,
-      },
-    });
+            if (existingTeam) {
+              const error =
+                new Error(
+                  "TEAM_NAME_EXISTS"
+                );
 
-    return res.status(201).json({
-      success: true,
-      message: "Team created successfully",
-      data: team,
-    });
+              throw error;
+            }
+
+            return tx.team.create({
+              data: {
+                club_id: clubId,
+                owner_id:
+                  teamOwnerId,
+                home_venue_id:
+                  venueId,
+
+                name:
+                  name.trim(),
+
+                logo:
+                  logo !== undefined &&
+                  logo !== null
+                    ? logo.trim()
+                    : undefined,
+
+                gender:
+                  gender.trim(),
+
+                region:
+                  region !== undefined &&
+                  region !== null
+                    ? region.trim()
+                    : undefined,
+
+                district:
+                  district !== undefined &&
+                  district !== null
+                    ? district.trim()
+                    : undefined,
+
+                city:
+                  city !== undefined &&
+                  city !== null
+                    ? city.trim()
+                    : undefined,
+
+                description:
+                  description !== undefined &&
+                  description !== null
+                    ? description.trim()
+                    : undefined,
+
+                contact_email:
+                  contact_email !== undefined &&
+                  contact_email !== null
+                    ? contact_email.trim()
+                    : undefined,
+
+                contact_phone:
+                  contact_phone !== undefined &&
+                  contact_phone !== null
+                    ? contact_phone.trim()
+                    : undefined,
+
+                team_type:
+                  team_type.trim(),
+
+                status:
+                  TEAM_STATUS.ACTIVE,
+              },
+
+              select:
+                teamSelect,
+            });
+          },
+
+          {
+            isolationLevel:
+              "Serializable",
+          }
+        );
+
+      await createAuditLog({
+        actor_user_id:
+          req.user.user_id,
+
+        action:
+          AUDIT_ACTIONS.TEAM_CREATED,
+
+        entity_type: "TEAM",
+
+        entity_id:
+          team.team_id,
+
+        details: {
+          name:
+            team.name,
+
+          club_id:
+            team.club_id,
+
+          owner_id:
+            team.owner_id,
+        },
+      });
+
+      return res.status(201).json({
+        success: true,
+        message:
+          "Team created successfully",
+        data: team,
+      });
+    } catch (error) {
+      if (
+        error.message ===
+        "TEAM_NAME_EXISTS"
+      ) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "A team with this name already exists in this club",
+        });
+      }
+
+      throw error;
+    }
   } catch (error) {
-    console.error("Create team error:", error);
+    if (
+      error.code === "P2034"
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Team creation conflicted with another request. Please try again.",
+      });
+    }
+
+    console.error(
+      "Create team error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while creating the team",
+      message:
+        "Something went wrong while creating the team",
     });
   }
 };
-
 
 // ======================================================
 // GET ALL TEAMS
 // ======================================================
 
-export const getTeams = async (req, res) => {
+export const getTeams = async (
+  req,
+  res
+) => {
   try {
-    const teams = await prisma.team.findMany({
-      orderBy: {
-        created_at: "desc",
-      },
+    const teams =
+      await prisma.team.findMany({
+        select:
+          teamSelect,
 
-      include: {
-        club: {
-          select: {
-            club_id: true,
-            name: true,
-            logo: true,
-          },
+        orderBy: {
+          created_at: "desc",
         },
-
-        home_venue: {
-          select: {
-            venue_id: true,
-            name: true,
-            city: true,
-          },
-        },
-      },
-    });
+      });
 
     return res.status(200).json({
       success: true,
       data: teams,
     });
   } catch (error) {
-    console.error("Get teams error:", error);
+    console.error(
+      "Get teams error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while fetching teams",
+      message:
+        "Something went wrong while fetching teams",
     });
   }
 };
-
 
 // ======================================================
 // GET TEAM BY ID
 // ======================================================
 
-export const getTeamById = async (req, res) => {
+export const getTeamById = async (
+  req,
+  res
+) => {
   try {
-    const teamId = Number(req.params.team_id);
+    const teamId =
+      Number(req.params.team_id);
 
-    if (!Number.isInteger(teamId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid team ID",
+    const team =
+      await prisma.team.findUnique({
+        where: {
+          team_id: teamId,
+        },
+
+        select:
+          teamSelect,
       });
-    }
-
-    const team = await prisma.team.findUnique({
-      where: {
-        team_id: teamId,
-      },
-
-      include: {
-        club: {
-          select: {
-            club_id: true,
-            name: true,
-            logo: true,
-          },
-        },
-
-        home_venue: {
-          select: {
-            venue_id: true,
-            name: true,
-            logo: true,
-            city: true,
-            address: true,
-          },
-        },
-      },
-    });
 
     if (!team) {
       return res.status(404).json({
         success: false,
-        message: "Team not found",
+        message:
+          "Team not found",
       });
     }
 
@@ -277,79 +489,71 @@ export const getTeamById = async (req, res) => {
       data: team,
     });
   } catch (error) {
-    console.error("Get team error:", error);
+    console.error(
+      "Get team error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while fetching the team",
+      message:
+        "Something went wrong while fetching the team",
     });
   }
 };
-
 
 // ======================================================
 // UPDATE TEAM
 // ======================================================
 
-export const updateTeam = async (req, res) => {
+export const updateTeam = async (
+  req,
+  res
+) => {
   try {
-    const teamId = Number(req.params.team_id);
+    const teamId =
+      Number(req.params.team_id);
 
-    if (!Number.isInteger(teamId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid team ID",
+    const existingTeam =
+      await prisma.team.findUnique({
+        where: {
+          team_id: teamId,
+        },
+
+        select: {
+          team_id: true,
+          club_id: true,
+          owner_id: true,
+          home_venue_id: true,
+          status: true,
+          name: true,
+        },
       });
-    }
 
-    const team = await prisma.team.findUnique({
-      where: {
-        team_id: teamId,
-      },
-    });
-
-    if (!team) {
+    if (!existingTeam) {
       return res.status(404).json({
         success: false,
-        message: "Team not found",
+        message:
+          "Team not found",
       });
     }
 
-    // Ownership / authorization check
-    if (req.user.role !== ROLES.SUPER_ADMIN) {
-      // TEAM_OWNER can update only their own team
-      if (req.user.role === ROLES.TEAM_OWNER) {
-        if (team.owner_id !== req.user.user_id) {
-          return res.status(403).json({
-            success: false,
-            message: "You can only update your own team",
-          });
-        }
-      }
+    // --------------------------------------------------
+    // AUTHORIZATION
+    // --------------------------------------------------
 
-      // CLUB_OWNER can update teams belonging to their own club
-      else if (req.user.role === ROLES.CLUB_OWNER) {
-        const club = await prisma.club.findUnique({
-          where: {
-            club_id: team.club_id,
-          },
-        });
+    const allowed =
+      await canManageTeam({
+        req,
+        team: existingTeam,
+      });
 
-        if (!club || club.owner_id !== req.user.user_id) {
-          return res.status(403).json({
-            success: false,
-            message: "You can only update teams in your own club",
-          });
-        }
-      }
-
-      // Any unexpected role is denied
-      else {
-        return res.status(403).json({
-          success: false,
-          message: "You do not have permission to update this team",
-        });
-      }
+    if (!allowed) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "You do not have permission to update this team",
+      });
     }
 
     const {
@@ -366,195 +570,391 @@ export const updateTeam = async (req, res) => {
       team_type,
     } = req.body;
 
-    // Validate venue if provided
-    if (home_venue_id !== undefined) {
-      const venueId = Number(home_venue_id);
+    // --------------------------------------------------
+    // BUILD UPDATE DATA
+    // --------------------------------------------------
 
-      if (!Number.isInteger(venueId)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid venue ID",
+    const updateData = {};
+
+    if (
+      home_venue_id !==
+      undefined
+    ) {
+      const venueId =
+        Number(home_venue_id);
+
+      const venue =
+        await prisma.venue.findUnique({
+          where: {
+            venue_id: venueId,
+          },
+
+          select: {
+            venue_id: true,
+            status: true,
+          },
         });
-      }
-
-      const venue = await prisma.venue.findUnique({
-        where: {
-          venue_id: venueId,
-        },
-      });
 
       if (!venue) {
         return res.status(404).json({
           success: false,
-          message: "Home venue not found",
+          message:
+            "Home venue not found",
         });
       }
 
-      if (venue.status !== "ACTIVE") {
+      if (
+        venue.status !==
+        TEAM_STATUS.ACTIVE
+      ) {
         return res.status(400).json({
           success: false,
-          message: "Cannot assign an inactive venue",
+          message:
+            "Cannot assign an inactive venue",
         });
       }
+
+      updateData.home_venue_id =
+        venueId;
     }
 
-    // Check duplicate name
     if (name !== undefined) {
-      const existingTeam = await prisma.team.findFirst({
+      updateData.name =
+        name.trim();
+    }
+
+    if (logo !== undefined) {
+      updateData.logo =
+        logo === null
+          ? null
+          : logo.trim();
+    }
+
+    if (gender !== undefined) {
+      updateData.gender =
+        gender.trim();
+    }
+
+    if (region !== undefined) {
+      updateData.region =
+        region === null
+          ? null
+          : region.trim();
+    }
+
+    if (district !== undefined) {
+      updateData.district =
+        district === null
+          ? null
+          : district.trim();
+    }
+
+    if (city !== undefined) {
+      updateData.city =
+        city === null
+          ? null
+          : city.trim();
+    }
+
+    if (description !== undefined) {
+      updateData.description =
+        description === null
+          ? null
+          : description.trim();
+    }
+
+    if (
+      contact_email !==
+      undefined
+    ) {
+      updateData.contact_email =
+        contact_email === null
+          ? null
+          : contact_email.trim();
+    }
+
+    if (
+      contact_phone !==
+      undefined
+    ) {
+      updateData.contact_phone =
+        contact_phone === null
+          ? null
+          : contact_phone.trim();
+    }
+
+    if (
+      team_type !== undefined
+    ) {
+      updateData.team_type =
+        team_type.trim();
+    }
+
+    // --------------------------------------------------
+    // EMPTY UPDATE
+    // --------------------------------------------------
+
+    if (
+      Object.keys(updateData)
+        .length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "At least one team field is required",
+      });
+    }
+
+    // --------------------------------------------------
+    // UPDATE WITH STATE PROTECTION
+    // --------------------------------------------------
+
+    const result =
+      await prisma.team.updateMany({
         where: {
-          club_id: team.club_id,
-          name: name.trim(),
-          NOT: {
-            team_id: teamId,
-          },
+          team_id: teamId,
+          owner_id:
+            existingTeam.owner_id,
+          club_id:
+            existingTeam.club_id,
+          status:
+            existingTeam.status,
         },
+
+        data:
+          updateData,
       });
 
-      if (existingTeam) {
-        return res.status(409).json({
-          success: false,
-          message: "A team with this name already exists in this club",
-        });
-      }
+    if (result.count === 0) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Team was modified by another request. Please try again.",
+      });
     }
 
-    const updatedTeam = await prisma.team.update({
-      where: {
-        team_id: teamId,
-      },
+    const updatedTeam =
+      await prisma.team.findUnique({
+        where: {
+          team_id: teamId,
+        },
 
-      data: {
-        ...(home_venue_id !== undefined && {
-          home_venue_id: Number(home_venue_id),
-        }),
+        select:
+          teamSelect,
+      });
 
-        ...(name !== undefined && {
-          name: name.trim(),
-        }),
-
-        ...(logo !== undefined && { logo }),
-        ...(gender !== undefined && { gender }),
-        ...(region !== undefined && { region }),
-        ...(district !== undefined && { district }),
-        ...(city !== undefined && { city }),
-        ...(description !== undefined && { description }),
-        ...(contact_email !== undefined && { contact_email }),
-        ...(contact_phone !== undefined && { contact_phone }),
-        ...(team_type !== undefined && { team_type }),
-      },
-    });
-
-    // Create audit log
     await createAuditLog({
-      actor_user_id: req.user.user_id,
-      action: AUDIT_ACTIONS.TEAM_UPDATED,
+      actor_user_id:
+        req.user.user_id,
+
+      action:
+        AUDIT_ACTIONS.TEAM_UPDATED,
+
       entity_type: "TEAM",
-      entity_id: teamId,
+
+      entity_id:
+        teamId,
+
       details: {
-        previous_name: team.name,
-        new_name: updatedTeam.name,
+        previous_name:
+          existingTeam.name,
+
+        new_name:
+          updatedTeam.name,
       },
     });
 
     return res.status(200).json({
       success: true,
-      message: "Team updated successfully",
+      message:
+        "Team updated successfully",
       data: updatedTeam,
     });
   } catch (error) {
-    console.error("Update team error:", error);
+    console.error(
+      "Update team error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while updating the team",
+      message:
+        "Something went wrong while updating the team",
     });
   }
 };
-
 
 // ======================================================
 // DEACTIVATE TEAM
 // ======================================================
 
-export const deactivateTeam = async (req, res) => {
+export const deactivateTeam = async (
+  req,
+  res
+) => {
   try {
-    const teamId = Number(req.params.team_id);
+    const teamId =
+      Number(req.params.team_id);
 
-    if (!Number.isInteger(teamId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid team ID",
+    const team =
+      await prisma.team.findUnique({
+        where: {
+          team_id: teamId,
+        },
+
+        select: {
+          team_id: true,
+          club_id: true,
+          owner_id: true,
+          name: true,
+          status: true,
+        },
       });
-    }
-
-    const team = await prisma.team.findUnique({
-      where: {
-        team_id: teamId,
-      },
-    });
 
     if (!team) {
       return res.status(404).json({
         success: false,
-        message: "Team not found",
+        message:
+          "Team not found",
       });
     }
 
-    // Only team owner, club owner or Super Admin
+    // --------------------------------------------------
+    // AUTHORIZATION
+    // --------------------------------------------------
+
+    const allowed =
+      await canManageTeam({
+        req,
+        team,
+      });
+
+    if (!allowed) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "You do not have permission to deactivate this team",
+      });
+    }
+
     if (
-      req.user.role !== ROLES.SUPER_ADMIN &&
-      team.owner_id !== req.user.user_id
+      team.status ===
+      TEAM_STATUS.INACTIVE
     ) {
-      // Check whether user is the club owner
-      const club = await prisma.club.findUnique({
+      return res.status(409).json({
+        success: false,
+        message:
+          "Team is already inactive",
+      });
+    }
+
+    // --------------------------------------------------
+    // PROTECT SCHEDULED / LIVE MATCHES
+    // --------------------------------------------------
+
+    const activeMatch =
+      await prisma.match.findFirst({
         where: {
-          club_id: team.club_id,
+          OR: [
+            {
+              home_team_id:
+                teamId,
+            },
+            {
+              away_team_id:
+                teamId,
+            },
+          ],
+
+          status: {
+            in: [
+              MATCH_STATUS.SCHEDULED,
+              MATCH_STATUS.LIVE,
+            ],
+          },
+        },
+
+        select: {
+          match_id: true,
         },
       });
 
-      if (!club || club.owner_id !== req.user.user_id) {
-        return res.status(403).json({
-          success: false,
-          message: "You do not have permission to deactivate this team",
-        });
-      }
-    }
-
-    if (team.status === "INACTIVE") {
-      return res.status(400).json({
+    if (activeMatch) {
+      return res.status(409).json({
         success: false,
-        message: "Team is already inactive",
+        message:
+          "Cannot deactivate a team involved in a scheduled or live match",
       });
     }
 
-    const updatedTeam = await prisma.team.update({
-      where: {
-        team_id: teamId,
-      },
-      data: {
-        status: "INACTIVE",
-      },
-    });
+    // --------------------------------------------------
+    // CONDITIONAL UPDATE
+    // --------------------------------------------------
 
-    // Create audit log
+    const result =
+      await prisma.team.updateMany({
+        where: {
+          team_id: teamId,
+          status:
+            TEAM_STATUS.ACTIVE,
+        },
+
+        data: {
+          status:
+            TEAM_STATUS.INACTIVE,
+        },
+      });
+
+    if (result.count === 0) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Team status changed before the operation completed. Please try again.",
+      });
+    }
+
+    const updatedTeam =
+      await prisma.team.findUnique({
+        where: {
+          team_id: teamId,
+        },
+
+        select:
+          teamSelect,
+      });
+
     await createAuditLog({
-      actor_user_id: req.user.user_id,
-      action: AUDIT_ACTIONS.TEAM_DEACTIVATED,
+      actor_user_id:
+        req.user.user_id,
+
+      action:
+        AUDIT_ACTIONS.TEAM_DEACTIVATED,
+
       entity_type: "TEAM",
-      entity_id: teamId,
+
+      entity_id:
+        teamId,
+
       details: {
-        previous_status: team.status,
-        new_status: "INACTIVE",
+        previous_status:
+          TEAM_STATUS.ACTIVE,
+
+        new_status:
+          TEAM_STATUS.INACTIVE,
       },
     });
 
     return res.status(200).json({
       success: true,
-      message: "Team deactivated successfully",
+      message:
+        "Team deactivated successfully",
       data: updatedTeam,
     });
   } catch (error) {
-    console.error("Deactivate team error:", error);
+    console.error(
+      "Deactivate team error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -564,239 +964,422 @@ export const deactivateTeam = async (req, res) => {
   }
 };
 
-
 // ======================================================
 // ACTIVATE TEAM
 // ======================================================
 
-export const activateTeam = async (req, res) => {
+export const activateTeam = async (
+  req,
+  res
+) => {
   try {
-    const teamId = Number(req.params.team_id);
+    const teamId =
+      Number(req.params.team_id);
 
-    if (!Number.isInteger(teamId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid team ID",
+    const team =
+      await prisma.team.findUnique({
+        where: {
+          team_id: teamId,
+        },
+
+        select: {
+          team_id: true,
+          club_id: true,
+          owner_id: true,
+          name: true,
+          status: true,
+        },
       });
-    }
-
-    const team = await prisma.team.findUnique({
-      where: {
-        team_id: teamId,
-      },
-    });
 
     if (!team) {
       return res.status(404).json({
         success: false,
-        message: "Team not found",
+        message:
+          "Team not found",
       });
     }
 
-    // Only Super Admin can activate
-    if (req.user.role !== ROLES.SUPER_ADMIN) {
+    // --------------------------------------------------
+    // ONLY SUPER ADMIN
+    // --------------------------------------------------
+
+    if (
+      req.user.role !==
+      ROLES.SUPER_ADMIN
+    ) {
       return res.status(403).json({
         success: false,
-        message: "Only Super Admin can activate a team",
+        message:
+          "Only Super Admin can activate a team",
       });
     }
 
-    if (team.status === "ACTIVE") {
-      return res.status(400).json({
+    if (
+      team.status ===
+      TEAM_STATUS.ACTIVE
+    ) {
+      return res.status(409).json({
         success: false,
-        message: "Team is already active",
+        message:
+          "Team is already active",
       });
     }
 
-    // Check club status before activating team
-    const club = await prisma.club.findUnique({
-      where: {
-        club_id: team.club_id,
-      },
-    });
+    // --------------------------------------------------
+    // CLUB MUST BE ACTIVE
+    // --------------------------------------------------
+
+    const club =
+      await prisma.club.findUnique({
+        where: {
+          club_id:
+            team.club_id,
+        },
+
+        select: {
+          club_id: true,
+          status: true,
+        },
+      });
 
     if (!club) {
       return res.status(404).json({
         success: false,
-        message: "Team's club not found",
+        message:
+          "Team's club not found",
       });
     }
 
-    if (club.status !== "ACTIVE") {
+    if (
+      club.status !==
+      TEAM_STATUS.ACTIVE
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Cannot activate a team under an inactive club",
+        message:
+          "Cannot activate a team under an inactive club",
       });
     }
 
-    const updatedTeam = await prisma.team.update({
-      where: {
-        team_id: teamId,
-      },
-      data: {
-        status: "ACTIVE",
-      },
-    });
+    // --------------------------------------------------
+    // CONDITIONAL UPDATE
+    // --------------------------------------------------
 
-    // Create audit log
+    const result =
+      await prisma.team.updateMany({
+        where: {
+          team_id: teamId,
+          status:
+            TEAM_STATUS.INACTIVE,
+        },
+
+        data: {
+          status:
+            TEAM_STATUS.ACTIVE,
+        },
+      });
+
+    if (result.count === 0) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Team status changed before the operation completed. Please try again.",
+      });
+    }
+
+    const updatedTeam =
+      await prisma.team.findUnique({
+        where: {
+          team_id: teamId,
+        },
+
+        select:
+          teamSelect,
+      });
+
     await createAuditLog({
-      actor_user_id: req.user.user_id,
-      action: AUDIT_ACTIONS.TEAM_ACTIVATED,
+      actor_user_id:
+        req.user.user_id,
+
+      action:
+        AUDIT_ACTIONS.TEAM_ACTIVATED,
+
       entity_type: "TEAM",
-      entity_id: teamId,
+
+      entity_id:
+        teamId,
+
       details: {
-        previous_status: team.status,
-        new_status: "ACTIVE",
+        previous_status:
+          TEAM_STATUS.INACTIVE,
+
+        new_status:
+          TEAM_STATUS.ACTIVE,
       },
     });
 
     return res.status(200).json({
       success: true,
-      message: "Team activated successfully",
+      message:
+        "Team activated successfully",
       data: updatedTeam,
     });
   } catch (error) {
-    console.error("Activate team error:", error);
+    console.error(
+      "Activate team error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while activating the team",
+      message:
+        "Something went wrong while activating the team",
     });
   }
 };
-
 
 // ======================================================
 // TRANSFER TEAM OWNERSHIP
 // ======================================================
 
-export const transferTeamOwnership = async (req, res) => {
-  try {
-    const teamId = Number(req.params.team_id);
-    const { owner_id } = req.body;
+export const transferTeamOwnership =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      const teamId =
+        Number(
+          req.params.team_id
+        );
 
-    if (!Number.isInteger(teamId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid team ID",
-      });
-    }
+      const newOwnerId =
+        Number(
+          req.body.owner_id
+        );
 
-    const newOwnerId = Number(owner_id);
+      // ------------------------------------------------
+      // GET TEAM
+      // ------------------------------------------------
 
-    if (!Number.isInteger(newOwnerId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid new owner ID",
-      });
-    }
+      const team =
+        await prisma.team.findUnique({
+          where: {
+            team_id: teamId,
+          },
 
-    const team = await prisma.team.findUnique({
-      where: {
-        team_id: teamId,
-      },
-    });
+          select: {
+            team_id: true,
+            club_id: true,
+            owner_id: true,
+            status: true,
+          },
+        });
 
-    if (!team) {
-      return res.status(404).json({
-        success: false,
-        message: "Team not found",
-      });
-    }
+      if (!team) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Team not found",
+        });
+      }
 
-    // Only current team owner, club owner or Super Admin
-    if (req.user.role !== ROLES.SUPER_ADMIN) {
-      const club = await prisma.club.findUnique({
-        where: {
-          club_id: team.club_id,
+      // ------------------------------------------------
+      // AUTHORIZATION
+      // ------------------------------------------------
+
+      const allowed =
+        await canManageTeam({
+          req,
+          team,
+        });
+
+      if (!allowed) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You do not have permission to transfer this team",
+        });
+      }
+
+      // ------------------------------------------------
+      // CURRENT OWNER
+      // ------------------------------------------------
+
+      if (
+        team.owner_id ===
+        newOwnerId
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "This user is already the team owner",
+        });
+      }
+
+      // ------------------------------------------------
+      // NEW OWNER
+      // ------------------------------------------------
+
+      const newOwner =
+        await prisma.user.findUnique({
+          where: {
+            user_id:
+              newOwnerId,
+          },
+
+          select: {
+            user_id: true,
+            role: true,
+            status: true,
+          },
+        });
+
+      if (!newOwner) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "New owner not found",
+        });
+      }
+
+      if (
+        newOwner.role !==
+        ROLES.TEAM_OWNER
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Selected user must have TEAM_OWNER role",
+        });
+      }
+
+      if (
+        newOwner.status !==
+        "ACTIVE"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "New owner must have an active account",
+        });
+      }
+
+      // ------------------------------------------------
+      // TRANSACTION
+      // ------------------------------------------------
+
+      const updatedTeam =
+        await prisma.$transaction(
+          async (tx) => {
+            const result =
+              await tx.team.updateMany({
+                where: {
+                  team_id:
+                    teamId,
+
+                  owner_id:
+                    team.owner_id,
+                },
+
+                data: {
+                  owner_id:
+                    newOwnerId,
+                },
+              });
+
+            if (
+              result.count === 0
+            ) {
+              const error =
+                new Error(
+                  "TEAM_OWNER_CHANGED"
+                );
+
+              throw error;
+            }
+
+            return tx.team.findUnique({
+              where: {
+                team_id:
+                  teamId,
+              },
+
+              select:
+                teamSelect,
+            });
+          },
+
+          {
+            isolationLevel:
+              "Serializable",
+          }
+        );
+
+      // ------------------------------------------------
+      // AUDIT
+      // ------------------------------------------------
+
+      await createAuditLog({
+        actor_user_id:
+          req.user.user_id,
+
+        action:
+          AUDIT_ACTIONS
+            .TEAM_OWNERSHIP_TRANSFERRED,
+
+        entity_type:
+          "TEAM",
+
+        entity_id:
+          teamId,
+
+        details: {
+          old_owner_id:
+            team.owner_id,
+
+          new_owner_id:
+            newOwnerId,
         },
       });
 
-      const isTeamOwner = team.owner_id === req.user.user_id;
-      const isClubOwner = club?.owner_id === req.user.user_id;
-
-      if (!isTeamOwner && !isClubOwner) {
-        return res.status(403).json({
+      return res.status(200).json({
+        success: true,
+        message:
+          "Team ownership transferred successfully",
+        data: updatedTeam,
+      });
+    } catch (error) {
+      if (
+        error.message ===
+        "TEAM_OWNER_CHANGED"
+      ) {
+        return res.status(409).json({
           success: false,
-          message: "You do not have permission to transfer this team",
+          message:
+            "Team ownership changed before the transfer completed. Please try again.",
         });
       }
-    }
 
-    // Prevent transferring to the current owner
-    if (team.owner_id === newOwnerId) {
-      return res.status(400).json({
+      if (
+        error.code === "P2034"
+      ) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "Ownership transfer conflicted with another request. Please try again.",
+        });
+      }
+
+      console.error(
+        "Transfer team ownership error:",
+        error
+      );
+
+      return res.status(500).json({
         success: false,
-        message: "This user is already the team owner",
+        message:
+          "Something went wrong while transferring team ownership",
       });
     }
-
-    // Find new owner
-    const newOwner = await prisma.user.findUnique({
-      where: {
-        user_id: newOwnerId,
-      },
-    });
-
-    if (!newOwner) {
-      return res.status(404).json({
-        success: false,
-        message: "New owner not found",
-      });
-    }
-
-    // New team owner must have TEAM_OWNER role
-    if (newOwner.role !== ROLES.TEAM_OWNER) {
-      return res.status(400).json({
-        success: false,
-        message: "Selected user must have TEAM_OWNER role",
-      });
-    }
-
-    // New owner must have an active account
-    if (newOwner.status !== "ACTIVE") {
-      return res.status(400).json({
-        success: false,
-        message: "New owner must have an active account",
-      });
-    }
-
-    // Store old owner for audit logging
-    const oldOwnerId = team.owner_id;
-
-    const updatedTeam = await prisma.team.update({
-      where: {
-        team_id: teamId,
-      },
-      data: {
-        owner_id: newOwnerId,
-      },
-    });
-
-    // Create audit log
-    await createAuditLog({
-      actor_user_id: req.user.user_id,
-      action: AUDIT_ACTIONS.TEAM_OWNERSHIP_TRANSFERRED,
-      entity_type: "TEAM",
-      entity_id: teamId,
-      details: {
-        old_owner_id: oldOwnerId,
-        new_owner_id: newOwnerId,
-      },
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Team ownership transferred successfully",
-      data: updatedTeam,
-    });
-  } catch (error) {
-    console.error("Transfer team ownership error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message:
-        "Something went wrong while transferring team ownership",
-    });
-  }
-};
+  };

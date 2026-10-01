@@ -7,9 +7,17 @@ import {
   reviewRegistration,
 } from "./registration.controller.js";
 
-import { authenticate } from "../../middleware/auth/auth.middleware.js";
-import { authorize } from "../../middleware/auth/role.middleware.js";
-import { ROLES } from "../../constants/roles.js";
+import {
+  authenticate,
+} from "../../middleware/auth/auth.middleware.js";
+
+import {
+  authorize,
+} from "../../middleware/auth/role.middleware.js";
+
+import {
+  ROLES,
+} from "../../constants/roles.js";
 
 import {
   registrationIdValidation,
@@ -17,7 +25,9 @@ import {
   reviewRegistrationValidation,
 } from "./registration.validation.js";
 
-import { handleValidationErrors } from "../../middleware/auth/validation.middleware.js";
+import {
+  handleValidationErrors,
+} from "../../middleware/auth/validation.middleware.js";
 
 const router = express.Router();
 
@@ -47,8 +57,26 @@ router.post(
 router.get(
   "/",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
   getRegistrations
+);
+
+// ======================================================
+// REVIEW REGISTRATION
+// SUPER ADMIN ONLY
+// ======================================================
+
+router.patch(
+  "/:registration_id/review",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
+  reviewRegistrationValidation,
+  handleValidationErrors,
+  reviewRegistration
 );
 
 // ======================================================
@@ -68,20 +96,6 @@ router.get(
   registrationIdValidation,
   handleValidationErrors,
   getRegistrationById
-);
-
-// ======================================================
-// REVIEW REGISTRATION
-// SUPER ADMIN ONLY
-// ======================================================
-
-router.patch(
-  "/:registration_id/review",
-  authenticate,
-  authorize(ROLES.SUPER_ADMIN),
-  reviewRegistrationValidation,
-  handleValidationErrors,
-  reviewRegistration
 );
 
 export default router;

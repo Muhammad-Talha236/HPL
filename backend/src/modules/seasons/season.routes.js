@@ -9,9 +9,17 @@ import {
   activateSeason,
 } from "./season.controller.js";
 
-import { authenticate } from "../../middleware/auth/auth.middleware.js";
-import { authorize } from "../../middleware/auth/role.middleware.js";
-import { ROLES } from "../../constants/roles.js";
+import {
+  authenticate,
+} from "../../middleware/auth/auth.middleware.js";
+
+import {
+  authorize,
+} from "../../middleware/auth/role.middleware.js";
+
+import {
+  ROLES,
+} from "../../constants/roles.js";
 
 import {
   seasonIdValidation,
@@ -19,7 +27,9 @@ import {
   updateSeasonValidation,
 } from "./season.validation.js";
 
-import { handleValidationErrors } from "../../middleware/auth/validation.middleware.js";
+import {
+  handleValidationErrors,
+} from "../../middleware/auth/validation.middleware.js";
 
 const router = express.Router();
 
@@ -27,10 +37,19 @@ const router = express.Router();
 // PUBLIC ROUTES
 // ======================================================
 
-// Get all seasons
-router.get("/", getSeasons);
+// ------------------------------------------------------
+// GET ALL SEASONS
+// ------------------------------------------------------
 
-// Get season by ID
+router.get(
+  "/",
+  getSeasons
+);
+
+// ------------------------------------------------------
+// GET SEASON BY ID
+// ------------------------------------------------------
+
 router.get(
   "/:season_id",
   seasonIdValidation,
@@ -42,44 +61,64 @@ router.get(
 // SUPER ADMIN ROUTES
 // ======================================================
 
-// Create season
+// ------------------------------------------------------
+// CREATE SEASON
+// ------------------------------------------------------
+
 router.post(
   "/",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
   createSeasonValidation,
   handleValidationErrors,
   createSeason
 );
 
-// Update season
-router.patch(
-  "/:season_id",
-  authenticate,
-  authorize(ROLES.SUPER_ADMIN),
-  updateSeasonValidation,
-  handleValidationErrors,
-  updateSeason
-);
+// ------------------------------------------------------
+// DEACTIVATE SEASON
+// ------------------------------------------------------
 
-// Deactivate season
 router.patch(
   "/:season_id/deactivate",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
   seasonIdValidation,
   handleValidationErrors,
   deactivateSeason
 );
 
-// Activate season
+// ------------------------------------------------------
+// ACTIVATE SEASON
+// ------------------------------------------------------
+
 router.patch(
   "/:season_id/activate",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
   seasonIdValidation,
   handleValidationErrors,
   activateSeason
+);
+
+// ------------------------------------------------------
+// UPDATE SEASON
+// ------------------------------------------------------
+
+router.patch(
+  "/:season_id",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
+  updateSeasonValidation,
+  handleValidationErrors,
+  updateSeason
 );
 
 export default router;

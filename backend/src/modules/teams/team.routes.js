@@ -10,9 +10,17 @@ import {
   transferTeamOwnership,
 } from "./team.controller.js";
 
-import { authenticate } from "../../middleware/auth/auth.middleware.js";
-import { authorize } from "../../middleware/auth/role.middleware.js";
-import { ROLES } from "../../constants/roles.js";
+import {
+  authenticate,
+} from "../../middleware/auth/auth.middleware.js";
+
+import {
+  authorize,
+} from "../../middleware/auth/role.middleware.js";
+
+import {
+  ROLES,
+} from "../../constants/roles.js";
 
 import {
   teamIdValidation,
@@ -21,22 +29,28 @@ import {
   transferTeamOwnershipValidation,
 } from "./team.validation.js";
 
-import { handleValidationErrors } from "../../middleware/auth/validation.middleware.js";
+import {
+  handleValidationErrors,
+} from "../../middleware/auth/validation.middleware.js";
 
 const router = express.Router();
 
-// Create Team
-router.post(
+// ======================================================
+// PUBLIC ROUTES
+// ======================================================
+
+// ------------------------------------------------------
+// GET ALL TEAMS
+// ------------------------------------------------------
+
+router.get(
   "/",
-  authenticate,
-  authorize(ROLES.CLUB_OWNER, ROLES.SUPER_ADMIN),
-  createTeamValidation,
-  handleValidationErrors,
-  createTeam
+  getTeams
 );
 
-// Public
-router.get("/", getTeams);
+// ------------------------------------------------------
+// GET TEAM BY ID
+// ------------------------------------------------------
 
 router.get(
   "/:team_id",
@@ -45,7 +59,43 @@ router.get(
   getTeamById
 );
 
-// Update Team
+// ======================================================
+// AUTHENTICATED TEAM MANAGEMENT
+// ======================================================
+
+// ------------------------------------------------------
+// CREATE TEAM
+// ------------------------------------------------------
+// CLUB_OWNER:
+//   Can create a team under their own club.
+//
+// SUPER_ADMIN:
+//   Can create a team under any active club.
+
+router.post(
+  "/",
+  authenticate,
+  authorize(
+    ROLES.CLUB_OWNER,
+    ROLES.SUPER_ADMIN
+  ),
+  createTeamValidation,
+  handleValidationErrors,
+  createTeam
+);
+
+// ------------------------------------------------------
+// UPDATE TEAM
+// ------------------------------------------------------
+// TEAM_OWNER:
+//   Can update their own team.
+//
+// CLUB_OWNER:
+//   Can update teams inside their own club.
+//
+// SUPER_ADMIN:
+//   Can update any team.
+
 router.patch(
   "/:team_id",
   authenticate,
@@ -59,7 +109,21 @@ router.patch(
   updateTeam
 );
 
-// Deactivate Team
+// ------------------------------------------------------
+// DEACTIVATE TEAM
+// ------------------------------------------------------
+// TEAM_OWNER:
+//   Can deactivate their own team.
+//
+// CLUB_OWNER:
+//   Can deactivate teams inside their own club.
+//
+// SUPER_ADMIN:
+//   Can deactivate any team.
+//
+// Controller additionally prevents deactivation when
+// the team has a scheduled/live match.
+
 router.patch(
   "/:team_id/deactivate",
   authenticate,
@@ -73,18 +137,38 @@ router.patch(
   deactivateTeam
 );
 
-// Activate Team
-// Only Super Admin can activate a team
+// ------------------------------------------------------
+// ACTIVATE TEAM
+// ------------------------------------------------------
+// Only SUPER_ADMIN can activate a team.
+//
+// Controller additionally checks that the club is active.
+
 router.patch(
   "/:team_id/activate",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(
+    ROLES.SUPER_ADMIN
+  ),
   teamIdValidation,
   handleValidationErrors,
   activateTeam
 );
 
-// Transfer Team Ownership
+// ------------------------------------------------------
+// TRANSFER TEAM OWNERSHIP
+// ------------------------------------------------------
+// TEAM_OWNER:
+//   Can transfer their own team.
+//
+// CLUB_OWNER:
+//   Can transfer teams inside their own club.
+//
+// SUPER_ADMIN:
+//   Can transfer any team.
+//
+// New owner must be an active TEAM_OWNER.
+
 router.patch(
   "/:team_id/owner",
   authenticate,
