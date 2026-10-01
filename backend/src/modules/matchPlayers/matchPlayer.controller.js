@@ -59,17 +59,14 @@ export const createMatchPlayer = async (
     }
 
     // ==================================================
-    // 2. MATCH MUST NOT BE COMPLETED/CANCELLED
+    // 2. SQUAD CAN ONLY BE SET BEFORE MATCH STARTS
     // ==================================================
 
-    if (
-      match.status === "COMPLETED" ||
-      match.status === "CANCELLED"
-    ) {
+    if (match.status !== "SCHEDULED") {
       return res.status(400).json({
         success: false,
         message:
-          "Players cannot be added to a completed or cancelled match",
+          "Players can only be added to a scheduled match",
       });
     }
 
@@ -119,7 +116,10 @@ export const createMatchPlayer = async (
       });
     }
 
-    if (team.gender !== match.competition.gender) {
+    if (
+      team.gender !==
+      match.competition.gender
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -166,7 +166,10 @@ export const createMatchPlayer = async (
     // 6. VERIFY PLAYER GENDER
     // ==================================================
 
-    if (player.gender !== team.gender) {
+    if (
+      player.gender !==
+      team.gender
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -249,7 +252,8 @@ export const createMatchPlayer = async (
     // ==================================================
 
     if (
-      match.competition.squad_size !== null
+      match.competition.squad_size !==
+      null
     ) {
       const squadCount =
         await prisma.matchPlayer.count({
@@ -327,44 +331,53 @@ export const createMatchPlayer = async (
     // 13. CREATE MATCH PLAYER
     // ==================================================
 
-const matchPlayer =
-  await prisma.matchPlayer.create({
-    data: {
-      match_id: matchId,
+    const matchPlayer =
+      await prisma.matchPlayer.create({
+        data: {
+          match_id: matchId,
 
-      team_id: teamId,
+          team_id: teamId,
 
-      player_id: playerId,
+          player_id: playerId,
 
-      starting_status:
-        starting_status,
+          starting_status:
+            starting_status,
 
-      is_on_field:
-        starting_status === "STARTER",
+          // Player is not on the field yet.
+          // Match has not started.
+          is_on_field: false,
 
-      position:
-        position?.trim() || null,
+          // Actual entry time will be assigned
+          // when the match is started.
+          entered_at: null,
 
-      shirt_number:
-        shirt_number !== undefined &&
-        shirt_number !== null
-          ? Number(shirt_number)
-          : null,
+          // Player has not left the field.
+          exited_at: null,
 
-      minutes_played: 0,
-    },
+          position:
+            position?.trim() || null,
 
-    include: {
-      player: {
-        select: {
-          player_id: true,
-          name: true,
-          profile_photo: true,
-          position: true,
+          shirt_number:
+            shirt_number !== undefined &&
+            shirt_number !== null
+              ? Number(shirt_number)
+              : null,
+
+          minutes_played: 0,
         },
-      },
-    },
-  });
+
+        include: {
+          player: {
+            select: {
+              player_id: true,
+              name: true,
+              profile_photo: true,
+              position: true,
+            },
+          },
+        },
+      });
+
     // ==================================================
     // 14. AUDIT LOG
     // ==================================================
@@ -399,15 +412,16 @@ const matchPlayer =
       success: true,
       message:
         "Player added to match successfully",
+
       data: matchPlayer,
     });
-
   } catch (error) {
     console.error(
       "Create match player error:",
       error
     );
 
+    // Prisma unique constraint
     if (
       error.code === "P2002"
     ) {
@@ -426,18 +440,13 @@ const matchPlayer =
   }
 };
 
-export const getMatchSquad = async (
-  req,
-  res
-) => {
+export const getMatchSquad = async (req, res) => {
   try {
-    const matchId = Number(
-      req.params.match_id
-    );
+    const matchId =
+      Number(req.params.match_id);
 
-    const teamId = Number(
-      req.params.team_id
-    );
+    const teamId =
+      Number(req.params.team_id);
 
     // ==================================================
     // 1. CHECK MATCH
@@ -452,16 +461,9 @@ export const getMatchSquad = async (
         select: {
           match_id: true,
           status: true,
+          started_at: true,
           home_team_id: true,
           away_team_id: true,
-
-          competition: {
-            select: {
-              competition_id: true,
-              name: true,
-              squad_size: true,
-            },
-          },
         },
       });
 
@@ -473,7 +475,7 @@ export const getMatchSquad = async (
     }
 
     // ==================================================
-    // 2. VERIFY TEAM IS IN MATCH
+    // 2. TEAM MUST BE PART OF MATCH
     // ==================================================
 
     if (
@@ -488,32 +490,7 @@ export const getMatchSquad = async (
     }
 
     // ==================================================
-    // 3. CHECK TEAM
-    // ==================================================
-
-    const team =
-      await prisma.team.findUnique({
-        where: {
-          team_id: teamId,
-        },
-
-        select: {
-          team_id: true,
-          name: true,
-          gender: true,
-          logo: true,
-        },
-      });
-
-    if (!team) {
-      return res.status(404).json({
-        success: false,
-        message: "Team not found",
-      });
-    }
-
-    // ==================================================
-    // 4. GET MATCH SQUAD
+    // 3. GET MATCH SQUAD
     // ==================================================
 
     const squad =
@@ -523,12 +500,35 @@ export const getMatchSquad = async (
           team_id: teamId,
         },
 
+        orderBy: [
+          {
+            starting_status: "asc",
+          },
+          {
+            shirt_number: "asc",
+        },
+        ],
+
         select: {
           match_player_id: true,
+
+          match_id: true,
+          team_id: true,
+          player_id: true,
+
           starting_status: true,
+
+          // Live player state
+          is_on_field: true,
+          entered_at: true,
+          exited_at: true,
+          minutes_played: true,
+
           position: true,
           shirt_number: true,
-          minutes_played: true,
+
+          created_at: true,
+          updated_at: true,
 
           player: {
             select: {
@@ -537,22 +537,15 @@ export const getMatchSquad = async (
               profile_photo: true,
               position: true,
               registration_number: true,
+              gender: true,
+              status: true,
             },
           },
         },
-
-        orderBy: [
-          {
-            starting_status: "asc",
-          },
-          {
-            shirt_number: "asc",
-          },
-        ],
       });
 
     // ==================================================
-    // 5. SEPARATE STARTERS & SUBSTITUTES
+    // 4. CALCULATE SQUAD COUNTS
     // ==================================================
 
     const starters =
@@ -569,36 +562,51 @@ export const getMatchSquad = async (
           "SUBSTITUTE"
       );
 
+    const playersOnField =
+      squad.filter(
+        (player) =>
+          player.is_on_field === true
+      );
+
     // ==================================================
     // RESPONSE
     // ==================================================
 
-    return res.status(200).json({
+    return res.json({
       success: true,
 
       data: {
         match: {
-          match_id: match.match_id,
-          status: match.status,
-          competition:
-            match.competition,
+          match_id:
+            match.match_id,
+
+          status:
+            match.status,
+
+          started_at:
+            match.started_at,
         },
 
-        team,
+        team_id: teamId,
 
         squad: {
-          total_players: squad.length,
-          starters_count:
+          total:
+            squad.length,
+
+          starters:
             starters.length,
-          substitutes_count:
+
+          substitutes:
             substitutes.length,
 
-          starters,
-          substitutes,
+          players_on_field:
+            playersOnField.length,
+
+          players:
+            squad,
         },
       },
     });
-
   } catch (error) {
     console.error(
       "Get match squad error:",
@@ -608,27 +616,33 @@ export const getMatchSquad = async (
     return res.status(500).json({
       success: false,
       message:
-        "Something went wrong while fetching the match squad",
+        "Failed to fetch match squad",
     });
   }
 };
 
 export const updateMatchPlayer = async (req, res) => {
   try {
-    const matchPlayerId = Number(req.params.match_player_id);
+    const matchPlayerId =
+      Number(req.params.match_player_id);
 
     const {
       starting_status,
       position,
       shirt_number,
-      minutes_played,
     } = req.body;
+
+    // ==================================================
+    // 1. FIND MATCH PLAYER
+    // ==================================================
 
     const existingMatchPlayer =
       await prisma.matchPlayer.findUnique({
         where: {
-          match_player_id: matchPlayerId,
+          match_player_id:
+            matchPlayerId,
         },
+
         include: {
           match: {
             select: {
@@ -636,10 +650,12 @@ export const updateMatchPlayer = async (req, res) => {
               status: true,
             },
           },
+
           team: {
             select: {
               team_id: true,
               owner_id: true,
+
               club: {
                 select: {
                   owner_id: true,
@@ -653,33 +669,45 @@ export const updateMatchPlayer = async (req, res) => {
     if (!existingMatchPlayer) {
       return res.status(404).json({
         success: false,
-        message: "Match player not found",
+        message:
+          "Match player not found",
       });
     }
 
-    const { match, team } = existingMatchPlayer;
+    const {
+      match,
+      team,
+    } = existingMatchPlayer;
 
-    // Completed/cancelled matches cannot be modified
+    // ==================================================
+    // 2. SQUAD CAN ONLY BE MODIFIED BEFORE MATCH START
+    // ==================================================
+
     if (
-      match.status === "COMPLETED" ||
-      match.status === "CANCELLED"
+      match.status !== "SCHEDULED"
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "Players cannot be modified after the match is completed or cancelled",
+          "Match players can only be modified before the match starts",
       });
     }
 
-    // Ownership authorization
+    // ==================================================
+    // 3. OWNERSHIP AUTHORIZATION
+    // ==================================================
+
     const isSuperAdmin =
-      req.user.role === ROLES.SUPER_ADMIN;
+      req.user.role ===
+      ROLES.SUPER_ADMIN;
 
     const isTeamOwner =
-      req.user.user_id === team.owner_id;
+      req.user.user_id ===
+      team.owner_id;
 
     const isClubOwner =
-      req.user.user_id === team.club.owner_id;
+      req.user.user_id ===
+      team.club.owner_id;
 
     if (
       !isSuperAdmin &&
@@ -693,14 +721,26 @@ export const updateMatchPlayer = async (req, res) => {
       });
     }
 
-    // Check duplicate shirt number
-    if (shirt_number !== undefined && shirt_number !== null) {
+    // ==================================================
+    // 4. CHECK DUPLICATE SHIRT NUMBER
+    // ==================================================
+
+    if (
+      shirt_number !== undefined &&
+      shirt_number !== null
+    ) {
       const duplicateShirtNumber =
         await prisma.matchPlayer.findFirst({
           where: {
-            match_id: match.match_id,
-            team_id: team.team_id,
-            shirt_number: Number(shirt_number),
+            match_id:
+              match.match_id,
+
+            team_id:
+              team.team_id,
+
+            shirt_number:
+              Number(shirt_number),
+
             match_player_id: {
               not: matchPlayerId,
             },
@@ -716,14 +756,25 @@ export const updateMatchPlayer = async (req, res) => {
       }
     }
 
-    // Only 11 starters allowed
-    if (starting_status === "STARTER") {
+    // ==================================================
+    // 5. ONLY 11 STARTERS ALLOWED
+    // ==================================================
+
+    if (
+      starting_status === "STARTER"
+    ) {
       const starterCount =
         await prisma.matchPlayer.count({
           where: {
-            match_id: match.match_id,
-            team_id: team.team_id,
-            starting_status: "STARTER",
+            match_id:
+              match.match_id,
+
+            team_id:
+              team.team_id,
+
+            starting_status:
+              "STARTER",
+
             match_player_id: {
               not: matchPlayerId,
             },
@@ -739,44 +790,69 @@ export const updateMatchPlayer = async (req, res) => {
       }
     }
 
+    // ==================================================
+    // 6. BUILD SAFE UPDATE DATA
+    // ==================================================
+
     const updateData = {};
 
-    if (starting_status !== undefined) {
+    if (
+      starting_status !== undefined
+    ) {
       updateData.starting_status =
         starting_status;
     }
 
-    if (position !== undefined) {
-      updateData.position = position;
+    if (
+      position !== undefined
+    ) {
+      updateData.position =
+        position;
     }
 
-    if (shirt_number !== undefined) {
+    if (
+      shirt_number !== undefined
+    ) {
       updateData.shirt_number =
         shirt_number === null
           ? null
           : Number(shirt_number);
     }
 
-    if (minutes_played !== undefined) {
-      updateData.minutes_played =
-        minutes_played === null
-          ? null
-          : Number(minutes_played);
-    }
+    // ==================================================
+    // IMPORTANT:
+    // minutes_played is intentionally NOT accepted.
+    //
+    // is_on_field is NOT accepted.
+    // entered_at is NOT accepted.
+    // exited_at is NOT accepted.
+    //
+    // These fields are controlled by the match lifecycle.
+    // ==================================================
 
-    if (Object.keys(updateData).length === 0) {
+    if (
+      Object.keys(updateData).length === 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: "No fields provided for update",
+        message:
+          "No valid fields provided for update",
       });
     }
+
+    // ==================================================
+    // 7. UPDATE MATCH PLAYER
+    // ==================================================
 
     const updatedMatchPlayer =
       await prisma.matchPlayer.update({
         where: {
-          match_player_id: matchPlayerId,
+          match_player_id:
+            matchPlayerId,
         },
+
         data: updateData,
+
         include: {
           player: {
             select: {
@@ -784,29 +860,55 @@ export const updateMatchPlayer = async (req, res) => {
               name: true,
               profile_photo: true,
               position: true,
-              registration_number: true,
+              registration_number:
+                true,
             },
           },
         },
       });
 
+    // ==================================================
+    // 8. AUDIT LOG
+    // ==================================================
+
     await createAuditLog({
-      actor_user_id: req.user.user_id,
-      action: AUDIT_ACTIONS.MATCH_PLAYER_UPDATED,
-      entity_type: "MATCH_PLAYER",
-      entity_id: matchPlayerId,
+      actor_user_id:
+        req.user.user_id,
+
+      action:
+        AUDIT_ACTIONS.MATCH_PLAYER_UPDATED,
+
+      entity_type:
+        "MATCH_PLAYER",
+
+      entity_id:
+        matchPlayerId,
+
       details: {
-        match_id: match.match_id,
-        team_id: team.team_id,
+        match_id:
+          match.match_id,
+
+        team_id:
+          team.team_id,
+
         player_id:
           existingMatchPlayer.player_id,
-        changes: updateData,
+
+        changes:
+          updateData,
       },
     });
 
+    // ==================================================
+    // RESPONSE
+    // ==================================================
+
     return res.json({
       success: true,
-      message: "Match player updated successfully",
+
+      message:
+        "Match player updated successfully",
+
       data: updatedMatchPlayer,
     });
   } catch (error) {
@@ -817,22 +919,28 @@ export const updateMatchPlayer = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Failed to update match player",
+      message:
+        "Failed to update match player",
     });
   }
 };
-
 
 export const removeMatchPlayer = async (req, res) => {
   try {
     const matchPlayerId =
       Number(req.params.match_player_id);
 
+    // ==================================================
+    // 1. FIND MATCH PLAYER
+    // ==================================================
+
     const existingMatchPlayer =
       await prisma.matchPlayer.findUnique({
         where: {
-          match_player_id: matchPlayerId,
+          match_player_id:
+            matchPlayerId,
         },
+
         include: {
           match: {
             select: {
@@ -840,10 +948,12 @@ export const removeMatchPlayer = async (req, res) => {
               status: true,
             },
           },
+
           team: {
             select: {
               team_id: true,
               owner_id: true,
+
               club: {
                 select: {
                   owner_id: true,
@@ -857,32 +967,46 @@ export const removeMatchPlayer = async (req, res) => {
     if (!existingMatchPlayer) {
       return res.status(404).json({
         success: false,
-        message: "Match player not found",
+        message:
+          "Match player not found",
       });
     }
 
-    const { match, team } =
-      existingMatchPlayer;
+    const {
+      match,
+      team,
+    } = existingMatchPlayer;
+
+    // ==================================================
+    // 2. PLAYER CAN ONLY BE REMOVED
+    //    BEFORE MATCH STARTS
+    // ==================================================
 
     if (
-      match.status === "COMPLETED" ||
-      match.status === "CANCELLED"
+      match.status !== "SCHEDULED"
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "Players cannot be removed after the match is completed or cancelled",
+          "Players can only be removed before the match starts",
       });
     }
 
+    // ==================================================
+    // 3. OWNERSHIP AUTHORIZATION
+    // ==================================================
+
     const isSuperAdmin =
-      req.user.role === ROLES.SUPER_ADMIN;
+      req.user.role ===
+      ROLES.SUPER_ADMIN;
 
     const isTeamOwner =
-      req.user.user_id === team.owner_id;
+      req.user.user_id ===
+      team.owner_id;
 
     const isClubOwner =
-      req.user.user_id === team.club.owner_id;
+      req.user.user_id ===
+      team.club.owner_id;
 
     if (
       !isSuperAdmin &&
@@ -896,27 +1020,53 @@ export const removeMatchPlayer = async (req, res) => {
       });
     }
 
+    // ==================================================
+    // 4. DELETE MATCH PLAYER
+    // ==================================================
+
     await prisma.matchPlayer.delete({
       where: {
-        match_player_id: matchPlayerId,
+        match_player_id:
+          matchPlayerId,
       },
     });
 
+    // ==================================================
+    // 5. AUDIT LOG
+    // ==================================================
+
     await createAuditLog({
-      actor_user_id: req.user.user_id,
-      action: AUDIT_ACTIONS.MATCH_PLAYER_REMOVED,
-      entity_type: "MATCH_PLAYER",
-      entity_id: matchPlayerId,
+      actor_user_id:
+        req.user.user_id,
+
+      action:
+        AUDIT_ACTIONS.MATCH_PLAYER_REMOVED,
+
+      entity_type:
+        "MATCH_PLAYER",
+
+      entity_id:
+        matchPlayerId,
+
       details: {
-        match_id: match.match_id,
-        team_id: team.team_id,
+        match_id:
+          match.match_id,
+
+        team_id:
+          team.team_id,
+
         player_id:
           existingMatchPlayer.player_id,
       },
     });
 
+    // ==================================================
+    // RESPONSE
+    // ==================================================
+
     return res.json({
       success: true,
+
       message:
         "Player removed from match squad successfully",
     });
@@ -928,7 +1078,8 @@ export const removeMatchPlayer = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Failed to remove match player",
+      message:
+        "Failed to remove match player",
     });
   }
 };

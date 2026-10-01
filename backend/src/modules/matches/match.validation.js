@@ -175,3 +175,12 @@ export const updateMatchValidation = [
       "Match notes must not exceed 2000 characters"
     ),
 ];
+
+
+export const startMatchValidation = [
+  param("match_id")
+    .isInt({ min: 1 })
+    .withMessage(
+      "Match ID must be a positive integer"
+    ),
+];

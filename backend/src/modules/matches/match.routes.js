@@ -7,6 +7,7 @@ import {
   updateMatch,
   cancelMatch,
   completeMatch,
+   startMatch,
 } from "./match.controller.js";
 
 import { authenticate } from "../../middleware/auth/auth.middleware.js";
@@ -17,6 +18,7 @@ import {
   matchIdValidation,
   createMatchValidation,
   updateMatchValidation,
+  startMatchValidation,
 } from "./match.validation.js";
 
 import { handleValidationErrors } from "../../middleware/auth/validation.middleware.js";
@@ -85,4 +87,13 @@ router.patch(
   completeMatch
 );
 
+
+router.post(
+  "/:match_id/start",
+  authenticate,
+  authorize(ROLES.SUPER_ADMIN),
+  startMatchValidation,
+  handleValidationErrors,
+  startMatch
+);
 export default router;

@@ -246,6 +246,7 @@ model Match {
   referee_id     Int
   match_date     DateTime      @db.Date
   start_time     DateTime      @db.Time(0)
+  started_at     DateTime?
   status         String
   home_score     Int           @default(0)
   away_score     Int           @default(0)
@@ -277,6 +278,12 @@ model MatchPlayer {
   match           Match    @relation(fields: [match_id], references: [match_id])
   player          Player   @relation(fields: [player_id], references: [player_id])
   team            Team     @relation(fields: [team_id], references: [team_id])
+
+  // Actual time player entered the field
+  entered_at DateTime?
+
+  // Actual time player left the field
+  exited_at DateTime?
 
   @@unique([match_id, player_id])
 }

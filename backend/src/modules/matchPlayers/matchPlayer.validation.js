@@ -128,17 +128,7 @@ export const updateMatchPlayerValidation = [
       "Shirt number must be between 1 and 99"
     ),
 
-  body("minutes_played")
-    .optional({
-      nullable: true,
-    })
-    .isInt({
-      min: 0,
-      max: 130,
-    })
-    .withMessage(
-      "Minutes played must be between 0 and 130"
-    ),
+  
 ];
 
 export const matchSquadValidation = [

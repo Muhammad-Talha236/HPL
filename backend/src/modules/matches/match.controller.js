@@ -1632,21 +1632,27 @@ export const cancelMatch = async (
 // COMPLETE MATCH
 // ======================================================
 
-export const completeMatch = async (
-  req,
-  res
-) => {
+export const completeMatch = async (req, res) => {
   try {
-    const matchId = Number(
-      req.params.match_id
-    );
+    const matchId = Number(req.params.match_id);
 
-    const match =
-      await prisma.match.findUnique({
-        where: {
-          match_id: matchId,
-        },
-      });
+    // ==================================================
+    // 1. CHECK MATCH
+    // ==================================================
+
+    const match = await prisma.match.findUnique({
+      where: {
+        match_id: matchId,
+      },
+
+      select: {
+        match_id: true,
+        status: true,
+        started_at: true,
+        home_score: true,
+        away_score: true,
+      },
+    });
 
     if (!match) {
       return res.status(404).json({
@@ -1655,39 +1661,157 @@ export const completeMatch = async (
       });
     }
 
-    if (
-      match.status ===
-      MATCH_STATUS.CANCELLED
-    ) {
+    // ==================================================
+    // 2. MATCH MUST BE LIVE
+    // ==================================================
+
+    if (match.status !== MATCH_STATUS.LIVE) {
       return res.status(400).json({
         success: false,
         message:
-          "Cancelled match cannot be completed",
+          `Match cannot be completed because its current status is ${match.status}`,
       });
     }
 
-    if (
-      match.status ===
-      MATCH_STATUS.COMPLETED
-    ) {
+    // ==================================================
+    // 3. MATCH MUST HAVE START TIME
+    // ==================================================
+
+    if (!match.started_at) {
       return res.status(400).json({
         success: false,
-        message:
-          "Match is already completed",
+        message: "Match start time is missing",
       });
     }
 
-    const updatedMatch =
-      await prisma.match.update({
-        where: {
-          match_id: matchId,
-        },
+    // ==================================================
+    // 4. SERVER COMPLETION TIME
+    // ==================================================
 
-        data: {
-          status:
-            MATCH_STATUS.COMPLETED,
-        },
-      });
+    const completedAt = new Date();
+
+    // ==================================================
+    // 5. COMPLETE MATCH + CLOSE ACTIVE PLAYERS
+    // ==================================================
+
+    const result = await prisma.$transaction(
+      async (tx) => {
+        // ------------------------------------------
+        // CONDITIONAL MATCH UPDATE
+        // ------------------------------------------
+        // Only one request can change:
+        //
+        // LIVE -> COMPLETED
+        //
+        // If another request already completed the match,
+        // this update affects 0 rows.
+
+        const matchUpdate =
+          await tx.match.updateMany({
+            where: {
+              match_id: matchId,
+              status: MATCH_STATUS.LIVE,
+              started_at: {
+                not: null,
+              },
+            },
+
+            data: {
+              status: MATCH_STATUS.COMPLETED,
+            },
+          });
+
+        if (matchUpdate.count !== 1) {
+          throw new Error(
+            "MATCH_ALREADY_COMPLETED"
+          );
+        }
+
+        // ------------------------------------------
+        // FIND PLAYERS STILL ON FIELD
+        // ------------------------------------------
+
+        const activePlayers =
+          await tx.matchPlayer.findMany({
+            where: {
+              match_id: matchId,
+              is_on_field: true,
+            },
+
+            select: {
+              match_player_id: true,
+              entered_at: true,
+            },
+          });
+
+        // ------------------------------------------
+        // CALCULATE FINAL MINUTES
+        // ------------------------------------------
+
+        for (const player of activePlayers) {
+          if (!player.entered_at) {
+            throw new Error(
+              `Player ${player.match_player_id} is on the field but has no entry time`
+            );
+          }
+
+          const millisecondsPlayed =
+            completedAt.getTime() -
+            player.entered_at.getTime();
+
+          const minutesPlayed = Math.max(
+            0,
+            Math.floor(
+              millisecondsPlayed /
+                (1000 * 60)
+            )
+          );
+
+          await tx.matchPlayer.update({
+            where: {
+              match_player_id:
+                player.match_player_id,
+            },
+
+            data: {
+              is_on_field: false,
+              exited_at: completedAt,
+              minutes_played: minutesPlayed,
+            },
+          });
+        }
+
+        // ------------------------------------------
+        // GET COMPLETED MATCH
+        // ------------------------------------------
+
+        const completedMatch =
+          await tx.match.findUnique({
+            where: {
+              match_id: matchId,
+            },
+
+            select: {
+              match_id: true,
+              status: true,
+              started_at: true,
+              home_score: true,
+              away_score: true,
+              updated_at: true,
+            },
+          });
+
+        return {
+          completedMatch,
+          playersClosed:
+            activePlayers.length,
+        };
+      }
+    );
+
+    // ==================================================
+    // 6. AUDIT LOG
+    // ==================================================
 
     await createAuditLog({
       actor_user_id:
@@ -1696,28 +1820,69 @@ export const completeMatch = async (
       action:
         AUDIT_ACTIONS.MATCH_COMPLETED,
 
-      entity_type: "MATCH",
+      entity_type:
+        "MATCH",
 
       entity_id:
         matchId,
 
       details: {
         previous_status:
-          match.status,
+          MATCH_STATUS.LIVE,
 
         new_status:
           MATCH_STATUS.COMPLETED,
+
+        completed_at:
+          completedAt.toISOString(),
+
+        home_score:
+          result.completedMatch
+            .home_score,
+
+        away_score:
+          result.completedMatch
+            .away_score,
+
+        players_closed:
+          result.playersClosed,
       },
     });
 
+    // ==================================================
+    // 7. RESPONSE
+    // ==================================================
+
     return res.status(200).json({
       success: true,
+
       message:
         "Match completed successfully",
-      data: updatedMatch,
-    });
 
+      data: {
+        match:
+          result.completedMatch,
+
+        players_closed:
+          result.playersClosed,
+      },
+    });
   } catch (error) {
+    // ==================================================
+    // CONCURRENT COMPLETION PROTECTION
+    // ==================================================
+
+    if (
+      error.message ===
+      "MATCH_ALREADY_COMPLETED"
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Match has already been completed or is no longer live",
+      });
+    }
+
     console.error(
       "Complete match error:",
       error
@@ -1727,6 +1892,217 @@ export const completeMatch = async (
       success: false,
       message:
         "Something went wrong while completing the match",
+    });
+  }
+};
+
+
+export const startMatch = async (req, res) => {
+  try {
+    const matchId = Number(req.params.match_id);
+
+    const match = await prisma.match.findUnique({
+      where: {
+        match_id: matchId,
+      },
+      select: {
+        match_id: true,
+        status: true,
+        started_at: true,
+        home_team_id: true,
+        away_team_id: true,
+      },
+    });
+
+    if (!match) {
+      return res.status(404).json({
+        success: false,
+        message: "Match not found",
+      });
+    }
+
+    if (match.status !== MATCH_STATUS.SCHEDULED) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only scheduled matches can be started",
+      });
+    }
+
+    if (match.started_at) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Match has already been started",
+      });
+    }
+
+    const homeStarters =
+      await prisma.matchPlayer.count({
+        where: {
+          match_id: matchId,
+          team_id: match.home_team_id,
+          starting_status: "STARTER",
+        },
+      });
+
+    const awayStarters =
+      await prisma.matchPlayer.count({
+        where: {
+          match_id: matchId,
+          team_id: match.away_team_id,
+          starting_status: "STARTER",
+        },
+      });
+
+    if (homeStarters !== 11) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Home team must have exactly 11 starters before the match can start",
+      });
+    }
+
+    if (awayStarters !== 11) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Away team must have exactly 11 starters before the match can start",
+      });
+    }
+
+    const startedAt = new Date();
+
+    const result = await prisma.$transaction(
+      async (tx) => {
+        /*
+         * Conditional update:
+         *
+         * Only one request can successfully change
+         * the match from SCHEDULED -> LIVE.
+         *
+         * If another request already changed the status,
+         * this update affects 0 rows.
+         */
+        const matchUpdate =
+          await tx.match.updateMany({
+            where: {
+              match_id: matchId,
+              status: MATCH_STATUS.SCHEDULED,
+              started_at: null,
+            },
+            data: {
+              status: MATCH_STATUS.LIVE,
+              started_at: startedAt,
+            },
+          });
+
+        if (matchUpdate.count !== 1) {
+          throw new Error(
+            "MATCH_ALREADY_STARTED"
+          );
+        }
+
+        /*
+         * Activate all starters.
+         */
+        await tx.matchPlayer.updateMany({
+          where: {
+            match_id: matchId,
+            starting_status: "STARTER",
+          },
+          data: {
+            is_on_field: true,
+            entered_at: startedAt,
+            exited_at: null,
+            minutes_played: 0,
+          },
+        });
+
+        /*
+         * Make sure substitutes are not on the field.
+         */
+        await tx.matchPlayer.updateMany({
+          where: {
+            match_id: matchId,
+            starting_status: "SUBSTITUTE",
+          },
+          data: {
+            is_on_field: false,
+            entered_at: null,
+            exited_at: null,
+            minutes_played: 0,
+          },
+        });
+
+        const updatedMatch =
+          await tx.match.findUnique({
+            where: {
+              match_id: matchId,
+            },
+            select: {
+              match_id: true,
+              competition_id: true,
+              season_id: true,
+              home_team_id: true,
+              away_team_id: true,
+              venue_id: true,
+              referee_id: true,
+              match_date: true,
+              start_time: true,
+              started_at: true,
+              status: true,
+              home_score: true,
+              away_score: true,
+              match_notes: true,
+              created_at: true,
+              updated_at: true,
+            },
+          });
+
+        return updatedMatch;
+      }
+    );
+
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.MATCH_STARTED,
+      entity_type: "MATCH",
+      entity_id: result.match_id,
+      details: {
+        started_at: startedAt.toISOString(),
+        home_team_id: result.home_team_id,
+        away_team_id: result.away_team_id,
+        home_starters: homeStarters,
+        away_starters: awayStarters,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Match started successfully",
+      data: {
+        match: result,
+      },
+    });
+  } catch (error) {
+    if (error.message === "MATCH_ALREADY_STARTED") {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Match has already been started or is no longer scheduled",
+      });
+    }
+
+    console.error(
+      "Start match error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Something went wrong while starting the match",
     });
   }
 };
