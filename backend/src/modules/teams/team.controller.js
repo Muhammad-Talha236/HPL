@@ -527,6 +527,7 @@ export const updateTeam = async (
           home_venue_id: true,
           status: true,
           name: true,
+          gender: true,
         },
       });
 
@@ -619,8 +620,43 @@ export const updateTeam = async (
     }
 
     if (name !== undefined) {
-      updateData.name =
+      const trimmedName =
         name.trim();
+
+      // ----------------------------------------------
+      // DUPLICATE TEAM NAME CHECK
+      // ----------------------------------------------
+
+      const existingName =
+        await prisma.team.findFirst({
+          where: {
+            club_id:
+              existingTeam.club_id,
+
+            name:
+              trimmedName,
+
+            NOT: {
+              team_id:
+                teamId,
+            },
+          },
+
+          select: {
+            team_id: true,
+          },
+        });
+
+      if (existingName) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "A team with this name already exists in this club",
+        });
+      }
+
+      updateData.name =
+        trimmedName;
     }
 
     if (logo !== undefined) {
@@ -713,10 +749,13 @@ export const updateTeam = async (
       await prisma.team.updateMany({
         where: {
           team_id: teamId,
+
           owner_id:
             existingTeam.owner_id,
+
           club_id:
             existingTeam.club_id,
+
           status:
             existingTeam.status,
         },
@@ -733,6 +772,10 @@ export const updateTeam = async (
       });
     }
 
+    // --------------------------------------------------
+    // GET UPDATED TEAM
+    // --------------------------------------------------
+
     const updatedTeam =
       await prisma.team.findUnique({
         where: {
@@ -743,6 +786,18 @@ export const updateTeam = async (
           teamSelect,
       });
 
+    if (!updatedTeam) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Team no longer exists",
+      });
+    }
+
+    // --------------------------------------------------
+    // AUDIT
+    // --------------------------------------------------
+
     await createAuditLog({
       actor_user_id:
         req.user.user_id,
@@ -750,7 +805,8 @@ export const updateTeam = async (
       action:
         AUDIT_ACTIONS.TEAM_UPDATED,
 
-      entity_type: "TEAM",
+      entity_type:
+        "TEAM",
 
       entity_id:
         teamId,
@@ -768,7 +824,9 @@ export const updateTeam = async (
       success: true,
       message:
         "Team updated successfully",
-      data: updatedTeam,
+
+      data:
+        updatedTeam,
     });
   } catch (error) {
     console.error(
