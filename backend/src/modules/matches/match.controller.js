@@ -3432,6 +3432,7 @@ export const completeMatch = async (req, res) => {
       },
       select: {
         match_id: true,
+        competition_id: true,
         status: true,
         started_at: true,
         home_score: true,
@@ -3461,6 +3462,14 @@ export const completeMatch = async (req, res) => {
       });
     }
 
+    if (!match.competition_id) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Match cannot be completed because competition information is missing",
+      });
+    }
+
     const completedAt = new Date();
 
     if (completedAt < match.started_at) {
@@ -3483,6 +3492,7 @@ export const completeMatch = async (req, res) => {
             },
             select: {
               match_id: true,
+              competition_id: true,
               status: true,
               started_at: true,
               home_score: true,
@@ -3491,23 +3501,25 @@ export const completeMatch = async (req, res) => {
           });
 
         if (!currentMatch) {
-          throw new Error(
-            "MATCH_NOT_FOUND"
-          );
+          throw new Error("MATCH_NOT_FOUND");
         }
 
         if (
           currentMatch.status !==
           MATCH_STATUS.LIVE
         ) {
-          throw new Error(
-            "MATCH_NOT_LIVE"
-          );
+          throw new Error("MATCH_NOT_LIVE");
         }
 
         if (!currentMatch.started_at) {
           throw new Error(
             "MATCH_START_TIME_MISSING"
+          );
+        }
+
+        if (!currentMatch.competition_id) {
+          throw new Error(
+            "MATCH_COMPETITION_MISSING"
           );
         }
 
@@ -3628,8 +3640,29 @@ export const completeMatch = async (req, res) => {
         }
 
         /*
-         * Fetch final match state after all
-         * player updates succeed.
+         * Recalculate the complete competition
+         * standings after this match becomes
+         * COMPLETED.
+         *
+         * IMPORTANT:
+         * This happens inside the SAME transaction.
+         *
+         * Therefore:
+         * - Match completion succeeds
+         * - Player closing succeeds
+         * - Standings calculation succeeds
+         *
+         * OR everything rolls back together.
+         */
+        const standings =
+          await recalculateCompetitionStandings(
+            tx,
+            currentMatch.competition_id
+          );
+
+        /*
+         * Fetch final match state after
+         * match, player, and standings updates.
          */
         const completedMatch =
           await tx.match.findUnique({
@@ -3639,6 +3672,7 @@ export const completeMatch = async (req, res) => {
 
             select: {
               match_id: true,
+              competition_id: true,
               status: true,
               started_at: true,
               home_score: true,
@@ -3649,8 +3683,12 @@ export const completeMatch = async (req, res) => {
 
         return {
           completedMatch,
+
           playersClosed:
             activePlayers.length,
+
+          standingsUpdated:
+            standings.length,
         };
       }
     );
@@ -3688,6 +3726,9 @@ export const completeMatch = async (req, res) => {
 
         players_closed:
           result.playersClosed,
+
+        standings_updated:
+          result.standingsUpdated,
       },
     });
 
@@ -3703,6 +3744,9 @@ export const completeMatch = async (req, res) => {
 
         players_closed:
           result.playersClosed,
+
+        standings_updated:
+          result.standingsUpdated,
       },
     });
   } catch (error) {
@@ -3733,12 +3777,14 @@ export const completeMatch = async (req, res) => {
       error.message ===
         "MATCH_START_TIME_MISSING" ||
       error.message ===
-        "INVALID_COMPLETION_TIME"
+        "INVALID_COMPLETION_TIME" ||
+      error.message ===
+        "MATCH_COMPETITION_MISSING"
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "Match timing information is invalid",
+          "Match timing or competition information is invalid",
       });
     }
 

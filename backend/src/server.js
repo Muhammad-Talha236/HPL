@@ -18,6 +18,10 @@ import matchRoutes from "./modules/matches/match.routes.js";
 import matchPlayerRoutes from "./modules/matchPlayers/matchPlayer.routes.js";
 import matchEventRoutes from "./modules/MatchEvent/matchEvent.routes.js";
 import teamPlayerRoutes from "./modules/teamPlayers/teamPlayer.routes.js";
+import userRoutes from "./modules/users/user.routes.js";
+import newsRoutes from "./modules/news/news.routes.js";
+import notificationRoutes from "./modules/notifications/notification.routes.js";
+import standingRoutes from "./modules/standings/standing.routes.js";
 
 import { errorHandler } from "./middleware/auth/error.middleware.js";
 import { ENV } from "./config/env.js";
@@ -101,6 +105,10 @@ app.use(
   matchEventRoutes
 );
 
+app.use("/api/users", userRoutes);
+app.use("/api/news", newsRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/standings", standingRoutes);
 // ======================================================
 // DATABASE TEST ROUTE
 // DEVELOPMENT ONLY
