@@ -47,17 +47,19 @@ export const createMatchEvent = async (req, res) => {
     const teamId = Number(team_id);
     const playerId = Number(player_id);
 
-    const relatedPlayerId =
-      related_player_id !== undefined &&
-      related_player_id !== null
-        ? Number(related_player_id)
-        : null;
-
     const eventMinute = Number(minute);
 
-    // ==================================================
-    // 1. CHECK MATCH
-    // ==================================================
+    const eventExtraTime =
+      extra_time !== undefined &&
+      extra_time !== null
+        ? Number(extra_time)
+        : null;
+
+    /*
+     * --------------------------------------------------
+     * INITIAL MATCH CHECK
+     * --------------------------------------------------
+     */
 
     const match = await prisma.match.findUnique({
       where: {
@@ -82,11 +84,13 @@ export const createMatchEvent = async (req, res) => {
       });
     }
 
-    // ==================================================
-    // 2. MATCH MUST BE LIVE
-    // ==================================================
-
-    if (match.status !== MATCH_STATUS.LIVE) {
+    /*
+     * Events are only allowed during a LIVE match.
+     */
+    if (
+      match.status !==
+      MATCH_STATUS.LIVE
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -94,140 +98,59 @@ export const createMatchEvent = async (req, res) => {
       });
     }
 
-    // ==================================================
-    // 3. MATCH MUST HAVE START TIME
-    // ==================================================
-
+    /*
+     * A LIVE match must always have started_at.
+     */
     if (!match.started_at) {
       return res.status(400).json({
         success: false,
-        message: "Match start time is missing",
-      });
-    }
-
-    // ==================================================
-    // 4. TEAM MUST BE PART OF MATCH
-    // ==================================================
-
-    if (
-      match.home_team_id !== teamId &&
-      match.away_team_id !== teamId
-    ) {
-      return res.status(400).json({
-        success: false,
         message:
-          "This team is not participating in the selected match",
+          "Match start time is missing",
       });
     }
 
-    // ==================================================
-    // 5. CHECK TEAM
-    // ==================================================
-
-    const team = await prisma.team.findUnique({
-      where: {
-        team_id: teamId,
-      },
-
-      select: {
-        team_id: true,
-        name: true,
-        owner_id: true,
-
-        club: {
-          select: {
-            owner_id: true,
-          },
-        },
-      },
-    });
-
-    if (!team) {
-      return res.status(404).json({
-        success: false,
-        message: "Team not found",
-      });
-    }
-
-    // ==================================================
-    // 6. CHECK PLAYER
-    // ==================================================
-
-    const player = await prisma.player.findUnique({
-      where: {
-        player_id: playerId,
-      },
-
-      select: {
-        player_id: true,
-        name: true,
-        status: true,
-      },
-    });
-
-    if (!player) {
-      return res.status(404).json({
-        success: false,
-        message: "Player not found",
-      });
-    }
-
-    if (player.status !== "ACTIVE") {
-      return res.status(400).json({
-        success: false,
-        message: "Player is not active",
-      });
-    }
-
-    // ==================================================
-    // 7. VERIFY USER PERMISSION
-    // ==================================================
-
-    const isSuperAdmin =
-      req.user.role === ROLES.SUPER_ADMIN;
-
-    const isTeamOwner =
-      team.owner_id === req.user.user_id;
-
-    const isClubOwner =
-      team.club.owner_id === req.user.user_id;
-
-    if (
-      !isSuperAdmin &&
-      !isTeamOwner &&
-      !isClubOwner
-    ) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "You do not have permission to manage events for this team",
-      });
-    }
-
-    // ==================================================
-    // 8. SERVER EVENT TIME
-    // ==================================================
+    /*
+     * --------------------------------------------------
+     * MATCH TIME VALIDATION
+     * --------------------------------------------------
+     */
 
     const eventTime = new Date();
-
-    // ==================================================
-    // 9. EVENT MINUTE VALIDATION
-    // ==================================================
 
     const elapsedMilliseconds =
       eventTime.getTime() -
       match.started_at.getTime();
 
-    const elapsedMinutes = Math.max(
-      0,
+    /*
+     * Important:
+     *
+     * Do not silently convert a negative elapsed time
+     * into zero.
+     *
+     * If the server clock says the event is being
+     * created before the match started, reject it.
+     */
+    if (
+      elapsedMilliseconds < 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Event cannot be recorded before the match start time",
+      });
+    }
+
+    const elapsedMinutes =
       Math.floor(
         elapsedMilliseconds /
           (1000 * 60)
-      )
-    );
+      );
 
-    // Allow a small tolerance because the official
-    // may enter an event a little after it happened.
+    /*
+     * Small tolerance is allowed because the event
+     * may reach the server slightly after the actual
+     * football minute.
+     */
     const EVENT_MINUTE_TOLERANCE = 2;
 
     if (
@@ -242,12 +165,13 @@ export const createMatchEvent = async (req, res) => {
       });
     }
 
-    // Extra time should not be used for
-    // an event before the 45th minute.
+    /*
+     * Extra time cannot be supplied before the
+     * normal 45-minute period.
+     */
     if (
-      extra_time !== undefined &&
-      extra_time !== null &&
-      Number(extra_time) > 0 &&
+      eventExtraTime !== null &&
+      eventExtraTime > 0 &&
       eventMinute < 45
     ) {
       return res.status(400).json({
@@ -257,301 +181,690 @@ export const createMatchEvent = async (req, res) => {
       });
     }
 
-    // ==================================================
-    // 10. TRANSACTION
-    // ==================================================
+    /*
+     * --------------------------------------------------
+     * TEAM PARTICIPATION
+     * --------------------------------------------------
+     */
 
-    const result = await prisma.$transaction(
-      async (tx) => {
-        // ------------------------------------------
-        // RE-CHECK MATCH INSIDE TRANSACTION
-        // ------------------------------------------
+    if (
+      match.home_team_id !== teamId &&
+      match.away_team_id !== teamId
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This team is not participating in the selected match",
+      });
+    }
 
-        const currentMatch =
-          await tx.match.findUnique({
-            where: {
-              match_id: matchId,
-            },
+    /*
+     * --------------------------------------------------
+     * TEAM + OWNERSHIP
+     * --------------------------------------------------
+     */
 
+    const team =
+      await prisma.team.findUnique({
+        where: {
+          team_id: teamId,
+        },
+
+        select: {
+          team_id: true,
+          owner_id: true,
+
+          club: {
             select: {
-              match_id: true,
-              status: true,
-              started_at: true,
-              home_team_id: true,
-              away_team_id: true,
-              home_score: true,
-              away_score: true,
+              owner_id: true,
             },
-          });
+          },
+        },
+      });
 
-        if (!currentMatch) {
-          throw new Error("MATCH_NOT_FOUND");
-        }
+    if (!team) {
+      return res.status(404).json({
+        success: false,
+        message: "Team not found",
+      });
+    }
 
-        if (
-          currentMatch.status !==
-          MATCH_STATUS.LIVE
-        ) {
-          throw new Error("MATCH_NOT_LIVE");
-        }
+    const isSuperAdmin =
+      req.user.role ===
+      ROLES.SUPER_ADMIN;
 
-        if (!currentMatch.started_at) {
-          throw new Error(
-            "MATCH_START_TIME_MISSING"
-          );
-        }
+    const isTeamOwner =
+      req.user.role ===
+        ROLES.TEAM_OWNER &&
+      team.owner_id ===
+        req.user.user_id;
 
-        // ------------------------------------------
-        // RE-CHECK EVENT TIMING INSIDE TRANSACTION
-        // ------------------------------------------
+    const isClubOwner =
+      req.user.role ===
+        ROLES.CLUB_OWNER &&
+      team.club.owner_id ===
+        req.user.user_id;
 
-        const transactionElapsedMilliseconds =
-          eventTime.getTime() -
-          currentMatch.started_at.getTime();
+    if (
+      !isSuperAdmin &&
+      !isTeamOwner &&
+      !isClubOwner
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "You do not have permission to create match events for this team",
+      });
+    }
 
-        const transactionElapsedMinutes =
-          Math.max(
-            0,
-            Math.floor(
-              transactionElapsedMilliseconds /
-                (1000 * 60)
-            )
-          );
+    /*
+     * --------------------------------------------------
+     * PLAYER CHECK
+     * --------------------------------------------------
+     */
 
-        if (
-          eventMinute >
-          transactionElapsedMinutes +
-            EVENT_MINUTE_TOLERANCE
-        ) {
-          throw new Error(
-            "EVENT_MINUTE_AHEAD"
-          );
-        }
+    const player =
+      await prisma.player.findUnique({
+        where: {
+          player_id: playerId,
+        },
 
-        // ------------------------------------------
-        // GET LATEST PLAYER STATE
-        // ------------------------------------------
+        select: {
+          player_id: true,
+          name: true,
+          status: true,
+        },
+      });
 
-        const matchPlayer =
-          await tx.matchPlayer.findUnique({
-            where: {
-              match_id_player_id: {
+    if (!player) {
+      return res.status(404).json({
+        success: false,
+        message: "Player not found",
+      });
+    }
+
+    if (
+      player.status !== "ACTIVE"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only active players can be involved in match events",
+      });
+    }
+
+    /*
+     * --------------------------------------------------
+     * RELATED PLAYER VALIDATION
+     * --------------------------------------------------
+     *
+     * related_player_id is only meaningful for
+     * substitutions.
+     */
+
+    if (
+      event_type !==
+        EVENT_TYPES.SUBSTITUTION &&
+      related_player_id !==
+        undefined &&
+      related_player_id !== null
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Related player can only be used for substitutions",
+      });
+    }
+
+    const relatedPlayerId =
+      related_player_id !== undefined &&
+      related_player_id !== null
+        ? Number(related_player_id)
+        : null;
+
+    /*
+     * Substitution requires another player.
+     */
+    if (
+      event_type ===
+        EVENT_TYPES.SUBSTITUTION &&
+      relatedPlayerId === null
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Related player is required for a substitution",
+      });
+    }
+
+    /*
+     * A player cannot substitute themselves.
+     */
+    if (
+      relatedPlayerId !== null &&
+      relatedPlayerId === playerId
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "A player cannot be substituted with themselves",
+      });
+    }
+
+    /*
+     * --------------------------------------------------
+     * TRANSACTION
+     * --------------------------------------------------
+     *
+     * All important match-event state changes happen
+     * inside one transaction.
+     */
+
+    const result =
+      await prisma.$transaction(
+        async (tx) => {
+          /*
+           * ------------------------------------------------
+           * FRESH MATCH STATE
+           * ------------------------------------------------
+           */
+
+          const currentMatch =
+            await tx.match.findUnique({
+              where: {
                 match_id: matchId,
-                player_id: playerId,
               },
-            },
 
-            select: {
-              match_player_id: true,
-              team_id: true,
-              starting_status: true,
-              is_on_field: true,
-              entered_at: true,
-              exited_at: true,
-              minutes_played: true,
-            },
-          });
+              select: {
+                match_id: true,
+                status: true,
+                started_at: true,
+                home_team_id: true,
+                away_team_id: true,
+                home_score: true,
+                away_score: true,
+              },
+            });
 
-        if (!matchPlayer) {
-          throw new Error(
-            "PLAYER_NOT_IN_SQUAD"
-          );
-        }
-
-        if (
-          matchPlayer.team_id !== teamId
-        ) {
-          throw new Error(
-            "PLAYER_WRONG_TEAM"
-          );
-        }
-
-        // ------------------------------------------
-        // NON-SUBSTITUTION EVENTS
-        // ------------------------------------------
-
-        if (
-          event_type !==
-          EVENT_TYPES.SUBSTITUTION
-        ) {
-          if (!matchPlayer.is_on_field) {
+          if (!currentMatch) {
             throw new Error(
-              "PLAYER_NOT_ON_FIELD"
-            );
-          }
-
-          if (!matchPlayer.entered_at) {
-            throw new Error(
-              "PLAYER_ENTRY_TIME_MISSING"
-            );
-          }
-
-          if (matchPlayer.exited_at) {
-            throw new Error(
-              "PLAYER_ALREADY_LEFT"
-            );
-          }
-        }
-
-        // ------------------------------------------
-        // SUBSTITUTION
-        // ------------------------------------------
-
-        let incomingMatchPlayer = null;
-
-        if (
-          event_type ===
-          EVENT_TYPES.SUBSTITUTION
-        ) {
-          if (!relatedPlayerId) {
-            throw new Error(
-              "SUBSTITUTION_INCOMING_REQUIRED"
+              "MATCH_NOT_FOUND"
             );
           }
 
           if (
-            relatedPlayerId === playerId
+            currentMatch.status !==
+            MATCH_STATUS.LIVE
           ) {
             throw new Error(
-              "SUBSTITUTION_PLAYERS_SAME"
+              "MATCH_NOT_LIVE"
             );
           }
 
-          incomingMatchPlayer =
+          if (
+            !currentMatch.started_at
+          ) {
+            throw new Error(
+              "MATCH_START_TIME_MISSING"
+            );
+          }
+
+          /*
+           * Recalculate time inside the transaction.
+           *
+           * This protects against the match state
+           * changing between the initial query and
+           * the transaction.
+           */
+          const transactionEventTime =
+            new Date();
+
+          const transactionElapsed =
+            transactionEventTime.getTime() -
+            currentMatch.started_at.getTime();
+
+          if (
+            transactionElapsed < 0
+          ) {
+            throw new Error(
+              "EVENT_BEFORE_MATCH_START"
+            );
+          }
+
+          const transactionElapsedMinutes =
+            Math.floor(
+              transactionElapsed /
+                (1000 * 60)
+            );
+
+          if (
+            eventMinute >
+            transactionElapsedMinutes +
+              EVENT_MINUTE_TOLERANCE
+          ) {
+            throw new Error(
+              "EVENT_MINUTE_AHEAD"
+            );
+          }
+
+          /*
+           * Re-check team participation.
+           */
+          if (
+            currentMatch.home_team_id !==
+              teamId &&
+            currentMatch.away_team_id !==
+              teamId
+          ) {
+            throw new Error(
+              "TEAM_NOT_IN_MATCH"
+            );
+          }
+
+          /*
+           * ------------------------------------------------
+           * FRESH PLAYER STATE
+           * ------------------------------------------------
+           */
+
+          const matchPlayer =
             await tx.matchPlayer.findUnique({
               where: {
                 match_id_player_id: {
                   match_id: matchId,
-                  player_id:
-                    relatedPlayerId,
+                  player_id: playerId,
                 },
               },
 
               select: {
                 match_player_id: true,
+                match_id: true,
                 team_id: true,
+                player_id: true,
                 starting_status: true,
                 is_on_field: true,
                 entered_at: true,
                 exited_at: true,
-                minutes_played: true,
               },
             });
 
-          if (!incomingMatchPlayer) {
+          if (!matchPlayer) {
             throw new Error(
-              "INCOMING_PLAYER_NOT_IN_SQUAD"
+              "PLAYER_NOT_IN_SQUAD"
             );
           }
 
+          /*
+           * The event player must belong to the
+           * team creating the event.
+           */
           if (
-            incomingMatchPlayer.team_id !==
+            matchPlayer.team_id !==
             teamId
           ) {
             throw new Error(
-              "INCOMING_PLAYER_WRONG_TEAM"
+              "PLAYER_NOT_IN_TEAM"
             );
           }
+
+          /*
+           * ------------------------------------------------
+           * NON-SUBSTITUTION EVENTS
+           * ------------------------------------------------
+           *
+           * Goals/cards require the player to
+           * currently be on the field.
+           */
 
           if (
-            incomingMatchPlayer.starting_status !==
-            "SUBSTITUTE"
+            event_type !==
+            EVENT_TYPES.SUBSTITUTION
           ) {
-            throw new Error(
-              "INCOMING_PLAYER_NOT_SUBSTITUTE"
-            );
+            if (
+              !matchPlayer.is_on_field
+            ) {
+              throw new Error(
+                "PLAYER_NOT_ON_FIELD"
+              );
+            }
+
+            if (
+              !matchPlayer.entered_at
+            ) {
+              throw new Error(
+                "PLAYER_ENTRY_TIME_MISSING"
+              );
+            }
+
+            if (
+              matchPlayer.entered_at <
+              currentMatch.started_at
+            ) {
+              throw new Error(
+                "PLAYER_ENTRY_BEFORE_MATCH"
+              );
+            }
+
+            if (
+              matchPlayer.entered_at >
+              transactionEventTime
+            ) {
+              throw new Error(
+                "PLAYER_ENTRY_IN_FUTURE"
+              );
+            }
           }
+
+          /*
+           * ------------------------------------------------
+           * SUBSTITUTION
+           * ------------------------------------------------
+           */
+
+          let relatedMatchPlayer =
+            null;
 
           if (
-            incomingMatchPlayer.is_on_field
+            event_type ===
+            EVENT_TYPES.SUBSTITUTION
           ) {
-            throw new Error(
-              "INCOMING_PLAYER_ALREADY_ON_FIELD"
-            );
-          }
+            /*
+             * Incoming player.
+             *
+             * In our API:
+             * player_id = incoming player
+             * related_player_id = outgoing player
+             */
 
-          if (
-            incomingMatchPlayer.entered_at
-          ) {
-            throw new Error(
-              "SUBSTITUTE_ALREADY_ENTERED"
-            );
-          }
-
-          if (!matchPlayer.is_on_field) {
-            throw new Error(
-              "OUTGOING_PLAYER_NOT_ON_FIELD"
-            );
-          }
-
-          if (!matchPlayer.entered_at) {
-            throw new Error(
-              "OUTGOING_PLAYER_ENTRY_TIME_MISSING"
-            );
-          }
-
-          if (matchPlayer.exited_at) {
-            throw new Error(
-              "OUTGOING_PLAYER_ALREADY_LEFT"
-            );
-          }
-        }
-
-        // ------------------------------------------
-        // RELATED PLAYER VALIDATION
-        // ------------------------------------------
-
-        if (
-          event_type !==
-            EVENT_TYPES.SUBSTITUTION &&
-          relatedPlayerId !== null
-        ) {
-          throw new Error(
-            "RELATED_PLAYER_NOT_ALLOWED"
-          );
-        }
-
-        // ------------------------------------------
-        // CREATE EVENT
-        // ------------------------------------------
-
-        const event =
-          await tx.matchEvent.create({
-            data: {
-              match_id: matchId,
-              team_id: teamId,
-              player_id: playerId,
-              related_player_id:
-                relatedPlayerId,
-              event_type,
-              minute: eventMinute,
-              extra_time:
-                extra_time !== undefined &&
-                extra_time !== null
-                  ? Number(extra_time)
-                  : null,
-              description:
-                description?.trim() || null,
-            },
-          });
-
-        let updatedMatch = null;
-
-        // ==========================================
-        // GOAL → UPDATE SCORE
-        // ==========================================
-
-        if (
-          event_type === EVENT_TYPES.GOAL
-        ) {
-          if (
-            teamId ===
-            currentMatch.home_team_id
-          ) {
-            updatedMatch =
-              await tx.match.update({
+            relatedMatchPlayer =
+              await tx.matchPlayer.findUnique({
                 where: {
-                  match_id: matchId,
+                  match_id_player_id: {
+                    match_id:
+                      matchId,
+                    player_id:
+                      relatedPlayerId,
+                  },
+                },
+
+                select: {
+                  match_player_id: true,
+                  match_id: true,
+                  team_id: true,
+                  player_id: true,
+                  starting_status: true,
+                  is_on_field: true,
+                  entered_at: true,
+                  exited_at: true,
+                },
+              });
+
+            if (
+              !relatedMatchPlayer
+            ) {
+              throw new Error(
+                "RELATED_PLAYER_NOT_IN_SQUAD"
+              );
+            }
+
+            /*
+             * Both players must belong to
+             * the same team.
+             */
+            if (
+              matchPlayer.team_id !==
+                teamId ||
+              relatedMatchPlayer.team_id !==
+                teamId
+            ) {
+              throw new Error(
+                "SUBSTITUTION_TEAM_MISMATCH"
+              );
+            }
+
+            /*
+             * Incoming player must be a substitute.
+             */
+            if (
+              matchPlayer.starting_status !==
+              "SUBSTITUTE"
+            ) {
+              throw new Error(
+                "INCOMING_PLAYER_NOT_SUBSTITUTE"
+              );
+            }
+
+            /*
+             * Incoming player must not already
+             * be on the field.
+             */
+            if (
+              matchPlayer.is_on_field
+            ) {
+              throw new Error(
+                "INCOMING_PLAYER_ALREADY_ON_FIELD"
+              );
+            }
+
+            if (
+              matchPlayer.entered_at
+            ) {
+              throw new Error(
+                "INCOMING_PLAYER_ALREADY_ENTERED"
+              );
+            }
+
+            /*
+             * Outgoing player must currently
+             * be on the field.
+             */
+            if (
+              !relatedMatchPlayer.is_on_field
+            ) {
+              throw new Error(
+                "OUTGOING_PLAYER_NOT_ON_FIELD"
+              );
+            }
+
+            if (
+              !relatedMatchPlayer.entered_at
+            ) {
+              throw new Error(
+                "OUTGOING_PLAYER_ENTRY_TIME_MISSING"
+              );
+            }
+
+            if (
+              relatedMatchPlayer.entered_at <
+              currentMatch.started_at
+            ) {
+              throw new Error(
+                "OUTGOING_PLAYER_ENTRY_BEFORE_MATCH"
+              );
+            }
+
+            if (
+              relatedMatchPlayer.entered_at >
+              transactionEventTime
+            ) {
+              throw new Error(
+                "OUTGOING_PLAYER_ENTRY_IN_FUTURE"
+              );
+            }
+
+            /*
+             * Outgoing player must not already
+             * have an exit time.
+             */
+            if (
+              relatedMatchPlayer.exited_at
+            ) {
+              throw new Error(
+                "OUTGOING_PLAYER_ALREADY_EXITED"
+              );
+            }
+
+            /*
+             * Close the outgoing player.
+             */
+            const outgoingUpdate =
+              await tx.matchPlayer.updateMany({
+                where: {
+                  match_player_id:
+                    relatedMatchPlayer.match_player_id,
+
+                  is_on_field: true,
+
+                  exited_at: null,
+                },
+
+                data: {
+                  is_on_field:
+                    false,
+
+                  exited_at:
+                    transactionEventTime,
+
+                  minutes_played:
+                    Math.max(
+                      0,
+                      Math.floor(
+                        (
+                          transactionEventTime.getTime() -
+                          relatedMatchPlayer
+                            .entered_at
+                            .getTime()
+                        ) /
+                          (1000 * 60)
+                      )
+                    ),
+                },
+              });
+
+            if (
+              outgoingUpdate.count !==
+              1
+            ) {
+              throw new Error(
+                "OUTGOING_PLAYER_STATE_CHANGED"
+              );
+            }
+
+            /*
+             * Put incoming player on the field.
+             */
+            const incomingUpdate =
+              await tx.matchPlayer.updateMany({
+                where: {
+                  match_player_id:
+                    matchPlayer.match_player_id,
+
+                  starting_status:
+                    "SUBSTITUTE",
+
+                  is_on_field: false,
+
+                  entered_at: null,
+                },
+
+                data: {
+                  is_on_field:
+                    true,
+
+                  entered_at:
+                    transactionEventTime,
+
+                  exited_at: null,
+
+                  minutes_played: 0,
+                },
+              });
+
+            if (
+              incomingUpdate.count !==
+              1
+            ) {
+              throw new Error(
+                "INCOMING_PLAYER_STATE_CHANGED"
+              );
+            }
+          }
+
+          /*
+           * ------------------------------------------------
+           * CREATE EVENT
+           * ------------------------------------------------
+           */
+
+          const createdEvent =
+            await tx.matchEvent.create({
+              data: {
+                match_id:
+                  matchId,
+
+                team_id:
+                  teamId,
+
+                player_id:
+                  playerId,
+
+                related_player_id:
+                  relatedPlayerId,
+
+                event_type:
+                  event_type,
+
+                minute:
+                  eventMinute,
+
+                extra_time:
+                  eventExtraTime,
+
+                description:
+                  description !==
+                  undefined
+                    ? description
+                    : null,
+              },
+
+              select: {
+                event_id: true,
+                match_id: true,
+                team_id: true,
+                player_id: true,
+                related_player_id: true,
+                event_type: true,
+                minute: true,
+                extra_time: true,
+                description: true,
+                created_at: true,
+              },
+            });
+
+          /*
+           * ------------------------------------------------
+           * GOAL SCORE UPDATE
+           * ------------------------------------------------
+           *
+           * Score is controlled by the server.
+           * Client never sends the new score.
+           */
+
+          if (
+            event_type ===
+            EVENT_TYPES.GOAL
+          ) {
+            if (
+              teamId ===
+              currentMatch.home_team_id
+            ) {
+              await tx.match.updateMany({
+                where: {
+                  match_id:
+                    matchId,
+
+                  status:
+                    MATCH_STATUS.LIVE,
                 },
 
                 data: {
@@ -559,19 +872,18 @@ export const createMatchEvent = async (req, res) => {
                     increment: 1,
                   },
                 },
-
-                select: {
-                  match_id: true,
-                  home_score: true,
-                  away_score: true,
-                  status: true,
-                },
               });
-          } else {
-            updatedMatch =
-              await tx.match.update({
+            } else if (
+              teamId ===
+              currentMatch.away_team_id
+            ) {
+              await tx.match.updateMany({
                 where: {
-                  match_id: matchId,
+                  match_id:
+                    matchId,
+
+                  status:
+                    MATCH_STATUS.LIVE,
                 },
 
                 data: {
@@ -579,148 +891,107 @@ export const createMatchEvent = async (req, res) => {
                     increment: 1,
                   },
                 },
+              });
+            } else {
+              throw new Error(
+                "TEAM_NOT_IN_MATCH"
+              );
+            }
+          }
 
-                select: {
-                  match_id: true,
-                  home_score: true,
-                  away_score: true,
-                  status: true,
+          /*
+           * ------------------------------------------------
+           * RED CARD
+           * ------------------------------------------------
+           *
+           * A red-carded player leaves the field.
+           */
+
+          if (
+            event_type ===
+            EVENT_TYPES.RED_CARD
+          ) {
+            const redCardUpdate =
+              await tx.matchPlayer.updateMany({
+                where: {
+                  match_player_id:
+                    matchPlayer.match_player_id,
+
+                  is_on_field: true,
+
+                  exited_at: null,
+                },
+
+                data: {
+                  is_on_field:
+                    false,
+
+                  exited_at:
+                    transactionEventTime,
+
+                  minutes_played:
+                    Math.max(
+                      0,
+                      Math.floor(
+                        (
+                          transactionEventTime.getTime() -
+                          matchPlayer
+                            .entered_at
+                            .getTime()
+                        ) /
+                          (1000 * 60)
+                      )
+                    ),
                 },
               });
+
+            if (
+              redCardUpdate.count !==
+              1
+            ) {
+              throw new Error(
+                "RED_CARD_PLAYER_STATE_CHANGED"
+              );
+            }
           }
-        }
 
-        // ==========================================
-        // RED CARD → PLAYER LEAVES FIELD
-        // ==========================================
+          /*
+           * ------------------------------------------------
+           * FINAL MATCH STATE
+           * ------------------------------------------------
+           */
 
-        if (
-          event_type ===
-          EVENT_TYPES.RED_CARD
-        ) {
-          const millisecondsPlayed =
-            eventTime.getTime() -
-            matchPlayer.entered_at.getTime();
-
-          const minutesPlayed =
-            Math.max(
-              0,
-              Math.floor(
-                millisecondsPlayed /
-                  (1000 * 60)
-              )
-            );
-
-          const playerUpdate =
-            await tx.matchPlayer.updateMany({
+          const finalMatch =
+            await tx.match.findUnique({
               where: {
-                match_player_id:
-                  matchPlayer.match_player_id,
-                is_on_field: true,
-                exited_at: null,
+                match_id:
+                  matchId,
               },
 
-              data: {
-                is_on_field: false,
-                exited_at: eventTime,
-                minutes_played:
-                  minutesPlayed,
+              select: {
+                match_id: true,
+                status: true,
+                home_score: true,
+                away_score: true,
+                started_at: true,
               },
             });
 
-          if (playerUpdate.count !== 1) {
-            throw new Error(
-              "PLAYER_STATE_CHANGED"
-            );
-          }
+          return {
+            event:
+              createdEvent,
+
+            match:
+              finalMatch,
+          };
         }
+      );
 
-        // ==========================================
-        // SUBSTITUTION
-        // ==========================================
-
-        if (
-          event_type ===
-          EVENT_TYPES.SUBSTITUTION
-        ) {
-          const millisecondsPlayed =
-            eventTime.getTime() -
-            matchPlayer.entered_at.getTime();
-
-          const minutesPlayed =
-            Math.max(
-              0,
-              Math.floor(
-                millisecondsPlayed /
-                  (1000 * 60)
-              )
-            );
-
-          // ----------------------------------------
-          // OUTGOING PLAYER
-          // ----------------------------------------
-
-          const outgoingUpdate =
-            await tx.matchPlayer.updateMany({
-              where: {
-                match_player_id:
-                  matchPlayer.match_player_id,
-                is_on_field: true,
-                exited_at: null,
-              },
-
-              data: {
-                is_on_field: false,
-                exited_at: eventTime,
-                minutes_played:
-                  minutesPlayed,
-              },
-            });
-
-          if (outgoingUpdate.count !== 1) {
-            throw new Error(
-              "PLAYER_STATE_CHANGED"
-            );
-          }
-
-          // ----------------------------------------
-          // INCOMING PLAYER
-          // ----------------------------------------
-
-          const incomingUpdate =
-            await tx.matchPlayer.updateMany({
-              where: {
-                match_player_id:
-                  incomingMatchPlayer.match_player_id,
-                is_on_field: false,
-                entered_at: null,
-              },
-
-              data: {
-                is_on_field: true,
-                entered_at: eventTime,
-                exited_at: null,
-                minutes_played: 0,
-              },
-            });
-
-          if (incomingUpdate.count !== 1) {
-            throw new Error(
-              "INCOMING_PLAYER_STATE_CHANGED"
-            );
-          }
-        }
-
-        return {
-          event,
-          updatedMatch,
-        };
-      }
-    );
-
-    // ==================================================
-    // 11. AUDIT LOG
-    // ==================================================
+    /*
+     * --------------------------------------------------
+     * AUDIT LOG
+     * --------------------------------------------------
+     */
 
     await createAuditLog({
       actor_user_id:
@@ -736,21 +1007,34 @@ export const createMatchEvent = async (req, res) => {
         result.event.event_id,
 
       details: {
-        match_id: matchId,
-        team_id: teamId,
-        player_id: playerId,
+        match_id:
+          result.event.match_id,
+
+        team_id:
+          result.event.team_id,
+
+        player_id:
+          result.event.player_id,
+
         related_player_id:
-          relatedPlayerId,
-        event_type,
-        minute: eventMinute,
-        event_time:
-          eventTime.toISOString(),
+          result.event.related_player_id,
+
+        event_type:
+          result.event.event_type,
+
+        minute:
+          result.event.minute,
+
+        extra_time:
+          result.event.extra_time,
+
+        home_score:
+          result.match.home_score,
+
+        away_score:
+          result.match.away_score,
       },
     });
-
-    // ==================================================
-    // 12. RESPONSE
-    // ==================================================
 
     return res.status(201).json({
       success: true,
@@ -759,173 +1043,288 @@ export const createMatchEvent = async (req, res) => {
         "Match event created successfully",
 
       data: {
-        event: result.event,
+        event:
+          result.event,
 
-        score:
-          result.updatedMatch
-            ? {
-                home_score:
-                  result.updatedMatch
-                    .home_score,
+        match: {
+          match_id:
+            result.match.match_id,
 
-                away_score:
-                  result.updatedMatch
-                    .away_score,
-              }
-            : {
-                home_score:
-                  match.home_score,
+          status:
+            result.match.status,
 
-                away_score:
-                  match.away_score,
-              },
+          home_score:
+            result.match.home_score,
+
+          away_score:
+            result.match.away_score,
+
+          started_at:
+            result.match.started_at,
+        },
       },
     });
   } catch (error) {
-    // ==================================================
-    // EXPECTED STATE ERRORS
-    // ==================================================
+    /*
+     * --------------------------------------------------
+     * EXPECTED ERRORS
+     * --------------------------------------------------
+     */
 
-    const stateErrors = {
-      MATCH_NOT_FOUND: {
-        status: 404,
-        message: "Match not found",
-      },
-
-      MATCH_NOT_LIVE: {
-        status: 400,
+    if (
+      error.message ===
+      "MATCH_NOT_FOUND"
+    ) {
+      return res.status(404).json({
+        success: false,
         message:
-          "Match events can only be created while the match is live",
-      },
+          "Match not found",
+      });
+    }
 
-      MATCH_START_TIME_MISSING: {
-        status: 400,
+    if (
+      error.message ===
+      "MATCH_NOT_LIVE"
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Match is no longer live",
+      });
+    }
+
+    if (
+      error.message ===
+      "MATCH_START_TIME_MISSING"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
           "Match start time is missing",
-      },
+      });
+    }
 
-      EVENT_MINUTE_AHEAD: {
-        status: 400,
+    if (
+      error.message ===
+      "EVENT_BEFORE_MATCH_START"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Event cannot be recorded before the match start time",
+      });
+    }
+
+    if (
+      error.message ===
+      "EVENT_MINUTE_AHEAD"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
           "Event minute cannot be ahead of the current match time",
-      },
+      });
+    }
 
-      PLAYER_NOT_IN_SQUAD: {
-        status: 400,
+    if (
+      error.message ===
+      "TEAM_NOT_IN_MATCH"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
-          "Player is not selected for this match",
-      },
+          "This team is not participating in the selected match",
+      });
+    }
 
-      PLAYER_WRONG_TEAM: {
-        status: 400,
+    if (
+      error.message ===
+      "PLAYER_NOT_IN_SQUAD"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
-          "Player does not belong to the selected match team",
-      },
+          "Player is not included in this match squad",
+      });
+    }
 
-      PLAYER_NOT_ON_FIELD: {
-        status: 400,
+    if (
+      error.message ===
+      "PLAYER_NOT_IN_TEAM"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
-          "This player is not currently on the field",
-      },
+          "Player does not belong to the selected team in this match",
+      });
+    }
 
-      PLAYER_ENTRY_TIME_MISSING: {
-        status: 400,
+    if (
+      error.message ===
+      "PLAYER_NOT_ON_FIELD"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Player must currently be on the field for this event",
+      });
+    }
+
+    if (
+      error.message ===
+      "PLAYER_ENTRY_TIME_MISSING"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
           "Player entry time is missing",
-      },
+      });
+    }
 
-      PLAYER_ALREADY_LEFT: {
-        status: 400,
+    if (
+      error.message ===
+      "PLAYER_ENTRY_BEFORE_MATCH"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
-          "This player has already left the field",
-      },
+          "Player entry time cannot be before the match started",
+      });
+    }
 
-      SUBSTITUTION_INCOMING_REQUIRED: {
-        status: 400,
+    if (
+      error.message ===
+      "PLAYER_ENTRY_IN_FUTURE"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
-          "A substitution requires a player coming into the match",
-      },
+          "Player entry time cannot be in the future",
+      });
+    }
 
-      SUBSTITUTION_PLAYERS_SAME: {
-        status: 400,
+    if (
+      error.message ===
+      "RELATED_PLAYER_NOT_IN_SQUAD"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
-          "Substitution players must be different",
-      },
+          "Related player is not included in this match squad",
+      });
+    }
 
-      INCOMING_PLAYER_NOT_IN_SQUAD: {
-        status: 400,
+    if (
+      error.message ===
+      "SUBSTITUTION_TEAM_MISMATCH"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
-          "Incoming player is not selected for this match",
-      },
+          "Both substitution players must belong to the same team",
+      });
+    }
 
-      INCOMING_PLAYER_WRONG_TEAM: {
-        status: 400,
-        message:
-          "Incoming player does not belong to this team",
-      },
-
-      INCOMING_PLAYER_NOT_SUBSTITUTE: {
-        status: 400,
+    if (
+      error.message ===
+      "INCOMING_PLAYER_NOT_SUBSTITUTE"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
           "Incoming player must be a substitute",
-      },
+      });
+    }
 
-      INCOMING_PLAYER_ALREADY_ON_FIELD: {
-        status: 400,
+    if (
+      error.message ===
+      "INCOMING_PLAYER_ALREADY_ON_FIELD"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
           "Incoming player is already on the field",
-      },
+      });
+    }
 
-      SUBSTITUTE_ALREADY_ENTERED: {
-        status: 400,
+    if (
+      error.message ===
+      "INCOMING_PLAYER_ALREADY_ENTERED"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
-          "This substitute has already entered the match",
-      },
+          "Incoming player has already entered the match",
+      });
+    }
 
-      OUTGOING_PLAYER_NOT_ON_FIELD: {
-        status: 400,
+    if (
+      error.message ===
+      "OUTGOING_PLAYER_NOT_ON_FIELD"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
-          "Outgoing player is not currently on the field",
-      },
+          "Outgoing player must currently be on the field",
+      });
+    }
 
-      OUTGOING_PLAYER_ENTRY_TIME_MISSING: {
-        status: 400,
+    if (
+      error.message ===
+      "OUTGOING_PLAYER_ENTRY_TIME_MISSING"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
-          "Outgoing player's entry time is missing",
-      },
+          "Outgoing player entry time is missing",
+      });
+    }
 
-      OUTGOING_PLAYER_ALREADY_LEFT: {
-        status: 400,
+    if (
+      error.message ===
+      "OUTGOING_PLAYER_ENTRY_BEFORE_MATCH"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Outgoing player entry time cannot be before the match started",
+      });
+    }
+
+    if (
+      error.message ===
+      "OUTGOING_PLAYER_ENTRY_IN_FUTURE"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Outgoing player entry time cannot be in the future",
+      });
+    }
+
+    if (
+      error.message ===
+      "OUTGOING_PLAYER_ALREADY_EXITED"
+    ) {
+      return res.status(400).json({
+        success: false,
         message:
           "Outgoing player has already left the field",
-      },
+      });
+    }
 
-      RELATED_PLAYER_NOT_ALLOWED: {
-        status: 400,
-        message:
-          "Related player can only be used for substitutions",
-      },
-
-      PLAYER_STATE_CHANGED: {
-        status: 409,
-        message:
-          "Player state changed while processing the event. Please try again.",
-      },
-
-      INCOMING_PLAYER_STATE_CHANGED: {
-        status: 409,
-        message:
-          "Incoming player state changed while processing the substitution. Please try again.",
-      },
-    };
-
-    const expectedError =
-      stateErrors[error.message];
-
-    if (expectedError) {
-      return res.status(expectedError.status).json({
+    if (
+      error.message ===
+      "OUTGOING_PLAYER_STATE_CHANGED" ||
+      error.message ===
+      "INCOMING_PLAYER_STATE_CHANGED" ||
+      error.message ===
+      "RED_CARD_PLAYER_STATE_CHANGED"
+    ) {
+      return res.status(409).json({
         success: false,
-        message: expectedError.message,
+        message:
+          "Player state changed while processing the event. Please refresh the match and try again",
       });
     }
 
@@ -937,7 +1336,7 @@ export const createMatchEvent = async (req, res) => {
     return res.status(500).json({
       success: false,
       message:
-        "Something went wrong while creating the match event",
+        "Failed to create match event",
     });
   }
 };
@@ -951,11 +1350,26 @@ export const getMatchEvents = async (
   res
 ) => {
   try {
+    // ==================================================
+    // 1. VALIDATE MATCH ID
+    // ==================================================
+
     const matchId =
       Number(req.params.match_id);
 
+    if (
+      !Number.isInteger(matchId) ||
+      matchId < 1
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Match ID must be a positive integer",
+      });
+    }
+
     // ==================================================
-    // 1. CHECK MATCH
+    // 2. CHECK MATCH
     // ==================================================
 
     const match =
@@ -967,8 +1381,10 @@ export const getMatchEvents = async (
         select: {
           match_id: true,
           status: true,
+
           home_team_id: true,
           away_team_id: true,
+
           home_score: true,
           away_score: true,
 
@@ -993,12 +1409,13 @@ export const getMatchEvents = async (
     if (!match) {
       return res.status(404).json({
         success: false,
-        message: "Match not found",
+        message:
+          "Match not found",
       });
     }
 
     // ==================================================
-    // 2. GET MATCH EVENTS
+    // 3. GET MATCH EVENTS
     // ==================================================
 
     const events =
@@ -1017,12 +1434,31 @@ export const getMatchEvents = async (
           {
             created_at: "asc",
           },
+          {
+            event_id: "asc",
+          },
         ],
 
-        include: {
-          // --------------------------------------------
-          // TEAM
-          // --------------------------------------------
+        select: {
+          event_id: true,
+
+          team_id: true,
+
+          player_id: true,
+          related_player_id: true,
+
+          event_type: true,
+
+          minute: true,
+          extra_time: true,
+
+          description: true,
+
+          created_at: true,
+
+          // ==================================================
+          // EVENT TEAM
+          // ==================================================
 
           team: {
             select: {
@@ -1032,9 +1468,9 @@ export const getMatchEvents = async (
             },
           },
 
-          // --------------------------------------------
+          // ==================================================
           // MAIN PLAYER
-          // --------------------------------------------
+          // ==================================================
 
           player: {
             select: {
@@ -1045,10 +1481,10 @@ export const getMatchEvents = async (
             },
           },
 
-          // --------------------------------------------
+          // ==================================================
           // RELATED PLAYER
-          // Used mainly for substitutions
-          // --------------------------------------------
+          // Mainly used for substitutions
+          // ==================================================
 
           related_player: {
             select: {
@@ -1062,7 +1498,7 @@ export const getMatchEvents = async (
       });
 
     // ==================================================
-    // 3. FORMAT EVENTS FOR FRONTEND
+    // 4. FORMAT EVENTS
     // ==================================================
 
     const formattedEvents =
@@ -1118,20 +1554,22 @@ export const getMatchEvents = async (
                     .player_id,
 
                 name:
-                  event.related_player.name,
+                  event.related_player
+                    .name,
 
                 profile_photo:
                   event.related_player
                     .profile_photo,
 
                 position:
-                  event.related_player.position,
+                  event.related_player
+                    .position,
               }
             : null,
       }));
 
     // ==================================================
-    // 4. RESPONSE
+    // 5. RESPONSE
     // ==================================================
 
     return res.status(200).json({
@@ -1191,11 +1629,26 @@ export const getMatchEventById = async (
   res
 ) => {
   try {
+    // ==================================================
+    // 1. VALIDATE EVENT ID
+    // ==================================================
+
     const eventId =
       Number(req.params.event_id);
 
+    if (
+      !Number.isInteger(eventId) ||
+      eventId < 1
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Event ID must be a positive integer",
+      });
+    }
+
     // ==================================================
-    // 1. GET EVENT
+    // 2. GET EVENT
     // ==================================================
 
     const event =
@@ -1204,17 +1657,41 @@ export const getMatchEventById = async (
           event_id: eventId,
         },
 
-        include: {
-          // --------------------------------------------
+        select: {
+          // ==================================================
+          // EVENT INFORMATION
+          // ==================================================
+
+          event_id: true,
+
+          team_id: true,
+
+          player_id: true,
+          related_player_id: true,
+
+          event_type: true,
+
+          minute: true,
+          extra_time: true,
+
+          description: true,
+
+          created_at: true,
+
+          // ==================================================
           // MATCH
-          // --------------------------------------------
+          // ==================================================
 
           match: {
             select: {
               match_id: true,
+
               match_date: true,
               start_time: true,
+              started_at: true,
+
               status: true,
+
               home_score: true,
               away_score: true,
 
@@ -1236,9 +1713,9 @@ export const getMatchEventById = async (
             },
           },
 
-          // --------------------------------------------
+          // ==================================================
           // EVENT TEAM
-          // --------------------------------------------
+          // ==================================================
 
           team: {
             select: {
@@ -1248,9 +1725,9 @@ export const getMatchEventById = async (
             },
           },
 
-          // --------------------------------------------
+          // ==================================================
           // MAIN PLAYER
-          // --------------------------------------------
+          // ==================================================
 
           player: {
             select: {
@@ -1261,10 +1738,10 @@ export const getMatchEventById = async (
             },
           },
 
-          // --------------------------------------------
+          // ==================================================
           // RELATED PLAYER
           // Mainly used for substitutions
-          // --------------------------------------------
+          // ==================================================
 
           related_player: {
             select: {
@@ -1278,7 +1755,7 @@ export const getMatchEventById = async (
       });
 
     // ==================================================
-    // 2. EVENT NOT FOUND
+    // 3. EVENT NOT FOUND
     // ==================================================
 
     if (!event) {
@@ -1290,7 +1767,7 @@ export const getMatchEventById = async (
     }
 
     // ==================================================
-    // 3. RESPONSE
+    // 4. RESPONSE
     // ==================================================
 
     return res.status(200).json({
@@ -1346,65 +1823,50 @@ export const getMatchEventById = async (
 // UPDATE MATCH EVENT
 // ==================================================
 
-export const updateMatchEvent = async (
-  req,
-  res
-) => {
+export const updateMatchEvent = async (req, res) => {
   try {
-    const eventId =
-      Number(req.params.event_id);
-
+    const eventId = Number(req.params.event_id);
     const { description } = req.body;
 
-    // ==================================================
-    // 1. FIND EVENT
-    // ==================================================
+    const event = await prisma.matchEvent.findUnique({
+      where: {
+        event_id: eventId,
+      },
+      select: {
+        event_id: true,
+        match_id: true,
+        description: true,
 
-    const event =
-      await prisma.matchEvent.findUnique({
-        where: {
-          event_id: eventId,
+        match: {
+          select: {
+            match_id: true,
+            status: true,
+          },
         },
 
-        include: {
-          match: {
-            select: {
-              match_id: true,
-              status: true,
-            },
-          },
+        team: {
+          select: {
+            team_id: true,
+            owner_id: true,
 
-          team: {
-            select: {
-              team_id: true,
-              owner_id: true,
-
-              club: {
-                select: {
-                  owner_id: true,
-                },
+            club: {
+              select: {
+                owner_id: true,
               },
             },
           },
         },
-      });
+      },
+    });
 
     if (!event) {
       return res.status(404).json({
         success: false,
-        message:
-          "Match event not found",
+        message: "Match event not found",
       });
     }
 
-    // ==================================================
-    // 2. MATCH MUST BE LIVE
-    // ==================================================
-
-    if (
-      event.match.status !==
-      MATCH_STATUS.LIVE
-    ) {
+    if (event.match.status !== MATCH_STATUS.LIVE) {
       return res.status(400).json({
         success: false,
         message:
@@ -1412,25 +1874,16 @@ export const updateMatchEvent = async (
       });
     }
 
-    // ==================================================
-    // 3. AUTHORIZATION
-    // ==================================================
-
     const isSuperAdmin =
-      req.user.role ===
-      ROLES.SUPER_ADMIN;
+      req.user.role === ROLES.SUPER_ADMIN;
 
     const isTeamOwner =
-      req.user.role ===
-        ROLES.TEAM_OWNER &&
-      event.team.owner_id ===
-        req.user.user_id;
+      req.user.role === ROLES.TEAM_OWNER &&
+      event.team.owner_id === req.user.user_id;
 
     const isClubOwner =
-      req.user.role ===
-        ROLES.CLUB_OWNER &&
-      event.team.club.owner_id ===
-        req.user.user_id;
+      req.user.role === ROLES.CLUB_OWNER &&
+      event.team.club.owner_id === req.user.user_id;
 
     if (
       !isSuperAdmin &&
@@ -1444,27 +1897,106 @@ export const updateMatchEvent = async (
       });
     }
 
-    // ==================================================
-    // 4. UPDATE ONLY DESCRIPTION
-    // ==================================================
+    const updatedEvent = await prisma.$transaction(
+      async (tx) => {
+        /*
+         * Re-check the match state inside the transaction.
+         *
+         * This protects against a race condition where:
+         *
+         * Request A:
+         *   checks match = LIVE
+         *
+         * Request B:
+         *   completes the match
+         *
+         * Request A:
+         *   tries to update the event
+         *
+         * The second check prevents Request A from
+         * modifying an event after the match is completed.
+         */
+        const currentEvent =
+          await tx.matchEvent.findUnique({
+            where: {
+              event_id: eventId,
+            },
+            select: {
+              event_id: true,
+              match_id: true,
+              description: true,
+              match: {
+                select: {
+                  status: true,
+                },
+              },
+            },
+          });
 
-    const updatedEvent =
-      await prisma.matchEvent.update({
-        where: {
-          event_id: eventId,
-        },
+        if (!currentEvent) {
+          throw new Error(
+            "EVENT_NOT_FOUND"
+          );
+        }
 
-        data: {
-          description:
-            description !== undefined
-              ? description
-              : event.description,
-        },
-      });
+        if (
+          currentEvent.match.status !==
+          MATCH_STATUS.LIVE
+        ) {
+          throw new Error(
+            "MATCH_NOT_LIVE"
+          );
+        }
 
-    // ==================================================
-    // 5. AUDIT LOG
-    // ==================================================
+        const updateResult =
+          await tx.matchEvent.updateMany({
+            where: {
+              event_id: eventId,
+
+              /*
+               * Extra protection:
+               * update only if the event still belongs
+               * to a currently LIVE match.
+               */
+              match: {
+                status: MATCH_STATUS.LIVE,
+              },
+            },
+
+            data: {
+              description:
+                description !== undefined
+                  ? description
+                  : currentEvent.description,
+            },
+          });
+
+        if (updateResult.count !== 1) {
+          throw new Error(
+            "EVENT_UPDATE_CONFLICT"
+          );
+        }
+
+        return await tx.matchEvent.findUnique({
+          where: {
+            event_id: eventId,
+          },
+          select: {
+            event_id: true,
+            match_id: true,
+            team_id: true,
+            player_id: true,
+            related_player_id: true,
+            event_type: true,
+            minute: true,
+            extra_time: true,
+            description: true,
+            created_at: true,
+            updated_at: true,
+          },
+        });
+      }
+    );
 
     await createAuditLog({
       actor_user_id:
@@ -1494,10 +2026,6 @@ export const updateMatchEvent = async (
       },
     });
 
-    // ==================================================
-    // 6. RESPONSE
-    // ==================================================
-
     return res.status(200).json({
       success: true,
 
@@ -1505,11 +2033,33 @@ export const updateMatchEvent = async (
         "Match event updated successfully",
 
       data: {
-        event:
-          updatedEvent,
+        event: updatedEvent,
       },
     });
   } catch (error) {
+    if (
+      error.message ===
+      "EVENT_NOT_FOUND"
+    ) {
+      return res.status(404).json({
+        success: false,
+        message: "Match event not found",
+      });
+    }
+
+    if (
+      error.message ===
+        "MATCH_NOT_LIVE" ||
+      error.message ===
+        "EVENT_UPDATE_CONFLICT"
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Match event could not be updated because the match state changed",
+      });
+    }
+
     console.error(
       "Update match event error:",
       error
