@@ -11,10 +11,10 @@ import useAuth from "../../hooks/useAuth";
 
 const navItems = [
   { label: "HOME", path: "/" },
-  { label: "TEAMS", path: "/teams" },
-  { label: "COMPETITIONS", path: "/competitions" },
-  { label: "MATCHES", path: "/matches" },
-  { label: "NEWS", path: "/news" },
+  { label: "RESULTS", href: "/#recent-results" },
+  { label: "FIXTURES", href: "/#upcoming-matches" },
+  { label: "STANDINGS", href: "/#league-standings" },
+  { label: "NEWS", href: "/#latest-news" },
 ];
 
 const formatRole = (role) => {
@@ -129,6 +129,9 @@ const Navbar = () => {
         : "text-white/75 after:w-0 hover:text-white hover:after:w-full",
     ].join(" ");
 
+  const anchorLinkClasses =
+    "relative text-sm font-semibold tracking-wide text-white/75 transition-colors duration-200 after:absolute after:-bottom-2 after:left-0 after:h-[2px] after:w-0 after:bg-[#FF553D] after:transition-all after:duration-200 hover:text-white hover:after:w-full";
+
   return (
     <header
       className={`
@@ -157,13 +160,15 @@ const Navbar = () => {
         {/* Desktop Navigation */}
         <div className="hidden items-center gap-8 lg:flex">
           {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={getNavLinkClasses}
-            >
-              {item.label}
-            </NavLink>
+            item.href ? (
+              <a key={item.href} href={item.href} className={anchorLinkClasses}>
+                {item.label}
+              </a>
+            ) : (
+              <NavLink key={item.path} to={item.path} className={getNavLinkClasses}>
+                {item.label}
+              </NavLink>
+            )
           ))}
         </div>
 
@@ -405,24 +410,29 @@ const Navbar = () => {
           {/* Mobile Navigation Links */}
           <div className="flex flex-col">
             {navItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={closeMobileMenu}
-                className={({ isActive }) =>
-                  [
-                    "border-b border-white/10 py-4",
-                    "text-sm font-semibold tracking-wide",
-                    "transition-colors duration-200",
-
-                    isActive
-                      ? "text-[#FF553D]"
-                      : "text-white/75 hover:text-white",
-                  ].join(" ")
-                }
-              >
-                {item.label}
-              </NavLink>
+              item.href ? (
+                <a key={item.href} href={item.href} onClick={closeMobileMenu} className="border-b border-white/10 py-4 text-sm font-semibold tracking-wide text-white/75 transition-colors duration-200 hover:text-white">
+                  {item.label}
+                </a>
+              ) : (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={closeMobileMenu}
+                  className={({ isActive }) =>
+                    [
+                      "border-b border-white/10 py-4",
+                      "text-sm font-semibold tracking-wide",
+                      "transition-colors duration-200",
+                      isActive
+                        ? "text-[#FF553D]"
+                        : "text-white/75 hover:text-white",
+                    ].join(" ")
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              )
             ))}
           </div>
 

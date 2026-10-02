@@ -4,15 +4,10 @@ import Logo from "../common/Logo";
 
 const quickLinks = [
   { label: "Home", path: "/" },
-  { label: "Teams", path: "/teams" },
-  { label: "Competitions", path: "/competitions" },
-  { label: "Matches", path: "/matches" },
-  { label: "News", path: "/news" },
-];
-
-const legalLinks = [
-  { label: "Privacy Policy", path: "/privacy" },
-  { label: "Terms & Conditions", path: "/terms" },
+  { label: "Recent Results", path: "/#recent-results" },
+  { label: "Upcoming Matches", path: "/#upcoming-matches" },
+  { label: "Standings", path: "/#league-standings" },
+  { label: "Latest News", path: "/#latest-news" },
 ];
 
 const Footer = () => {
@@ -53,24 +48,15 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Legal */}
+          {/* Information */}
           <div>
             <h2 className="text-sm font-bold tracking-wider text-white">
               INFORMATION
             </h2>
 
-            <ul className="mt-4 space-y-3">
-              {legalLinks.map((link) => (
-                <li key={link.path}>
-                  <Link
-                    to={link.path}
-                    className="text-sm text-white/60 transition-colors hover:text-[#FF553D]"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <p className="mt-4 max-w-xs text-sm leading-6 text-white/60">
+              Official fixtures, results, standings and league updates from Hunza Premier League.
+            </p>
           </div>
         </div>
 
