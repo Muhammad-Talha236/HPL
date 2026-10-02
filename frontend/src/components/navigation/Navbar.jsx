@@ -11,6 +11,7 @@ import useAuth from "../../hooks/useAuth";
 
 const navItems = [
   { label: "HOME", path: "/" },
+  { label: "SEASONS", path: "/seasons" },
   { label: "RESULTS", href: "/#recent-results" },
   { label: "FIXTURES", href: "/#upcoming-matches" },
   { label: "STANDINGS", href: "/#league-standings" },
@@ -158,7 +159,7 @@ const Navbar = () => {
         <Logo className="text-2xl" />
 
         {/* Desktop Navigation */}
-        <div className="hidden items-center gap-8 lg:flex">
+        <div className="hidden items-center gap-5 xl:gap-7 lg:flex">
           {navItems.map((item) => (
             item.href ? (
               <a key={item.href} href={item.href} className={anchorLinkClasses}>
