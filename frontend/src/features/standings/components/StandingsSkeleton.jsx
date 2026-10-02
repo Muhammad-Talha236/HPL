@@ -1,0 +1,3 @@
+const StandingsSkeleton = () => <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0B1D2F]" aria-hidden="true"><div className="h-11 animate-pulse bg-white/[0.06]" />{Array.from({ length: 7 }, (_, index) => <div key={index} className="flex items-center gap-4 border-t border-white/10 px-4 py-4"><span className="h-7 w-7 animate-pulse rounded bg-white/[0.06]" /><span className="h-8 w-8 animate-pulse rounded-full bg-white/[0.06]" /><span className="h-4 flex-1 animate-pulse rounded bg-white/[0.06]" /><span className="h-4 w-10 animate-pulse rounded bg-white/[0.06]" /></div>)}</div>;
+
+export default StandingsSkeleton;

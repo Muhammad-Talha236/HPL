@@ -1,0 +1,9 @@
+import { Link } from "react-router-dom";
+
+import { getEventLabel, getEventTime } from "../utils/matchFormatters";
+
+const eventStyles = { GOAL: "bg-[#FF553D]/20 text-[#ffad9f]", YELLOW_CARD: "bg-[#EEC058]/15 text-[#EEC058]", RED_CARD: "bg-red-500/20 text-red-200", SUBSTITUTION: "bg-sky-400/15 text-sky-200" };
+
+const MatchTimeline = ({ events }) => <div className="relative space-y-4 before:absolute before:bottom-4 before:left-[19px] before:top-4 before:w-px before:bg-white/10">{events.map((event) => <article key={event.event_id} className="relative grid grid-cols-[40px_minmax(0,1fr)] gap-3"><span className={`z-10 grid h-10 w-10 place-items-center rounded-full text-[10px] font-extrabold ${eventStyles[event.event_type] || "bg-white/10 text-white/60"}`}>{getEventTime(event)}</span><div className="rounded-lg border border-white/10 bg-[#0B1D2F] p-4"><div className="flex flex-wrap items-start justify-between gap-2"><p className="text-xs font-extrabold tracking-wide text-white">{getEventLabel(event)}</p><p className="text-[11px] font-bold text-white/45">{event.team?.name}</p></div><p className="mt-2 text-sm text-white/75"><Link to={`/players/${event.player_id}`} className="font-bold text-white transition hover:text-[#EEC058] focus:outline-none focus:ring-2 focus:ring-[#FF553D]/60">{event.player?.name || "Player"}</Link>{event.event_type === "SUBSTITUTION" && event.related_player && <> <span className="text-white/40">for</span> <Link to={`/players/${event.related_player_id}`} className="font-bold text-white transition hover:text-[#EEC058] focus:outline-none focus:ring-2 focus:ring-[#FF553D]/60">{event.related_player.name}</Link></>}</p>{event.description && <p className="mt-2 text-xs leading-5 text-white/50">{event.description}</p>}</div></article>)}</div>;
+
+export default MatchTimeline;

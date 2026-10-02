@@ -5,9 +5,11 @@ import Logo from "../common/Logo";
 const quickLinks = [
   { label: "Home", path: "/" },
   { label: "Seasons", path: "/seasons" },
-  { label: "Recent Results", path: "/#recent-results" },
-  { label: "Upcoming Matches", path: "/#upcoming-matches" },
-  { label: "Standings", path: "/#league-standings" },
+  { label: "Teams", path: "/teams" },
+  { label: "Players", path: "/players" },
+  { label: "Competitions", path: "/competitions" },
+  { label: "Matches", path: "/matches" },
+  { label: "Standings", path: "/standings" },
   { label: "Latest News", path: "/#latest-news" },
 ];
 

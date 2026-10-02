@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 import useAuth from "../../../hooks/useAuth";
 import useHomeData from "../hooks/useHomeData";
 
@@ -48,7 +50,7 @@ const HomePage = () => {
         <section id="league-standings" className="scroll-mt-24 py-16 sm:py-20">
           <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
             <SectionHeader title="LEAGUE STANDINGS" description="A focused look at the leading teams in the featured competition." />
-            <StandingsPreview section={sections.standings} />
+            <StandingsPreview section={sections.standings} competitionId={sections.competition.data?.competition_id} />
           </div>
         </section>
 
@@ -80,5 +82,4 @@ const HomePage = () => {
 };
 
 export default HomePage;
-import { Link } from "react-router-dom";
 

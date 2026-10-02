@@ -1,0 +1,7 @@
+import { Link } from "react-router-dom";
+
+const SquadColumn = ({ title, players, align = "left" }) => <section className={`min-w-0 ${align === "right" ? "text-right" : ""}`}><h3 className="text-sm font-extrabold text-white">{title}</h3><div className="mt-4 space-y-2">{players.length ? players.map((entry) => <Link key={entry.match_player_id} to={`/players/${entry.player_id}`} className={`flex items-center gap-3 rounded-lg border border-white/10 bg-[#0B1D2F] p-3 transition hover:border-[#EEC058]/40 focus:outline-none focus:ring-2 focus:ring-[#FF553D]/60 ${align === "right" ? "flex-row-reverse" : ""}`}><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/10 text-[10px] font-extrabold text-[#EEC058]">{entry.shirt_number ?? "–"}</span><span className="min-w-0"><span className="block truncate text-xs font-bold text-white">{entry.player?.name || "Player"}</span><span className="mt-0.5 block text-[10px] text-white/45">{entry.starting_status}</span></span></Link>) : <p className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-xs text-white/50">No lineup has been published.</p>}</div></section>;
+
+const MatchLineups = ({ squads }) => <div className="grid gap-6 md:grid-cols-2"><SquadColumn title="HOME LINEUP" players={squads.home?.players || []} /><SquadColumn title="AWAY LINEUP" players={squads.away?.players || []} align="right" /></div>;
+
+export default MatchLineups;

@@ -12,9 +12,9 @@ import useAuth from "../../hooks/useAuth";
 const navItems = [
   { label: "HOME", path: "/" },
   { label: "SEASONS", path: "/seasons" },
-  { label: "RESULTS", href: "/#recent-results" },
-  { label: "FIXTURES", href: "/#upcoming-matches" },
-  { label: "STANDINGS", href: "/#league-standings" },
+  { label: "TEAMS", path: "/teams" },
+  { label: "MATCHES", path: "/matches" },
+  { label: "STANDINGS", path: "/standings" },
   { label: "NEWS", href: "/#latest-news" },
 ];
 

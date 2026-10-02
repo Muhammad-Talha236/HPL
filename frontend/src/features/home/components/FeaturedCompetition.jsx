@@ -1,5 +1,6 @@
 import PreviewState from "./PreviewState";
 import { formatMatchDate } from "../utils/homeFormatters";
+import { Link } from "react-router-dom";
 
 const FeaturedCompetition = ({ section }) => {
   if (section.status !== "success" || !section.data) {
@@ -23,6 +24,7 @@ const FeaturedCompetition = ({ section }) => {
         <h3 className="mt-4 text-2xl font-extrabold text-white">{competition.name}</h3>
         <p className="mt-2 text-sm text-[#EEC058]">{competition.season?.name || "HPL Season"}</p>
         {competition.description && <p className="mt-5 max-w-xl text-sm leading-6 text-white/60">{competition.description}</p>}
+        <Link to={`/competitions/${competition.competition_id}`} className="mt-5 inline-flex text-xs font-extrabold tracking-wide text-[#EEC058] transition hover:text-[#ffad9f] focus:outline-none focus:ring-2 focus:ring-[#FF553D]/60">VIEW COMPETITION →</Link>
       </div>
       <dl className="grid grid-cols-2 gap-px border-t border-[#EEC058]/15 bg-[#EEC058]/15 md:border-l md:border-t-0">
         <div className="bg-[#0B1D2F] p-5"><dt className="text-[10px] font-bold tracking-wider text-white/45">FORMAT</dt><dd className="mt-2 text-sm font-bold text-white">{competition.format || "To be confirmed"}</dd></div>
