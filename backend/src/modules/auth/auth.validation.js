@@ -16,7 +16,11 @@ export const registerValidation = [
     .notEmpty()
     .withMessage("Name is required")
     .isLength({ min: 2, max: 100 })
-    .withMessage("Name must be between 2 and 100 characters"),
+    .withMessage("Name must be between 2 and 100 characters")
+    .matches(/^[A-Za-z][A-Za-z\s'-]*$/)
+    .withMessage(
+      "Name must start with a letter and contain only letters, spaces, apostrophes, or hyphens",
+    ),
 
   body("email")
     .trim()
@@ -35,8 +39,10 @@ export const registerValidation = [
   body("phone")
     .optional({ nullable: true })
     .trim()
-    .isLength({ max: 30 })
-    .withMessage("Phone number is too long"),
+    .matches(/^03\d{9}$/)
+    .withMessage(
+      "Phone number must be an 11-digit mobile number starting with 03",
+    ),
 
   checkExact([], {
     message: "Unexpected fields are not allowed",
