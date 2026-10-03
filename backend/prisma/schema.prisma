@@ -73,6 +73,7 @@ model Team {
   owner         User                      @relation("TeamOwner", fields: [owner_id], references: [user_id])
   team_players  TeamPlayer[]
   standings     TeamStanding[]
+  rankings      TeamRanking[]
 }
 
 model Player {
@@ -328,6 +329,25 @@ model TeamStanding {
   team            Team        @relation(fields: [team_id], references: [team_id])
 
   @@unique([competition_id, team_id])
+}
+
+model TeamRanking {
+  ranking_id      Int      @id @default(autoincrement())
+  team_id         Int
+  gender          String
+  rating          Float
+  rank            Int
+  matches_counted Int      @default(0)
+  wins            Int      @default(0)
+  draws           Int      @default(0)
+  losses          Int      @default(0)
+  last_match_id   Int?
+  updated_at      DateTime @updatedAt
+  team            Team     @relation(fields: [team_id], references: [team_id])
+
+  @@unique([team_id, gender])
+  @@index([gender, rank])
+  @@index([team_id])
 }
 
 model RegistrationApprovalHistory {

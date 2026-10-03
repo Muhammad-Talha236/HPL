@@ -10,6 +10,7 @@ const quickLinks = [
   { label: "Competitions", path: "/competitions" },
   { label: "Matches", path: "/matches" },
   { label: "Standings", path: "/standings" },
+  { label: "Team Rankings", path: "/rankings" },
   { label: "Latest News", path: "/#latest-news" },
 ];
 

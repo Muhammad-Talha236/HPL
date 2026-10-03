@@ -2,6 +2,8 @@ import prisma from "../../database/prisma.js";
 
 import { createAuditLog } from "../../utils/auditLog.util.js";
 import { AUDIT_ACTIONS } from "../../constants/auditActions.js";
+import { recalculateCompetitionStandings } from "../standings/standing.util.js";
+import { recalculateTeamRankings } from "../rankings/ranking.service.js";
 
 // ======================================================
 // MATCH STATUS
@@ -3660,6 +3662,11 @@ export const completeMatch = async (req, res) => {
             currentMatch.competition_id
           );
 
+        // Rankings are a separate overall ELO table. Rebuild from the
+        // canonical completed-match history in this same transaction, so a
+        // completed fixture cannot update standings without rankings.
+        const rankings = await recalculateTeamRankings(tx);
+
         /*
          * Fetch final match state after
          * match, player, and standings updates.
@@ -3689,7 +3696,13 @@ export const completeMatch = async (req, res) => {
 
           standingsUpdated:
             standings.length,
+
+          rankingsUpdated:
+            rankings.length,
         };
+      },
+      {
+        isolationLevel: "Serializable",
       }
     );
 
@@ -3729,6 +3742,9 @@ export const completeMatch = async (req, res) => {
 
         standings_updated:
           result.standingsUpdated,
+
+        rankings_updated:
+          result.rankingsUpdated,
       },
     });
 
@@ -3747,9 +3763,19 @@ export const completeMatch = async (req, res) => {
 
         standings_updated:
           result.standingsUpdated,
+
+        rankings_updated:
+          result.rankingsUpdated,
       },
     });
   } catch (error) {
+    if (error.code === "P2034") {
+      return res.status(409).json({
+        success: false,
+        message: "The match was updated concurrently. Please retry completion.",
+      });
+    }
+
     if (
       error.message ===
       "MATCH_NOT_FOUND"
