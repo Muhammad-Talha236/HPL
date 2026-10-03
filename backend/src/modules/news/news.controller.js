@@ -3,6 +3,7 @@ import prisma from "../../database/prisma.js";
 import { ROLES } from "../../constants/roles.js";
 import { createAuditLog } from "../../utils/auditLog.util.js";
 import { AUDIT_ACTIONS } from "../../constants/auditActions.js";
+import { buildPublicNewsWhere, parsePublicNewsQuery } from "./news.query.js";
 
 /*
   News statuses
@@ -35,6 +36,32 @@ const newsSelect = {
   author: {
     select: {
       user_id: true,
+      name: true,
+      profile_image: true,
+    },
+  },
+};
+
+// List responses intentionally exclude article content. A headline card must
+// not transfer every full article in a large archive.
+const publicNewsListSelect = {
+  news_id: true,
+  title: true,
+  featured_image: true,
+  category: true,
+  published_at: true,
+};
+
+const publicNewsDetailSelect = {
+  news_id: true,
+  title: true,
+  content: true,
+  featured_image: true,
+  category: true,
+  published_at: true,
+  updated_at: true,
+  author: {
+    select: {
       name: true,
       profile_image: true,
     },
@@ -131,25 +158,35 @@ export const getNews = async (
   next
 ) => {
   try {
-    const news = await prisma.news.findMany({
-      where: {
-        status: NEWS_STATUS.PUBLISHED,
-      },
-      select: newsSelect,
-      orderBy: [
-        {
-          published_at: "desc",
-        },
-        {
-          created_at: "desc",
-        },
-      ],
-    });
+    const query = parsePublicNewsQuery(req.query);
+    if (query.error) return res.status(400).json({ success: false, message: query.error });
+
+    const where = buildPublicNewsWhere(NEWS_STATUS.PUBLISHED, query);
+    const [news, total] = await prisma.$transaction([
+      prisma.news.findMany({
+        where,
+        select: publicNewsListSelect,
+        orderBy: [{ published_at: "desc" }, { news_id: "desc" }],
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
+      }),
+      prisma.news.count({ where }),
+    ]);
+
+    res.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
 
     return res.status(200).json({
       success: true,
       count: news.length,
       data: news,
+      pagination: {
+        page: query.page,
+        limit: query.limit,
+        total,
+        total_pages: Math.ceil(total / query.limit),
+        has_next: query.page * query.limit < total,
+        has_previous: query.page > 1,
+      },
     });
   } catch (error) {
     console.error("Get news error:", error);
@@ -158,13 +195,36 @@ export const getNews = async (
 };
 
 /*
+  GET PUBLIC NEWS CATEGORIES
+
+  Categories are free-text in the current domain, so return only the small,
+  published catalogue needed by the public filter. The query is bounded and
+  uses the public category-feed index.
+*/
+export const getNewsCategories = async (req, res, next) => {
+  try {
+    const rows = await prisma.$queryRaw`
+      SELECT DISTINCT "category"
+      FROM "public"."News"
+      WHERE "status" = ${NEWS_STATUS.PUBLISHED}
+        AND "published_at" IS NOT NULL
+      ORDER BY "category" ASC
+      LIMIT 50
+    `;
+    res.set("Cache-Control", "public, max-age=300, s-maxage=600, stale-while-revalidate=900");
+    return res.status(200).json({ success: true, data: rows.map((row) => row.category) });
+  } catch (error) {
+    console.error("Get news categories error:", error);
+    next(error);
+  }
+};
+
+/*
   GET NEWS BY ID
 
-  Public users can only access published news.
-
-  SUPER_ADMIN can access any article.
-
-  Author can access their own article.
+  This is the public read path. It intentionally
+  queries only published news with a publication date.
+  Management endpoints use their own authorization flow.
 */
 export const getNewsById = async (
   req,
@@ -176,11 +236,13 @@ export const getNewsById = async (
       req.params.news_id
     );
 
-    const news = await prisma.news.findUnique({
+    const news = await prisma.news.findFirst({
       where: {
         news_id: newsId,
+        status: NEWS_STATUS.PUBLISHED,
+        published_at: { not: null },
       },
-      select: newsSelect,
+      select: publicNewsDetailSelect,
     });
 
     if (!news) {
@@ -190,30 +252,7 @@ export const getNewsById = async (
       });
     }
 
-    /*
-      Public access is allowed only for
-      published news.
-
-      If the route is authenticated,
-      the author/SUPER_ADMIN can also
-      access their unpublished article.
-    */
-    const isPrivilegedViewer =
-      req.user &&
-      canManageNews(
-        req.user,
-        news.author_id
-      );
-
-    if (
-      news.status !== NEWS_STATUS.PUBLISHED &&
-      !isPrivilegedViewer
-    ) {
-      return res.status(404).json({
-        success: false,
-        message: "News not found",
-      });
-    }
+    res.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
 
     return res.status(200).json({
       success: true,

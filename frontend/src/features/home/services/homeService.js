@@ -27,6 +27,6 @@ export const getStandings = async (competitionId) => {
 };
 
 export const getLatestNews = async () => {
-  const response = await apiClient.get("/news");
+  const response = await apiClient.get("/news", { params: { limit: 3 } });
   return response.data?.data || [];
 };

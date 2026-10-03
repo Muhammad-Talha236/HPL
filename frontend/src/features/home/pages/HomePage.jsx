@@ -65,6 +65,7 @@ const HomePage = () => {
           <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
             <SectionHeader title="LATEST NEWS" description="Recent announcements and stories from the league." />
             <NewsPreview section={sections.news} />
+            <div className="mt-7"><Link to="/news" className="inline-flex rounded-md border border-[#EEC058]/60 px-4 py-2 text-xs font-extrabold tracking-wide text-[#EEC058] transition hover:bg-[#EEC058] hover:text-[#011427] focus:outline-none focus:ring-2 focus:ring-[#FF553D]/60">VIEW ALL NEWS</Link></div>
           </div>
         </section>
 

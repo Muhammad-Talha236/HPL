@@ -11,7 +11,7 @@ const quickLinks = [
   { label: "Matches", path: "/matches" },
   { label: "Standings", path: "/standings" },
   { label: "Team Rankings", path: "/rankings" },
-  { label: "Latest News", path: "/#latest-news" },
+  { label: "Latest News", path: "/news" },
 ];
 
 const Footer = () => {

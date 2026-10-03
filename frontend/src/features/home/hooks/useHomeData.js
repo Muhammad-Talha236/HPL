@@ -69,7 +69,7 @@ const useHomeData = () => {
           competitions.status === "fulfilled"
             ? { data: featuredCompetition, status: "success" }
             : { data: null, status: "error" },
-        news: toSection(news, (items) => items.slice(0, 3)),
+        news: toSection(news),
       }));
 
       if (!featuredCompetition) {

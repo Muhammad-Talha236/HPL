@@ -15,7 +15,7 @@ const navItems = [
   { label: "TEAMS", path: "/teams" },
   { label: "MATCHES", path: "/matches" },
   { label: "STANDINGS", path: "/standings" },
-  { label: "NEWS", href: "/#latest-news" },
+  { label: "NEWS", path: "/news" },
 ];
 
 const formatRole = (role) => {

@@ -373,6 +373,9 @@ model News {
   created_at     DateTime  @default(now())
   updated_at     DateTime  @updatedAt
   author         User      @relation("NewsAuthor", fields: [author_id], references: [user_id])
+
+  @@index([status, published_at, news_id], map: "News_public_feed_idx")
+  @@index([status, category, published_at, news_id], map: "News_public_category_feed_idx")
 }
 
 model Notification {

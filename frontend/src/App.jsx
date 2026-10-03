@@ -17,6 +17,8 @@ import MatchDetailsPage from "./features/matches/pages/MatchDetailsPage";
 import MatchesPage from "./features/matches/pages/MatchesPage";
 import StandingsPage from "./features/standings/pages/StandingsPage";
 import RankingsPage from "./features/rankings/pages/RankingsPage";
+import NewsPage from "./features/news/pages/NewsPage";
+import NewsDetailsPage from "./features/news/pages/NewsDetailsPage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
 
@@ -38,6 +40,8 @@ function App() {
         <Route path="/matches/:matchId" element={<MatchDetailsPage />} />
         <Route path="/standings" element={<StandingsPage />} />
         <Route path="/rankings" element={<RankingsPage />} />
+        <Route path="/news" element={<NewsPage />} />
+        <Route path="/news/:newsId" element={<NewsDetailsPage />} />
 
         {/* Guest-only authentication routes */}
         <Route element={<GuestRoute />}>

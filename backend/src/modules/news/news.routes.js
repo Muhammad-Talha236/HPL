@@ -2,6 +2,7 @@ import express from "express";
 
 import {
   getNews,
+  getNewsCategories,
   getNewsById,
   createNews,
   updateNews,
@@ -45,22 +46,19 @@ router.get(
   getNews
 );
 
+router.get(
+  "/categories",
+  getNewsCategories
+);
+
 /*
   GET NEWS BY ID
 
   Public endpoint.
 
-  Published news:
-    Anyone can view.
-
-  Draft / unpublished news:
-    Controller allows access only to:
-    - SUPER_ADMIN
-    - Original author
-
-  NOTE:
-  This route is intentionally public because
-  the controller handles visibility.
+  This public route always queries only news
+  that is PUBLISHED and has a publication date.
+  Draft and unpublished records return 404.
 */
 router.get(
   "/:news_id",
