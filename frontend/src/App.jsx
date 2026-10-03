@@ -25,6 +25,13 @@ import RefereeDashboardPage from "./features/referees/pages/RefereeDashboardPage
 import RefereeMatchesPage from "./features/referees/pages/RefereeMatchesPage";
 import RefereeWorkspacePage from "./features/referees/pages/RefereeWorkspacePage";
 import RefereeRoute from "./routes/RefereeRoute";
+import ProtectedRoute from "./routes/ProtectedRoute";
+import CompetitionRegistrationPage from "./features/registrations/pages/CompetitionRegistrationPage";
+import MyRegistrationsPage from "./features/registrations/pages/MyRegistrationsPage";
+import RegistrationDetailsPage from "./features/registrations/pages/RegistrationDetailsPage";
+import AdminRoute from "./routes/AdminRoute";
+import AdminRegistrationsPage from "./features/registrations/pages/AdminRegistrationsPage";
+import AdminRegistrationDetailsPage from "./features/registrations/pages/AdminRegistrationDetailsPage";
 
 function App() {
   return (
@@ -54,6 +61,17 @@ function App() {
           <Route path="/referee/dashboard" element={<RefereeDashboardPage />} />
           <Route path="/referee/matches" element={<RefereeMatchesPage />} />
           <Route path="/referee/matches/:matchId" element={<RefereeWorkspacePage />} />
+        </Route>
+
+        <Route element={<ProtectedRoute />}>
+          <Route path="/competitions/:competitionId/register" element={<CompetitionRegistrationPage />} />
+          <Route path="/my/registrations" element={<MyRegistrationsPage />} />
+          <Route path="/my/registrations/:registrationId" element={<RegistrationDetailsPage />} />
+        </Route>
+
+        <Route element={<AdminRoute />}>
+          <Route path="/admin/registrations" element={<AdminRegistrationsPage />} />
+          <Route path="/admin/registrations/:registrationId" element={<AdminRegistrationDetailsPage />} />
         </Route>
 
         {/* Guest-only authentication routes */}

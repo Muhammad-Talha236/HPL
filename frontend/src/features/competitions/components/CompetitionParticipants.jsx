@@ -1,0 +1,11 @@
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import apiClient from "../../../services/apiClient";
+
+const CompetitionParticipants = ({ competitionId }) => {
+  const [state, setState] = useState({ status: "loading", data: [] });
+  const load = useCallback(() => apiClient.get(`/competitions/${competitionId}/teams`).then((response) => setState({ status: "success", data: response.data?.data || [] })).catch(() => setState({ status: "error", data: [] })), [competitionId]);
+  useEffect(() => { load(); }, [load]);
+  return <section className="mt-16"><p className="text-[11px] font-bold tracking-[.18em] text-[#EEC058]">PARTICIPATING TEAMS</p><h2 className="mt-3 text-2xl font-extrabold">Confirmed participants</h2><span className="mt-3 block h-1 w-16 rounded-full bg-[#FF553D]" />{state.status === "loading" && <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((key) => <div key={key} className="h-24 animate-pulse rounded-xl border border-white/10 bg-white/[.03]" />)}</div>}{state.status === "error" && <div className="mt-7 rounded-xl border border-red-400/25 bg-red-400/10 p-5 text-sm text-red-100">Participants are unavailable. <button onClick={load} className="font-bold underline">TRY AGAIN</button></div>}{state.status === "success" && !state.data.length && <p className="mt-7 rounded-xl border border-white/10 bg-white/[.03] p-6 text-sm text-white/55">No teams have been confirmed yet.</p>}{state.status === "success" && state.data.length > 0 && <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{state.data.map((team) => <Link to={`/teams/${team.team_id}`} key={team.team_id} className="flex items-center gap-4 rounded-xl border border-white/10 bg-[#0B1D2F] p-4 transition hover:border-[#EEC058]/45"><span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#10283d] font-bold text-[#ffad9f]">{team.logo ? <img src={team.logo} alt="" className="h-full w-full object-cover" /> : team.name?.slice(0, 1)}</span><span><b className="block">{team.name}</b><small className="mt-1 block text-white/55">{[team.city, team.region].filter(Boolean).join(", ") || team.gender}</small></span></Link>)}</div>}</section>;
+};
+export default CompetitionParticipants;

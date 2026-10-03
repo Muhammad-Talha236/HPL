@@ -6,6 +6,7 @@ import {
   getRegistrationById,
   reviewRegistration,
 } from "./registration.controller.js";
+import { getAdminRegistration, getAdminRegistrations, getEligibleTeams, getMyRegistrations, updateRegistrationSquad } from "./registration.extra.controller.js";
 
 import {
   authenticate,
@@ -60,7 +61,7 @@ router.get(
   authorize(
     ROLES.SUPER_ADMIN
   ),
-  getRegistrations
+  getAdminRegistrations
 );
 
 // ======================================================
@@ -84,6 +85,34 @@ router.patch(
 // OWN REGISTRATION / OWN TEAM / OWN CLUB / SUPER ADMIN
 // ======================================================
 
+router.get(
+  "/admin/:registration_id",
+  authenticate,
+  authorize(ROLES.SUPER_ADMIN),
+  registrationIdValidation,
+  handleValidationErrors,
+  getAdminRegistration
+);
+router.get(
+  "/my",
+  authenticate,
+  authorize(ROLES.USER, ROLES.TEAM_OWNER, ROLES.CLUB_OWNER, ROLES.SUPER_ADMIN),
+  getMyRegistrations
+);
+router.get(
+  "/eligible-teams",
+  authenticate,
+  authorize(ROLES.USER, ROLES.TEAM_OWNER, ROLES.CLUB_OWNER, ROLES.SUPER_ADMIN),
+  getEligibleTeams
+);
+router.put(
+  "/:registration_id/squad",
+  authenticate,
+  authorize(ROLES.USER, ROLES.TEAM_OWNER, ROLES.CLUB_OWNER, ROLES.SUPER_ADMIN),
+  registrationIdValidation,
+  handleValidationErrors,
+  updateRegistrationSquad
+);
 router.get(
   "/:registration_id",
   authenticate,

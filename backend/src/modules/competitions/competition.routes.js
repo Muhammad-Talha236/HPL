@@ -8,6 +8,7 @@ import {
   deactivateCompetition,
   activateCompetition,
 } from "./competition.controller.js";
+import { getCompetitionParticipants } from "./competition.participants.controller.js";
 
 import {
   authenticate,
@@ -50,6 +51,12 @@ router.get(
 // GET COMPETITION BY ID
 // ------------------------------------------------------
 
+router.get(
+  "/:competition_id/teams",
+  competitionIdValidation,
+  handleValidationErrors,
+  getCompetitionParticipants
+);
 router.get(
   "/:competition_id",
   competitionIdValidation,

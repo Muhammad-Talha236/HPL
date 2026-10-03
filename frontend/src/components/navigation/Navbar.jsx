@@ -304,6 +304,8 @@ const Navbar = () => {
 
                   {/* Logout */}
                   <div className="p-2">
+                    {(user.role === "TEAM_OWNER" || user.role === "CLUB_OWNER") && <NavLink to="/my/registrations" role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">MY REGISTRATIONS</NavLink>}
+                    {user.role === "SUPER_ADMIN" && <NavLink to="/admin/registrations" role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">REGISTRATIONS</NavLink>}
                     {user.role === "REFEREE" && <>
                       <NavLink to="/referee/dashboard" role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">REFEREE DASHBOARD</NavLink>
                       <NavLink to="/referee/matches" role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">MY MATCHES</NavLink>

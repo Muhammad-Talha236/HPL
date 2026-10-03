@@ -91,6 +91,7 @@ export const createRegistration = async (
                 max_teams: true,
                 registration_start_date: true,
                 registration_end_date: true,
+                competition_start_date: true,
                 season: {
                   select: {
                     season_id: true,
@@ -158,6 +159,10 @@ export const createRegistration = async (
             throw new Error(
               "REGISTRATION_CLOSED"
             );
+          }
+
+          if (formatDateOnly(competition.competition_start_date) <= today) {
+            throw new Error("COMPETITION_ALREADY_STARTED");
           }
 
           // ------------------------------------------------
@@ -286,10 +291,7 @@ export const createRegistration = async (
                     competition_id:
                       competitionId,
 
-                    registration_status: {
-                      not:
-                        REGISTRATION_STATUS.REJECTED,
-                    },
+                    registration_status: REGISTRATION_STATUS.APPROVED,
                   },
                 }
               );
@@ -458,6 +460,8 @@ export const createRegistration = async (
           "Registration period is not currently open",
       });
     }
+
+    if (error.message === "COMPETITION_ALREADY_STARTED") return res.status(400).json({ success: false, message: "Registration is closed because the competition has started" });
 
     if (
       error.message ===
@@ -709,6 +713,8 @@ export const getRegistrationById = async (
                 competition_start_date: true,
                 competition_end_date: true,
                 status: true,
+                squad_size: true,
+                season: { select: { season_id: true, name: true } },
               },
             },
 
@@ -734,6 +740,14 @@ export const getRegistrationById = async (
                 user_id: true,
                 name: true,
                 email: true,
+              },
+            },
+
+            players: {
+              select: {
+                competition_player_id: true,
+                player_id: true,
+                player: { select: { player_id: true, name: true, position: true, profile_photo: true } },
               },
             },
           },
@@ -907,6 +921,17 @@ export const reviewRegistration = async (
     const result =
       await prisma.$transaction(
         async (tx) => {
+          // Approval consumes a real competition slot. Re-check eligibility and
+          // capacity inside the serializable transaction so concurrent reviews
+          // cannot overbook the competition.
+          if (newStatus === REGISTRATION_STATUS.APPROVED) {
+            const competition = await tx.competition.findUnique({ where: { competition_id: registration.competition_id }, select: { status: true, max_teams: true, competition_start_date: true } });
+            if (!competition || competition.status !== "ACTIVE" || competition.competition_start_date <= new Date()) throw new Error("APPROVAL_NOT_ELIGIBLE");
+            if (competition.max_teams !== null) {
+              const approvedCount = await tx.competitionRegistration.count({ where: { competition_id: registration.competition_id, registration_status: REGISTRATION_STATUS.APPROVED } });
+              if (approvedCount >= competition.max_teams) throw new Error("MAX_TEAMS_REACHED");
+            }
+          }
           // --------------------------------------------
           // ATOMIC STATE TRANSITION
           // --------------------------------------------
@@ -1069,6 +1094,9 @@ export const reviewRegistration = async (
           "Registration has already been reviewed or is no longer pending",
       });
     }
+
+    if (error.message === "APPROVAL_NOT_ELIGIBLE") return res.status(400).json({ success: false, message: "Registration can no longer be approved for this competition" });
+    if (error.message === "MAX_TEAMS_REACHED") return res.status(409).json({ success: false, message: "Competition capacity has been reached" });
 
     if (
       error.code === "P2034"
