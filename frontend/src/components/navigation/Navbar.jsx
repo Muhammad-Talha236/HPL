@@ -304,6 +304,10 @@ const Navbar = () => {
 
                   {/* Logout */}
                   <div className="p-2">
+                    {user.role === "REFEREE" && <>
+                      <NavLink to="/referee/dashboard" role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">REFEREE DASHBOARD</NavLink>
+                      <NavLink to="/referee/matches" role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">MY MATCHES</NavLink>
+                    </>}
                     <button
                       type="button"
                       role="menuitem"
@@ -322,6 +326,7 @@ const Navbar = () => {
                     </button>
                   </div>
                 </div>
+
               )}
             </div>
           )}
@@ -492,6 +497,7 @@ const Navbar = () => {
                   </div>
                 </div>
 
+                {user.role === "REFEREE" && <div className="mt-4 grid grid-cols-2 gap-2"><NavLink onClick={closeMobileMenu} to="/referee/dashboard" className="rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">DASHBOARD</NavLink><NavLink onClick={closeMobileMenu} to="/referee/matches" className="rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">MY MATCHES</NavLink></div>}
                 <button
                   type="button"
                   onClick={handleLogout}

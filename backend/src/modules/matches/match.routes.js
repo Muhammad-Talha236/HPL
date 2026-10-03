@@ -13,6 +13,7 @@ import {
 import { authenticate } from "../../middleware/auth/auth.middleware.js";
 import { authorize } from "../../middleware/auth/role.middleware.js";
 import { ROLES } from "../../constants/roles.js";
+import { authorizeMatchOfficial } from "../referees/refereeAssignment.middleware.js";
 
 import {
   matchIdValidation,
@@ -81,7 +82,7 @@ router.patch(
 router.patch(
   "/:match_id/complete",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorizeMatchOfficial,
   matchIdValidation,
   handleValidationErrors,
   completeMatch
@@ -91,7 +92,7 @@ router.patch(
 router.post(
   "/:match_id/start",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorizeMatchOfficial,
   startMatchValidation,
   handleValidationErrors,
   startMatch

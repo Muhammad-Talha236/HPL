@@ -1,9 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-
 import PublicLayout from "./layouts/PublicLayout";
-
 import GuestRoute from "./routes/GuestRoute";
-
 import HomePage from "./features/home/pages/HomePage";
 import SeasonDetailsPage from "./features/seasons/pages/SeasonDetailsPage";
 import SeasonsPage from "./features/seasons/pages/SeasonsPage";
@@ -21,6 +18,13 @@ import NewsPage from "./features/news/pages/NewsPage";
 import NewsDetailsPage from "./features/news/pages/NewsDetailsPage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
+import RefereesPage from "./features/referees/pages/RefereesPage";
+import RefereeDetailsPage from "./features/referees/pages/RefereeDetailsPage";
+import RefereeRankingsPage from "./features/referees/pages/RefereeRankingsPage";
+import RefereeDashboardPage from "./features/referees/pages/RefereeDashboardPage";
+import RefereeMatchesPage from "./features/referees/pages/RefereeMatchesPage";
+import RefereeWorkspacePage from "./features/referees/pages/RefereeWorkspacePage";
+import RefereeRoute from "./routes/RefereeRoute";
 
 function App() {
   return (
@@ -42,6 +46,15 @@ function App() {
         <Route path="/rankings" element={<RankingsPage />} />
         <Route path="/news" element={<NewsPage />} />
         <Route path="/news/:newsId" element={<NewsDetailsPage />} />
+        <Route path="/referees" element={<RefereesPage />} />
+        <Route path="/referees/rankings" element={<RefereeRankingsPage />} />
+        <Route path="/referees/:refereeId" element={<RefereeDetailsPage />} />
+
+        <Route element={<RefereeRoute />}>
+          <Route path="/referee/dashboard" element={<RefereeDashboardPage />} />
+          <Route path="/referee/matches" element={<RefereeMatchesPage />} />
+          <Route path="/referee/matches/:matchId" element={<RefereeWorkspacePage />} />
+        </Route>
 
         {/* Guest-only authentication routes */}
         <Route element={<GuestRoute />}>

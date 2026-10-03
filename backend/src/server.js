@@ -14,6 +14,7 @@ import competitionRoutes from "./modules/competitions/competition.routes.js";
 import registrationRoutes from "./modules/registrations/registration.routes.js";
 import paymentRoutes from "./modules/payments/payment.routes.js";
 import refereeRoutes from "./modules/referees/referee.routes.js";
+import refereeRankingRoutes from "./modules/referees/referee.ranking.routes.js";
 import matchRoutes from "./modules/matches/match.routes.js";
 import matchPlayerRoutes from "./modules/matchPlayers/matchPlayer.routes.js";
 import matchEventRoutes from "./modules/MatchEvent/matchEvent.routes.js";
@@ -90,6 +91,7 @@ app.use(
   "/api/referees",
   refereeRoutes
 );
+app.use("/api/referee-rankings", refereeRankingRoutes);
 
 app.use(
   "/api/matches",

@@ -24,6 +24,9 @@ model User {
   approval_reviews RegistrationApprovalHistory[] @relation("ApprovalReviewer")
   owned_teams      Team[]                        @relation("TeamOwner")
   audit_logs       AuditLog[]
+  referee_profile  Referee?
+  referee_evaluations RefereeEvaluation[]
+
 }
 
 model Club {
@@ -229,6 +232,7 @@ model Venue {
 
 model Referee {
   referee_id     Int      @id @default(autoincrement())
+  user_id        Int?     @unique
   name           String
   profile_photo  String?
   phone          String?
@@ -240,6 +244,40 @@ model Referee {
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
   matches        Match[]
+  user           User?    @relation(fields: [user_id], references: [user_id])
+  evaluations    RefereeEvaluation[]
+  ranking        RefereeRanking?
+
+  @@index([status, name])
+}
+
+model RefereeEvaluation {
+  evaluation_id Int      @id @default(autoincrement())
+  referee_id    Int
+  match_id      Int
+  evaluator_id  Int
+  score         Float
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  referee       Referee  @relation(fields: [referee_id], references: [referee_id])
+  match         Match    @relation(fields: [match_id], references: [match_id])
+  evaluator     User     @relation(fields: [evaluator_id], references: [user_id])
+
+  @@unique([referee_id, match_id])
+  @@index([referee_id, created_at])
+  @@index([match_id])
+}
+
+model RefereeRanking {
+  referee_id       Int      @id
+  rating           Float
+  evaluation_count Int
+  position         Int
+  updated_at       DateTime @updatedAt
+  referee          Referee  @relation(fields: [referee_id], references: [referee_id])
+
+  @@index([position])
+  @@index([rating])
 }
 
 model Match {
@@ -267,6 +305,9 @@ model Match {
   venue          Venue         @relation(fields: [venue_id], references: [venue_id])
   events         MatchEvent[]
   players        MatchPlayer[]
+  referee_evaluations RefereeEvaluation[]
+
+  @@index([referee_id, status, match_date, start_time], map: "Match_referee_status_schedule_idx")
 }
 
 model MatchPlayer {

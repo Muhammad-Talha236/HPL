@@ -255,6 +255,7 @@ export const updateUserRole = async (req, res) => {
       ROLES.SUPER_ADMIN,
       ROLES.CLUB_OWNER,
       ROLES.TEAM_OWNER,
+      ROLES.REFEREE,
       ROLES.USER,
     ];
 

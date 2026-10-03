@@ -12,6 +12,8 @@ const quickLinks = [
   { label: "Standings", path: "/standings" },
   { label: "Team Rankings", path: "/rankings" },
   { label: "Latest News", path: "/news" },
+  { label: "Referees", path: "/referees" },
+  { label: "Referee Rankings", path: "/referees/rankings" },
 ];
 
 const Footer = () => {

@@ -74,6 +74,7 @@ export const createMatchEvent = async (req, res) => {
         away_team_id: true,
         home_score: true,
         away_score: true,
+        referee_id: true,
       },
     });
 
@@ -245,10 +246,13 @@ export const createMatchEvent = async (req, res) => {
       team.club.owner_id ===
         req.user.user_id;
 
+    const isAssignedReferee = req.user.role === ROLES.REFEREE && match.referee_id === req.assigned_referee_id;
+
     if (
       !isSuperAdmin &&
       !isTeamOwner &&
-      !isClubOwner
+      !isClubOwner &&
+      !isAssignedReferee
     ) {
       return res.status(403).json({
         success: false,
@@ -1841,6 +1845,7 @@ export const updateMatchEvent = async (req, res) => {
           select: {
             match_id: true,
             status: true,
+            referee_id: true,
           },
         },
 
@@ -1885,10 +1890,16 @@ export const updateMatchEvent = async (req, res) => {
       req.user.role === ROLES.CLUB_OWNER &&
       event.team.club.owner_id === req.user.user_id;
 
+    const referee = req.user.role === ROLES.REFEREE
+      ? await prisma.referee.findFirst({ where: { user_id: req.user.user_id, status: "ACTIVE" }, select: { referee_id: true } })
+      : null;
+    const isAssignedReferee = referee?.referee_id === event.match.referee_id;
+
     if (
       !isSuperAdmin &&
       !isTeamOwner &&
-      !isClubOwner
+      !isClubOwner &&
+      !isAssignedReferee
     ) {
       return res.status(403).json({
         success: false,

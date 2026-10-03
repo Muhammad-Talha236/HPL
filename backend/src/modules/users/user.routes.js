@@ -90,6 +90,7 @@ router.patch(
     ROLES.USER,
     ROLES.TEAM_OWNER,
     ROLES.CLUB_OWNER
+    ,ROLES.REFEREE
   ),
   updateUserValidation,
   handleValidationErrors,

@@ -10,6 +10,7 @@ import {
 import { authenticate } from "../../middleware/auth/auth.middleware.js";
 import { authorize } from "../../middleware/auth/role.middleware.js";
 import { ROLES } from "../../constants/roles.js";
+import { authorizeAssignedRefereeOrAdmin } from "../referees/refereeAssignment.middleware.js";
 
 import {
   matchEventIdValidation,
@@ -35,8 +36,10 @@ router.post(
   authorize(
     ROLES.SUPER_ADMIN,
     ROLES.TEAM_OWNER,
-    ROLES.CLUB_OWNER
+    ROLES.CLUB_OWNER,
+    ROLES.REFEREE
   ),
+  authorizeAssignedRefereeOrAdmin,
   createMatchEventValidation,
   handleValidationErrors,
   createMatchEvent
@@ -71,7 +74,8 @@ router.patch(
   authorize(
     ROLES.SUPER_ADMIN,
     ROLES.TEAM_OWNER,
-    ROLES.CLUB_OWNER
+    ROLES.CLUB_OWNER,
+    ROLES.REFEREE
   ),
   updateMatchEventValidation,
   handleValidationErrors,
