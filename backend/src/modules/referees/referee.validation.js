@@ -1,6 +1,7 @@
 import {
   body,
   param,
+  checkExact,
 } from "express-validator";
 
 // ======================================================
@@ -182,6 +183,7 @@ export const createRefereeValidation = [
     .withMessage(
       "License number must be between 2 and 100 characters"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];
 
 // ======================================================
@@ -353,4 +355,5 @@ export const updateRefereeValidation = [
     .withMessage(
       "License number must be between 2 and 100 characters"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];

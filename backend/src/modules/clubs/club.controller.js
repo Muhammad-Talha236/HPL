@@ -33,8 +33,20 @@ export const createClub = async (req, res) => {
       });
     }
 
-    // 2. Get authenticated user's ID from JWT
-    const owner_id = req.user.user_id;
+    // A Club Owner can only create their own club. SUPER_ADMIN can select an
+    // already-active CLUB_OWNER; the server reloads the account rather than
+    // trusting owner details supplied by the UI.
+    let owner_id = req.user.user_id;
+    if (req.body.owner_id !== undefined) {
+      if (req.user.role !== ROLES.SUPER_ADMIN) {
+        return res.status(403).json({ success: false, message: "Only SUPER_ADMIN can assign a club owner" });
+      }
+      const selectedOwner = await prisma.user.findUnique({ where: { user_id: Number(req.body.owner_id) }, select: { user_id: true, role: true, status: true } });
+      if (!selectedOwner) return res.status(404).json({ success: false, message: "Selected owner not found" });
+      if (selectedOwner.role !== ROLES.CLUB_OWNER) return res.status(400).json({ success: false, message: "Selected user must have CLUB_OWNER role" });
+      if (selectedOwner.status !== USER_STATUS.ACTIVE) return res.status(400).json({ success: false, message: "Selected user account is not active" });
+      owner_id = selectedOwner.user_id;
+    }
 
     // 3. Check for duplicate club name
     const existingClub = await prisma.club.findFirst({
@@ -344,14 +356,14 @@ export const transferClubOwnership = async (req, res) => {
     // Store old owner for audit logging
     const oldOwnerId = club.owner_id;
 
-    const updatedClub = await prisma.club.update({
-      where: {
-        club_id: clubId,
-      },
-      data: {
-        owner_id: newOwnerId,
-      },
-    });
+    // Ownership is the only field updated here. Neither the old owner's role
+    // nor the new owner's role is mutated: a scalar role may also be needed by
+    // other clubs or teams. The conditional write makes the transfer atomic.
+    const updatedClub = await prisma.$transaction(async (tx) => {
+      const result = await tx.club.updateMany({ where: { club_id: clubId, owner_id: oldOwnerId }, data: { owner_id: newOwnerId } });
+      if (result.count !== 1) throw new Error("CLUB_OWNER_CHANGED");
+      return tx.club.findUnique({ where: { club_id: clubId } });
+    }, { isolationLevel: "Serializable" });
 
     // Create audit log
     await createAuditLog({
@@ -372,6 +384,9 @@ export const transferClubOwnership = async (req, res) => {
     });
 
   } catch (error) {
+    if (error.message === "CLUB_OWNER_CHANGED" || error.code === "P2034") {
+      return res.status(409).json({ success: false, message: "Ownership transfer conflicted with another request. Please try again." });
+    }
     console.error("Transfer club ownership error:", error);
 
     return res.status(500).json({

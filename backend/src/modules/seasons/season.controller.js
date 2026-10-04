@@ -493,6 +493,16 @@ export const updateSeason = async (
       });
     }
 
+    // Existing competition and match schedules must remain inside a season
+    // when its dates are changed; historical data is never rewritten here.
+    if (updateData.start_date !== undefined || updateData.end_date !== undefined) {
+      const outsideRange = await prisma.$transaction([
+        prisma.competition.count({ where: { season_id: seasonId, OR: [{ competition_start_date: { lt: finalStartDate } }, { competition_end_date: { gt: finalEndDate } }] } }),
+        prisma.match.count({ where: { season_id: seasonId, OR: [{ match_date: { lt: finalStartDate } }, { match_date: { gt: finalEndDate } }] } }),
+      ]);
+      if (outsideRange[0] || outsideRange[1]) return res.status(409).json({ success: false, message: "Season dates cannot exclude existing competition or match schedules" });
+    }
+
     // ==================================================
     // 6. CHECK DUPLICATE NAME
     // ==================================================

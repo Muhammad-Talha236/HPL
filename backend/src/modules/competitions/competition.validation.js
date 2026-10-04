@@ -1,6 +1,7 @@
 import {
   body,
   param,
+  checkExact,
 } from "express-validator";
 
 // ======================================================
@@ -331,6 +332,7 @@ export const createCompetitionValidation = [
     .withMessage(
       "Refund policy must not exceed 2000 characters"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];
 
 // ======================================================
@@ -592,4 +594,5 @@ export const updateCompetitionValidation = [
     .withMessage(
       "Refund policy must not exceed 2000 characters"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];

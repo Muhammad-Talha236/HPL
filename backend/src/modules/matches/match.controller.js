@@ -2181,13 +2181,15 @@ export const updateMatch = async (req, res) => {
      * venue, referee, date or kickoff time changed.
      */
     if (
-      existingMatch.status !==
-      MATCH_STATUS.SCHEDULED
+      ![
+        MATCH_STATUS.SCHEDULED,
+        MATCH_STATUS.POSTPONED,
+      ].includes(existingMatch.status)
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "Only scheduled matches can be updated",
+          "Only scheduled or postponed matches can be updated",
       });
     }
 
@@ -2200,6 +2202,19 @@ export const updateMatch = async (req, res) => {
         message:
           "A match with a start time cannot be updated as a scheduled match",
       });
+    }
+
+    // Once a squad has been published, fixture identity is historical
+    // operational data. Rescheduling remains safe, but swapping a team does
+    // not because existing MatchPlayer rows belong to the original teams.
+    if (
+      (home_team_id !== undefined && Number(home_team_id) !== existingMatch.home_team_id) ||
+      (away_team_id !== undefined && Number(away_team_id) !== existingMatch.away_team_id)
+    ) {
+      const squadCount = await prisma.matchPlayer.count({ where: { match_id: matchId } });
+      if (squadCount > 0) {
+        return res.status(409).json({ success: false, message: "Teams cannot be changed after a match squad has been created" });
+      }
     }
 
     // ==================================================
@@ -2917,8 +2932,10 @@ export const updateMatch = async (req, res) => {
            * Only scheduled matches may be edited.
            */
           if (
-            currentMatch.status !==
-            MATCH_STATUS.SCHEDULED
+            ![
+              MATCH_STATUS.SCHEDULED,
+              MATCH_STATUS.POSTPONED,
+            ].includes(currentMatch.status)
           ) {
             throw new Error(
               "MATCH_NOT_SCHEDULED"
@@ -2949,13 +2966,22 @@ export const updateMatch = async (req, res) => {
               where: {
                 match_id: matchId,
 
-                status:
-                  MATCH_STATUS.SCHEDULED,
+                status: {
+                  in: [
+                    MATCH_STATUS.SCHEDULED,
+                    MATCH_STATUS.POSTPONED,
+                  ],
+                },
 
                 started_at: null,
               },
 
-              data: updateData,
+              data: {
+                ...updateData,
+                ...(currentMatch.status === MATCH_STATUS.POSTPONED
+                  ? { status: MATCH_STATUS.SCHEDULED }
+                  : {}),
+              },
             });
 
           if (
@@ -2986,7 +3012,9 @@ export const updateMatch = async (req, res) => {
         req.user.user_id,
 
       action:
-        AUDIT_ACTIONS.MATCH_UPDATED,
+        existingMatch.status === MATCH_STATUS.POSTPONED
+          ? AUDIT_ACTIONS.MATCH_RESCHEDULED
+          : AUDIT_ACTIONS.MATCH_UPDATED,
 
       entity_type:
         "MATCH",
@@ -3113,6 +3141,26 @@ export const updateMatch = async (req, res) => {
 // CANCEL MATCH
 // ======================================================
 
+// A postpone operation is intentionally separate from a generic status patch.
+// The original fixture identity and any scheduled squad are preserved; a later
+// PATCH reschedules it and safely returns it to SCHEDULED.
+export const postponeMatch = async (req, res) => {
+  try {
+    const matchId = Number(req.params.match_id);
+    const result = await prisma.match.updateMany({
+      where: { match_id: matchId, status: MATCH_STATUS.SCHEDULED, started_at: null },
+      data: { status: MATCH_STATUS.POSTPONED },
+    });
+    if (result.count !== 1) return res.status(409).json({ success: false, message: "Only an unstarted scheduled match can be postponed" });
+    const match = await prisma.match.findUnique({ where: { match_id: matchId } });
+    await createAuditLog({ actor_user_id: req.user.user_id, action: AUDIT_ACTIONS.MATCH_POSTPONED, entity_type: "MATCH", entity_id: matchId, details: { previous_status: MATCH_STATUS.SCHEDULED, new_status: MATCH_STATUS.POSTPONED } });
+    return res.json({ success: true, message: "Match postponed successfully", data: { match } });
+  } catch (error) {
+    console.error("Postpone match error:", error);
+    return res.status(500).json({ success: false, message: "Something went wrong while postponing the match" });
+  }
+};
+
 export const cancelMatch = async (req, res) => {
   try {
     const matchId = Number(
@@ -3153,13 +3201,15 @@ export const cancelMatch = async (req, res) => {
      * before it starts.
      */
     if (
-      match.status !==
-      MATCH_STATUS.SCHEDULED
+      ![
+        MATCH_STATUS.SCHEDULED,
+        MATCH_STATUS.POSTPONED,
+      ].includes(match.status)
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "Only scheduled matches can be cancelled",
+          "Only scheduled or postponed matches can be cancelled",
       });
     }
 
@@ -3222,8 +3272,10 @@ export const cancelMatch = async (req, res) => {
            * transition to CANCELLED.
            */
           if (
-            currentMatch.status !==
-            MATCH_STATUS.SCHEDULED
+            ![
+              MATCH_STATUS.SCHEDULED,
+              MATCH_STATUS.POSTPONED,
+            ].includes(currentMatch.status)
           ) {
             throw new Error(
               "MATCH_NOT_SCHEDULED"
@@ -3253,8 +3305,12 @@ export const cancelMatch = async (req, res) => {
               where: {
                 match_id: matchId,
 
-                status:
-                  MATCH_STATUS.SCHEDULED,
+                status: {
+                  in: [
+                    MATCH_STATUS.SCHEDULED,
+                    MATCH_STATUS.POSTPONED,
+                  ],
+                },
 
                 started_at: null,
               },
@@ -3335,7 +3391,7 @@ export const cancelMatch = async (req, res) => {
 
       details: {
         previous_status:
-          MATCH_STATUS.SCHEDULED,
+          match.status,
 
         new_status:
           MATCH_STATUS.CANCELLED,

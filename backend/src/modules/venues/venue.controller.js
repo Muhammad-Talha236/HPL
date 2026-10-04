@@ -700,6 +700,8 @@ export const deactivateVenue =
           }
         );
 
+      await createAuditLog({ actor_user_id: req.user.user_id, action: AUDIT_ACTIONS.VENUE_DEACTIVATED, entity_type: "VENUE", entity_id: venueId, details: { name: result.name } });
+
       return res.status(200).json({
         success: true,
         message:
@@ -874,6 +876,8 @@ export const activateVenue =
               "Serializable",
           }
         );
+
+      await createAuditLog({ actor_user_id: req.user.user_id, action: AUDIT_ACTIONS.VENUE_ACTIVATED, entity_type: "VENUE", entity_id: venueId, details: { name: result.name } });
 
       return res.status(200).json({
         success: true,

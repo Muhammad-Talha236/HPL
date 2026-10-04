@@ -634,6 +634,9 @@ export const deactivateReferee = async (
       });
     }
 
+    const activeAssignment = await prisma.match.findFirst({ where: { referee_id: refereeId, status: { in: ["LIVE", "SCHEDULED"] } }, select: { match_id: true, status: true } });
+    if (activeAssignment) return res.status(409).json({ success: false, message: activeAssignment.status === "LIVE" ? "Referee cannot be deactivated while assigned to a live match." : "Referee cannot be deactivated while assigned to upcoming matches." });
+
     // ==================================================
     // 4. CONDITIONAL STATUS UPDATE
     // ==================================================
@@ -686,6 +689,8 @@ export const deactivateReferee = async (
           updated_at: true,
         },
       });
+
+    await createAuditLog({ actor_user_id: req.user.user_id, action: AUDIT_ACTIONS.REFEREE_DEACTIVATED, entity_type: "REFEREE", entity_id: refereeId, details: { name: updatedReferee.name } });
 
     // ==================================================
     // 6. RESPONSE
@@ -836,6 +841,8 @@ export const activateReferee = async (
           updated_at: true,
         },
       });
+
+    await createAuditLog({ actor_user_id: req.user.user_id, action: AUDIT_ACTIONS.REFEREE_ACTIVATED, entity_type: "REFEREE", entity_id: refereeId, details: { name: updatedReferee.name } });
 
     // ==================================================
     // 6. RESPONSE

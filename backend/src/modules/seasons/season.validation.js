@@ -1,6 +1,7 @@
 import {
   body,
   param,
+  checkExact,
 } from "express-validator";
 
 // ======================================================
@@ -135,6 +136,7 @@ export const createSeasonValidation = [
     .withMessage(
       "Description must not exceed 1000 characters"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];
 
 // ======================================================
@@ -233,4 +235,5 @@ export const updateSeasonValidation = [
     .withMessage(
       "Description must not exceed 1000 characters"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];

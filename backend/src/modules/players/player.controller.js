@@ -33,6 +33,22 @@ const playerSelect = {
   updated_at: true,
 };
 
+// Public player profiles must never disclose direct contact details.
+// Admin controllers use their own private projection where appropriate.
+const publicPlayerSelect = {
+  player_id: true,
+  name: true,
+  profile_photo: true,
+  date_of_birth: true,
+  gender: true,
+  position: true,
+  nationality: true,
+  registration_number: true,
+  status: true,
+  created_at: true,
+  updated_at: true,
+};
+
 // ======================================================
 // GENERATE REGISTRATION NUMBER
 // ======================================================
@@ -162,7 +178,7 @@ export const getPlayers = async (req, res) => {
   try {
     const players =
       await prisma.player.findMany({
-        select: playerSelect,
+        select: publicPlayerSelect,
 
         orderBy: {
           created_at: "desc",
@@ -205,7 +221,7 @@ export const getPlayerById = async (
           player_id: playerId,
         },
 
-        select: playerSelect,
+        select: publicPlayerSelect,
       });
 
     if (!player) {

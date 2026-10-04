@@ -1,4 +1,4 @@
-import { body, param } from "express-validator";
+import { body, param, checkExact } from "express-validator";
 
 // ======================================================
 // MATCH ID VALIDATION
@@ -10,6 +10,7 @@ export const matchIdValidation = [
     .withMessage(
       "Match ID must be a positive integer"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];
 
 // ======================================================
@@ -102,6 +103,7 @@ export const createMatchValidation = [
     .withMessage(
       "Match notes must not exceed 2000 characters"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];
 
 // ======================================================
@@ -174,6 +176,7 @@ export const updateMatchValidation = [
     .withMessage(
       "Match notes must not exceed 2000 characters"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];
 
 
@@ -183,4 +186,5 @@ export const startMatchValidation = [
     .withMessage(
       "Match ID must be a positive integer"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];

@@ -33,6 +33,7 @@ export const teamIdValidation = [
 // ======================================================
 
 export const createTeamValidation = [
+  body("owner_id").optional().isInt({ min: 1 }).withMessage("Owner ID must be a valid positive integer"),
   body("club_id")
     .exists()
     .withMessage(

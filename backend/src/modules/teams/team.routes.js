@@ -172,11 +172,7 @@ router.patch(
 router.patch(
   "/:team_id/owner",
   authenticate,
-  authorize(
-    ROLES.TEAM_OWNER,
-    ROLES.CLUB_OWNER,
-    ROLES.SUPER_ADMIN
-  ),
+  authorize(ROLES.SUPER_ADMIN),
   transferTeamOwnershipValidation,
   handleValidationErrors,
   transferTeamOwnership

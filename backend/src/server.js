@@ -24,6 +24,7 @@ import newsRoutes from "./modules/news/news.routes.js";
 import notificationRoutes from "./modules/notifications/notification.routes.js";
 import standingRoutes from "./modules/standings/standing.routes.js";
 import rankingRoutes from "./modules/rankings/ranking.routes.js";
+import adminRoutes from "./modules/admin/admin.routes.js";
 
 import { errorHandler } from "./middleware/auth/error.middleware.js";
 import { ENV } from "./config/env.js";
@@ -113,6 +114,7 @@ app.use("/api/news", newsRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/standings", standingRoutes);
 app.use("/api/rankings", rankingRoutes);
+app.use("/api/admin", adminRoutes);
 // ======================================================
 // DATABASE TEST ROUTE
 // DEVELOPMENT ONLY

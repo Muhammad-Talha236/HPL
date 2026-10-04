@@ -161,6 +161,7 @@ export const updateUserRoleValidation = [
       "SUPER_ADMIN",
       "CLUB_OWNER",
       "TEAM_OWNER",
+      "REFEREE",
       "USER",
     ])
     .withMessage(

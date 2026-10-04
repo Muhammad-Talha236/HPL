@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import PublicLayout from "./layouts/PublicLayout";
 import GuestRoute from "./routes/GuestRoute";
@@ -30,12 +31,49 @@ import CompetitionRegistrationPage from "./features/registrations/pages/Competit
 import MyRegistrationsPage from "./features/registrations/pages/MyRegistrationsPage";
 import RegistrationDetailsPage from "./features/registrations/pages/RegistrationDetailsPage";
 import AdminRoute from "./routes/AdminRoute";
-import AdminRegistrationsPage from "./features/registrations/pages/AdminRegistrationsPage";
-import AdminRegistrationDetailsPage from "./features/registrations/pages/AdminRegistrationDetailsPage";
+import AdminLayout from "./layouts/AdminLayout";
+
+const AdminDashboardPage = lazy(() => import("./features/admin/pages/AdminDashboardPage"));
+const AdminUsersPage = lazy(() => import("./features/admin/pages/AdminUsersPage"));
+const AdminUserDetailsPage = lazy(() => import("./features/admin/pages/AdminUserDetailsPage"));
+const AdminClubsPage = lazy(() => import("./features/admin/pages/AdminClubsPage"));
+const AdminClubFormPage = lazy(() => import("./features/admin/pages/AdminClubFormPage"));
+const AdminClubDetailsPage = lazy(() => import("./features/admin/pages/AdminClubDetailsPage"));
+const AdminTeamsPage = lazy(() => import("./features/admin/pages/AdminTeamsPage"));
+const AdminTeamFormPage = lazy(() => import("./features/admin/pages/AdminTeamFormPage"));
+const AdminTeamDetailsPage = lazy(() => import("./features/admin/pages/AdminTeamDetailsPage"));
+const AdminTeamEditPage = lazy(() => import("./features/admin/pages/AdminTeamEditPage"));
+const AdminPlayersPage = lazy(() => import("./features/admin/pages/AdminPlayersPage"));
+const AdminPlayerFormPage = lazy(() => import("./features/admin/pages/AdminPlayerFormPage"));
+const AdminPlayerDetailsPage = lazy(() => import("./features/admin/pages/AdminPlayerDetailsPage"));
+const AdminPlayerEditPage = lazy(() => import("./features/admin/pages/AdminPlayerEditPage"));
+const AdminSeasonsPage = lazy(() => import("./features/admin/pages/AdminSeasonsPage"));
+const AdminSeasonFormPage = lazy(() => import("./features/admin/pages/AdminSeasonFormPage"));
+const AdminSeasonDetailsPage = lazy(() => import("./features/admin/pages/AdminSeasonDetailsPage"));
+const AdminCompetitionsPage = lazy(() => import("./features/admin/pages/AdminCompetitionsPage"));
+const AdminCompetitionFormPage = lazy(() => import("./features/admin/pages/AdminCompetitionFormPage"));
+const AdminCompetitionDetailsPage = lazy(() => import("./features/admin/pages/AdminCompetitionDetailsPage"));
+const AdminVenuesPage = lazy(() => import("./features/admin/pages/AdminVenuesPage"));
+const AdminVenueFormPage = lazy(() => import("./features/admin/pages/AdminVenueFormPage"));
+const AdminVenueDetailsPage = lazy(() => import("./features/admin/pages/AdminVenueDetailsPage"));
+const AdminRefereesPage = lazy(() => import("./features/admin/pages/AdminRefereesPage"));
+const AdminRefereeFormPage = lazy(() => import("./features/admin/pages/AdminRefereeFormPage"));
+const AdminRefereeDetailsPage = lazy(() => import("./features/admin/pages/AdminRefereeDetailsPage"));
+const AdminMatchesPage = lazy(() => import("./features/admin/pages/AdminMatchesPage"));
+const AdminMatchFormPage = lazy(() => import("./features/admin/pages/AdminMatchFormPage"));
+const AdminMatchDetailsPage = lazy(() => import("./features/admin/pages/AdminMatchDetailsPage"));
+const AdminNewsPage = lazy(() => import("./features/admin/pages/AdminNewsPage"));
+const AdminNewsFormPage = lazy(() => import("./features/admin/pages/AdminNewsFormPage"));
+const AdminNewsDetailsPage = lazy(() => import("./features/admin/pages/AdminNewsDetailsPage"));
+const AdminAuditLogsPage = lazy(() => import("./features/admin/pages/AdminAuditLogsPage"));
+const AdminAuditLogDetailsPage = lazy(() => import("./features/admin/pages/AdminAuditLogDetailsPage"));
+const AdminRegistrationsPage = lazy(() => import("./features/registrations/pages/AdminRegistrationsPage"));
+const AdminRegistrationDetailsPage = lazy(() => import("./features/registrations/pages/AdminRegistrationDetailsPage"));
 
 function App() {
   return (
-    <Routes>
+    <Suspense fallback={<div className="min-h-screen bg-[#061525] p-8 text-white/60" role="status">Loading page…</div>}>
+      <Routes>
       {/* Public Website */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<HomePage />} />
@@ -70,8 +108,51 @@ function App() {
         </Route>
 
         <Route element={<AdminRoute />}>
-          <Route path="/admin/registrations" element={<AdminRegistrationsPage />} />
-          <Route path="/admin/registrations/:registrationId" element={<AdminRegistrationDetailsPage />} />
+          <Route element={<AdminLayout />}>
+            <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/users/:userId" element={<AdminUserDetailsPage />} />
+            <Route path="/admin/clubs" element={<AdminClubsPage />} />
+            <Route path="/admin/clubs/new" element={<AdminClubFormPage />} />
+            <Route path="/admin/clubs/:clubId" element={<AdminClubDetailsPage />} />
+            <Route path="/admin/teams" element={<AdminTeamsPage />} />
+            <Route path="/admin/teams/new" element={<AdminTeamFormPage />} />
+            <Route path="/admin/teams/:teamId" element={<AdminTeamDetailsPage />} />
+            <Route path="/admin/teams/:teamId/edit" element={<AdminTeamEditPage />} />
+            <Route path="/admin/players" element={<AdminPlayersPage />} />
+            <Route path="/admin/players/new" element={<AdminPlayerFormPage />} />
+            <Route path="/admin/players/:playerId" element={<AdminPlayerDetailsPage />} />
+            <Route path="/admin/players/:playerId/edit" element={<AdminPlayerEditPage />} />
+            <Route path="/admin/seasons" element={<AdminSeasonsPage />} />
+            <Route path="/admin/seasons/new" element={<AdminSeasonFormPage />} />
+            <Route path="/admin/seasons/:seasonId" element={<AdminSeasonDetailsPage />} />
+            <Route path="/admin/seasons/:seasonId/edit" element={<AdminSeasonFormPage />} />
+            <Route path="/admin/competitions" element={<AdminCompetitionsPage />} />
+            <Route path="/admin/competitions/new" element={<AdminCompetitionFormPage />} />
+            <Route path="/admin/competitions/:competitionId" element={<AdminCompetitionDetailsPage />} />
+            <Route path="/admin/competitions/:competitionId/edit" element={<AdminCompetitionFormPage />} />
+            <Route path="/admin/venues" element={<AdminVenuesPage />} />
+            <Route path="/admin/venues/new" element={<AdminVenueFormPage />} />
+            <Route path="/admin/venues/:venueId" element={<AdminVenueDetailsPage />} />
+            <Route path="/admin/venues/:venueId/edit" element={<AdminVenueFormPage />} />
+            <Route path="/admin/referees" element={<AdminRefereesPage />} />
+            <Route path="/admin/referees/new" element={<AdminRefereeFormPage />} />
+            <Route path="/admin/referees/:refereeId" element={<AdminRefereeDetailsPage />} />
+            <Route path="/admin/referees/:refereeId/edit" element={<AdminRefereeFormPage />} />
+            <Route path="/admin/matches" element={<AdminMatchesPage />} />
+            <Route path="/admin/matches/new" element={<AdminMatchFormPage />} />
+            <Route path="/admin/matches/:matchId" element={<AdminMatchDetailsPage />} />
+            <Route path="/admin/matches/:matchId/edit" element={<AdminMatchFormPage />} />
+            <Route path="/admin/news" element={<AdminNewsPage />} />
+            <Route path="/admin/news/new" element={<AdminNewsFormPage />} />
+            <Route path="/admin/news/:newsId" element={<AdminNewsDetailsPage />} />
+            <Route path="/admin/news/:newsId/edit" element={<AdminNewsFormPage />} />
+            <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
+            <Route path="/admin/audit-logs/:auditId" element={<AdminAuditLogDetailsPage />} />
+            <Route path="/admin/registrations" element={<AdminRegistrationsPage />} />
+            <Route path="/admin/registrations/:registrationId" element={<AdminRegistrationDetailsPage />} />
+            <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
+          </Route>
         </Route>
 
         {/* Guest-only authentication routes */}
@@ -82,7 +163,8 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 }
 

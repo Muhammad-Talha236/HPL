@@ -70,6 +70,9 @@ export const createClubValidation = [
     .isLength({ max: 30 })
     .withMessage("Contact phone is too long"),
 
+  body("representative_name").optional({ nullable: true }).isString().withMessage("Representative name must be a string").trim().isLength({ max: 100 }).withMessage("Representative name is too long"),
+  body("owner_id").optional().isInt({ min: 1 }).withMessage("Owner ID must be a valid positive integer"),
+
     checkExact([], {
   message: "Unexpected fields are not allowed",
 }),
@@ -134,6 +137,8 @@ export const updateClubValidation = [
     .withMessage("Contact phone must be a string")
     .isLength({ max: 30 })
     .withMessage("Contact phone is too long"),
+
+  body("representative_name").optional({ nullable: true }).isString().withMessage("Representative name must be a string").trim().isLength({ max: 100 }).withMessage("Representative name is too long"),
 
     checkExact([], {
   message: "Unexpected fields are not allowed",

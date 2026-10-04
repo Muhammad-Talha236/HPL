@@ -950,6 +950,7 @@ export const updateCompetition =
           where: {
             competition_id:
               competitionId,
+            registration_status: "APPROVED",
           },
         });
 
@@ -968,6 +969,20 @@ export const updateCompetition =
           message:
             "Maximum teams cannot be less than the number of existing registrations",
         });
+      }
+
+      // Preserve registered squads. A lower limit must never silently
+      // remove CompetitionPlayer history or invalidate an approved roster.
+      if (updateData.squad_size !== undefined && updateData.squad_size !== null) {
+        const squadGroups = await prisma.competitionPlayer.groupBy({
+          by: ["registration_id"],
+          where: { competition_id: competitionId },
+          _count: { competition_player_id: true },
+        });
+        const largestSquad = Math.max(0, ...squadGroups.map((group) => group._count.competition_player_id));
+        if (updateData.squad_size < largestSquad) {
+          return res.status(400).json({ success: false, message: `Squad size cannot be lower than the current registered squad size of ${largestSquad}.` });
+        }
       }
 
       // ==================================================
@@ -1224,6 +1239,14 @@ export const deactivateCompetition =
           message:
             "Competition is already inactive",
         });
+      }
+
+      const liveMatch = await prisma.match.findFirst({
+        where: { competition_id: competitionId, status: "LIVE" },
+        select: { match_id: true },
+      });
+      if (liveMatch) {
+        return res.status(409).json({ success: false, message: "Competition cannot be deactivated while a match is live." });
       }
 
       // ==================================================

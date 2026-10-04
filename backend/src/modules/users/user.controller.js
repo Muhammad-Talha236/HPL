@@ -24,6 +24,37 @@ const userSelect = {
   updated_at: true,
 };
 
+// This projection is intentionally separate from authentication projections.
+// It contains only operational relationship data a SUPER_ADMIN needs and never
+// includes password hashes, tokens, or other authentication material.
+const userAdminDetailSelect = {
+  ...userSelect,
+  owned_clubs: {
+    select: {
+      club_id: true,
+      name: true,
+      status: true,
+    },
+    orderBy: { club_id: "asc" },
+  },
+  owned_teams: {
+    select: {
+      team_id: true,
+      name: true,
+      status: true,
+    },
+    orderBy: { team_id: "asc" },
+  },
+  referee_profile: {
+    select: {
+      referee_id: true,
+      name: true,
+      status: true,
+      user_id: true,
+    },
+  },
+};
+
 /*
   Check whether the authenticated user
   can manage the target user.
@@ -74,19 +105,21 @@ export const getUsers = async (
       });
     }
 
-    const users =
-      await prisma.user.findMany({
-        select: userSelect,
-
-        orderBy: {
-          created_at: "desc",
-        },
-      });
+    const page = Number(req.query.page || 1);
+    const limit = Number(req.query.limit || 20);
+    const role = req.query.role;
+    const status = req.query.status;
+    const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 50 || q.length > 100) return res.status(400).json({ success: false, message: "Invalid user query" });
+    if (role && !Object.values(ROLES).includes(role)) return res.status(400).json({ success: false, message: "Invalid role filter" });
+    if (status && !Object.values(USER_STATUS).includes(status)) return res.status(400).json({ success: false, message: "Invalid status filter" });
+    const where = { ...(role ? { role } : {}), ...(status ? { status } : {}), ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } }] } : {}) };
+    const [users, total] = await prisma.$transaction([prisma.user.findMany({ where, select: userSelect, orderBy: [{ created_at: "desc" }, { user_id: "desc" }], skip: (page - 1) * limit, take: limit }), prisma.user.count({ where })]);
 
     return res.status(200).json({
       success: true,
-      count: users.length,
       data: users,
+      pagination: { page, limit, total, total_pages: Math.ceil(total / limit) },
     });
   } catch (error) {
     console.error(
@@ -158,6 +191,43 @@ export const getUserById = async (
       error
     );
 
+    next(error);
+  }
+};
+
+/*
+  ADMIN USER DETAIL
+
+  Kept under /api/admin so an administrative read cannot accidentally be
+  confused with the existing self-profile endpoint.  It shares the safe,
+  password-free projection above.
+*/
+export const getAdminUserById = async (req, res, next) => {
+  try {
+    const userId = Number(req.params.user_id);
+
+    if (!Number.isInteger(userId) || userId < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID must be a valid positive integer",
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { user_id: userId },
+      select: userAdminDetailSelect,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    console.error("Get admin user detail error:", error);
     next(error);
   }
 };
@@ -366,9 +436,49 @@ export const updateUserRole = async (
       });
     }
 
-    const updatedUser =
+    const roleUpdate =
       await prisma.$transaction(
         async (tx) => {
+          // Relationship checks live in the same transaction as the role
+          // write. A role must continue to describe the user's linked domain
+          // identity; ownership is never removed implicitly by this endpoint.
+          const currentUser = await tx.user.findUnique({
+            where: { user_id: userId },
+            select: {
+              user_id: true,
+              role: true,
+              _count: {
+                select: {
+                  owned_clubs: true,
+                  owned_teams: true,
+                },
+              },
+              referee_profile: {
+                select: { referee_id: true },
+              },
+            },
+          });
+
+          if (!currentUser) {
+            throw new Error("USER_NOT_FOUND");
+          }
+
+          if (currentUser.role === role) {
+            throw new Error("USER_ROLE_UNCHANGED");
+          }
+
+          if (currentUser._count.owned_clubs > 0 && role !== ROLES.CLUB_OWNER) {
+            throw new Error("USER_OWNS_CLUBS");
+          }
+
+          if (currentUser._count.owned_teams > 0 && role !== ROLES.TEAM_OWNER) {
+            throw new Error("USER_OWNS_TEAMS");
+          }
+
+          if (currentUser.referee_profile && role !== ROLES.REFEREE) {
+            throw new Error("USER_HAS_REFEREE_PROFILE");
+          }
+
           /*
             If the target is a SUPER_ADMIN
             and we are removing that role,
@@ -379,7 +489,7 @@ export const updateUserRole = async (
             the transaction.
           */
           if (
-            existingUser.role ===
+            currentUser.role ===
               ROLES.SUPER_ADMIN &&
             role !==
               ROLES.SUPER_ADMIN
@@ -409,7 +519,7 @@ export const updateUserRole = async (
             await tx.user.updateMany({
               where: {
                 user_id: userId,
-                role: existingUser.role,
+                role: currentUser.role,
               },
 
               data: {
@@ -425,13 +535,15 @@ export const updateUserRole = async (
             );
           }
 
-          return tx.user.findUnique({
+          const updatedUser = await tx.user.findUnique({
             where: {
               user_id: userId,
             },
 
             select: userSelect,
           });
+
+          return { updatedUser, oldRole: currentUser.role };
         }
       );
 
@@ -448,7 +560,7 @@ export const updateUserRole = async (
 
       details: {
         old_role:
-          existingUser.role,
+          roleUpdate.oldRole,
 
         new_role: role,
       },
@@ -458,7 +570,7 @@ export const updateUserRole = async (
       success: true,
       message:
         "User role updated successfully",
-      data: updatedUser,
+      data: roleUpdate.updatedUser,
     });
   } catch (error) {
     if (
@@ -480,6 +592,21 @@ export const updateUserRole = async (
         success: false,
         message:
           "User role was changed by another request. Please try again.",
+      });
+    }
+
+    const integrityMessages = {
+      USER_NOT_FOUND: "User not found",
+      USER_ROLE_UNCHANGED: "User already has this role",
+      USER_OWNS_CLUBS: "User owns a club. Transfer club ownership before changing this role.",
+      USER_OWNS_TEAMS: "User owns a team. Transfer team ownership before changing this role.",
+      USER_HAS_REFEREE_PROFILE: "User has a linked referee profile. Remove or reassign that profile before changing this role.",
+    };
+
+    if (integrityMessages[error.message]) {
+      return res.status(error.message === "USER_NOT_FOUND" ? 404 : 400).json({
+        success: false,
+        message: integrityMessages[error.message],
       });
     }
 

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   NavLink,
-  useLocation,
   useNavigate,
 } from "react-router-dom";
 
@@ -43,7 +42,6 @@ const getInitial = (name) => {
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const {
     user,
@@ -72,11 +70,6 @@ const Navbar = () => {
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
-
-  useEffect(() => {
-    setIsMenuOpen(false);
-    setIsUserMenuOpen(false);
-  }, [location.pathname]);
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
@@ -114,6 +107,11 @@ const Navbar = () => {
 
   const closeMobileMenu = () => {
     setIsMenuOpen(false);
+  };
+
+  const closeMenus = () => {
+    setIsMenuOpen(false);
+    setIsUserMenuOpen(false);
   };
 
   const getNavLinkClasses = ({ isActive }) =>
@@ -162,11 +160,11 @@ const Navbar = () => {
         <div className="hidden items-center gap-5 xl:gap-7 lg:flex">
           {navItems.map((item) => (
             item.href ? (
-              <a key={item.href} href={item.href} className={anchorLinkClasses}>
+              <a key={item.href} href={item.href} onClick={closeMenus} className={anchorLinkClasses}>
                 {item.label}
               </a>
             ) : (
-              <NavLink key={item.path} to={item.path} className={getNavLinkClasses}>
+              <NavLink key={item.path} to={item.path} onClick={closeMenus} className={getNavLinkClasses}>
                 {item.label}
               </NavLink>
             )
@@ -304,11 +302,11 @@ const Navbar = () => {
 
                   {/* Logout */}
                   <div className="p-2">
-                    {(user.role === "TEAM_OWNER" || user.role === "CLUB_OWNER") && <NavLink to="/my/registrations" role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">MY REGISTRATIONS</NavLink>}
-                    {user.role === "SUPER_ADMIN" && <NavLink to="/admin/registrations" role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">REGISTRATIONS</NavLink>}
+                    {(user.role === "TEAM_OWNER" || user.role === "CLUB_OWNER") && <NavLink to="/my/registrations" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">MY REGISTRATIONS</NavLink>}
+                    {user.role === "SUPER_ADMIN" && <NavLink to="/admin/registrations" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">REGISTRATIONS</NavLink>}
                     {user.role === "REFEREE" && <>
-                      <NavLink to="/referee/dashboard" role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">REFEREE DASHBOARD</NavLink>
-                      <NavLink to="/referee/matches" role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">MY MATCHES</NavLink>
+                      <NavLink to="/referee/dashboard" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">REFEREE DASHBOARD</NavLink>
+                      <NavLink to="/referee/matches" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">MY MATCHES</NavLink>
                     </>}
                     <button
                       type="button"

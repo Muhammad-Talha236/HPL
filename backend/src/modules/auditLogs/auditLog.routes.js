@@ -1,6 +1,6 @@
 import express from "express";
 
-import { getAuditLogs } from "./auditLog.controller.js";
+import { getAdminAuditLogById, getAdminAuditLogs, getAuditLogFilterOptions } from "./auditLog.admin.controller.js";
 
 import { authenticate } from "../../middleware/auth/auth.middleware.js";
 import { authorize } from "../../middleware/auth/role.middleware.js";
@@ -20,8 +20,11 @@ router.get(
   "/",
   authenticate,
   authorize(ROLES.SUPER_ADMIN),
-  getAuditLogs
+  getAdminAuditLogs
 );
+
+router.get("/options", authenticate, authorize(ROLES.SUPER_ADMIN), getAuditLogFilterOptions);
+router.get("/:audit_id", authenticate, authorize(ROLES.SUPER_ADMIN), getAdminAuditLogById);
 
 
 export default router;

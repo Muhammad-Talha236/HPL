@@ -1,4 +1,4 @@
-import { body, param } from "express-validator";
+import { body, param, checkExact } from "express-validator";
 
 // ======================================================
 // MATCH PLAYER ID VALIDATION
@@ -76,6 +76,7 @@ export const createMatchPlayerValidation = [
     .withMessage(
       "Shirt number must be between 1 and 99"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];
 
 // ======================================================
@@ -127,6 +128,7 @@ export const updateMatchPlayerValidation = [
     .withMessage(
       "Shirt number must be between 1 and 99"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 
   
 ];

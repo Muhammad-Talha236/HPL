@@ -8,6 +8,7 @@ import {
   cancelMatch,
   completeMatch,
    startMatch,
+  postponeMatch,
 } from "./match.controller.js";
 
 import { authenticate } from "../../middleware/auth/auth.middleware.js";
@@ -76,6 +77,15 @@ router.patch(
   matchIdValidation,
   handleValidationErrors,
   cancelMatch
+);
+
+router.patch(
+  "/:match_id/postpone",
+  authenticate,
+  authorize(ROLES.SUPER_ADMIN),
+  matchIdValidation,
+  handleValidationErrors,
+  postponeMatch
 );
 
 // Complete match

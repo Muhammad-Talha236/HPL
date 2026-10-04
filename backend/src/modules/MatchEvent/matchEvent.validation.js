@@ -1,4 +1,4 @@
-import { body, param } from "express-validator";
+import { body, param, checkExact } from "express-validator";
 
 // ==================================================
 // MATCH EVENT ID VALIDATION
@@ -90,6 +90,7 @@ export const createMatchEventValidation = [
     .withMessage(
       "Description must not exceed 1000 characters"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];
 
 export const matchEventsByMatchValidation = [
@@ -123,6 +124,7 @@ export const updateMatchEventValidation = [
     .withMessage(
       "Description must not exceed 1000 characters"
     ),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];
 
 export const deleteMatchEventValidation = [

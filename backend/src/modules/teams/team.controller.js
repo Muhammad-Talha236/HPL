@@ -145,6 +145,7 @@ export const createTeam = async (
       contact_email,
       contact_phone,
       team_type,
+      owner_id,
     } = req.body;
 
     const clubId =
@@ -240,11 +241,20 @@ export const createTeam = async (
     // TEAM OWNER
     // --------------------------------------------------
 
-    const teamOwnerId =
+    let teamOwnerId =
       req.user.role ===
       ROLES.SUPER_ADMIN
         ? club.owner_id
         : req.user.user_id;
+
+    if (owner_id !== undefined) {
+      if (req.user.role !== ROLES.SUPER_ADMIN) return res.status(403).json({ success: false, message: "Only SUPER_ADMIN can assign a team owner" });
+      const selectedOwner = await prisma.user.findUnique({ where: { user_id: Number(owner_id) }, select: { user_id: true, role: true, status: true } });
+      if (!selectedOwner) return res.status(404).json({ success: false, message: "Selected owner not found" });
+      if (selectedOwner.role !== ROLES.TEAM_OWNER) return res.status(400).json({ success: false, message: "Selected user must have TEAM_OWNER role" });
+      if (selectedOwner.status !== "ACTIVE") return res.status(400).json({ success: false, message: "Selected user account is not active" });
+      teamOwnerId = selectedOwner.user_id;
+    }
 
     // --------------------------------------------------
     // CREATE WITH TRANSACTION
