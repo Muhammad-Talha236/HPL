@@ -32,6 +32,8 @@ import MyRegistrationsPage from "./features/registrations/pages/MyRegistrationsP
 import RegistrationDetailsPage from "./features/registrations/pages/RegistrationDetailsPage";
 import AdminRoute from "./routes/AdminRoute";
 import AdminLayout from "./layouts/AdminLayout";
+import ClubOwnerLayout from "./layouts/ClubOwnerLayout";
+import ClubOwnerRoute from "./routes/ClubOwnerRoute";
 
 const AdminDashboardPage = lazy(() => import("./features/admin/pages/AdminDashboardPage"));
 const AdminUsersPage = lazy(() => import("./features/admin/pages/AdminUsersPage"));
@@ -69,6 +71,17 @@ const AdminAuditLogsPage = lazy(() => import("./features/admin/pages/AdminAuditL
 const AdminAuditLogDetailsPage = lazy(() => import("./features/admin/pages/AdminAuditLogDetailsPage"));
 const AdminRegistrationsPage = lazy(() => import("./features/registrations/pages/AdminRegistrationsPage"));
 const AdminRegistrationDetailsPage = lazy(() => import("./features/registrations/pages/AdminRegistrationDetailsPage"));
+const ClubDashboardPage = lazy(() => import("./features/clubOwner/pages/ClubOwnerPortalPage").then((module) => ({ default: module.ClubDashboardPage })));
+const ClubProfilePage = lazy(() => import("./features/clubOwner/pages/ClubOwnerPortalPage").then((module) => ({ default: module.ClubProfilePage })));
+const ClubTeamsPage = lazy(() => import("./features/clubOwner/pages/ClubOwnerTeamsPage"));
+const ClubTeamDetailsPage = lazy(() => import("./features/clubOwner/pages/ClubOwnerPortalPage").then((module) => ({ default: module.ClubTeamDetailsPage })));
+const ClubPlayersPage = lazy(() => import("./features/clubOwner/pages/ClubOwnerPlayersPage"));
+const ClubCompetitionsPage = lazy(() => import("./features/clubOwner/pages/ClubOwnerPortalPage").then((module) => ({ default: module.ClubCompetitionsPage })));
+const ClubRegistrationsPage = lazy(() => import("./features/clubOwner/pages/ClubOwnerRegistrationsPage"));
+const ClubPaymentsPage = lazy(() => import("./features/clubOwner/pages/ClubOwnerPaymentsPage"));
+const ClubOwnerRegistrationDetailsPage = lazy(() => import("./features/clubOwner/pages/ClubOwnerRegistrationDetailsPage"));
+const ClubOwnerTeamFormPage = lazy(() => import("./features/clubOwner/pages/ClubOwnerTeamFormPage"));
+const ClubOwnerPlayerDetailsPage = lazy(() => import("./features/clubOwner/pages/ClubOwnerPlayerDetailsPage"));
 
 function App() {
   return (
@@ -152,6 +165,24 @@ function App() {
             <Route path="/admin/registrations" element={<AdminRegistrationsPage />} />
             <Route path="/admin/registrations/:registrationId" element={<AdminRegistrationDetailsPage />} />
             <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
+          </Route>
+        </Route>
+
+        <Route element={<ClubOwnerRoute />}>
+          <Route element={<ClubOwnerLayout />}>
+            <Route path="/club" element={<ClubDashboardPage />} />
+            <Route path="/club/profile" element={<ClubProfilePage />} />
+            <Route path="/club/teams" element={<ClubTeamsPage />} />
+            <Route path="/club/teams/new" element={<ClubOwnerTeamFormPage />} />
+            <Route path="/club/teams/:teamId" element={<ClubTeamDetailsPage />} />
+            <Route path="/club/teams/:teamId/edit" element={<ClubOwnerTeamFormPage />} />
+            <Route path="/club/players" element={<ClubPlayersPage />} />
+            <Route path="/club/players/:playerId" element={<ClubOwnerPlayerDetailsPage />} />
+            <Route path="/club/competitions" element={<ClubCompetitionsPage />} />
+            <Route path="/club/registrations" element={<ClubRegistrationsPage />} />
+            <Route path="/club/registrations/:registrationId" element={<ClubOwnerRegistrationDetailsPage />} />
+            <Route path="/club/payments" element={<ClubPaymentsPage />} />
+            <Route path="/club/*" element={<Navigate to="/club" replace />} />
           </Route>
         </Route>
 

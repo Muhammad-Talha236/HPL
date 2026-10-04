@@ -1,0 +1,7 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import prisma from "../../database/prisma.js";
+import { getClubOwnerPayments } from "./clubOwner.controller.js";
+const res=()=>{const r={statusCode:200,body:null};return{r,status(c){r.statusCode=c;return this},json(b){r.body=b;return this}}};
+test("club-owner payment filters always retain the authenticated club ownership relation",async()=>{let where;const oldFind=prisma.payment.findMany,oldCount=prisma.payment.count,oldTx=prisma.$transaction;prisma.payment.findMany=async x=>(where=x.where,[]);prisma.payment.count=async()=>0;prisma.$transaction=async x=>Promise.all(x);const r=res();await getClubOwnerPayments({query:{status:"PENDING",team_id:"9",competition_id:"4",page:"1",limit:"20"},user:{user_id:10}},r,()=>{});prisma.payment.findMany=oldFind;prisma.payment.count=oldCount;prisma.$transaction=oldTx;assert.equal(r.r.statusCode,200);assert.equal(where.registration.team.club.owner_id,10);assert.equal(where.registration.team.team_id,9);assert.equal(where.registration.competition_id,4);assert.equal(where.payment_status,"PENDING")});
+test("club-owner payment endpoint rejects malformed identifiers, unbounded limits, and review-style status injection",async()=>{for(const query of[{page:"0"},{limit:"51"},{team_id:"foreign"},{status:"APPROVED"}]){const r=res();await getClubOwnerPayments({query,user:{user_id:10}},r,()=>{});assert.equal(r.r.statusCode,400)}});

@@ -25,6 +25,7 @@ import notificationRoutes from "./modules/notifications/notification.routes.js";
 import standingRoutes from "./modules/standings/standing.routes.js";
 import rankingRoutes from "./modules/rankings/ranking.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
+import clubOwnerRoutes from "./modules/clubOwner/clubOwner.routes.js";
 
 import { errorHandler } from "./middleware/auth/error.middleware.js";
 import { ENV } from "./config/env.js";
@@ -115,6 +116,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/standings", standingRoutes);
 app.use("/api/rankings", rankingRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/club-owner", clubOwnerRoutes);
 // ======================================================
 // DATABASE TEST ROUTE
 // DEVELOPMENT ONLY
