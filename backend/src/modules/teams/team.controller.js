@@ -581,6 +581,16 @@ export const updateTeam = async (
       team_type,
     } = req.body;
 
+    if (
+      req.user.role === ROLES.TEAM_OWNER &&
+      gender !== undefined
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Team owners cannot change team gender",
+      });
+    }
+
     // --------------------------------------------------
     // BUILD UPDATE DATA
     // --------------------------------------------------

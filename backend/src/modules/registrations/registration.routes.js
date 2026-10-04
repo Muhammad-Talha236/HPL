@@ -7,6 +7,7 @@ import {
   reviewRegistration,
 } from "./registration.controller.js";
 import { getAdminRegistration, getAdminRegistrations, getEligibleTeams, getMyRegistrations, updateRegistrationSquad } from "./registration.extra.controller.js";
+import { requireOwnedRegistrationForSquad } from "../teamOwner/teamOwner.squad.middleware.js";
 
 import {
   authenticate,
@@ -111,6 +112,7 @@ router.put(
   authorize(ROLES.USER, ROLES.TEAM_OWNER, ROLES.CLUB_OWNER, ROLES.SUPER_ADMIN),
   registrationIdValidation,
   handleValidationErrors,
+  requireOwnedRegistrationForSquad,
   updateRegistrationSquad
 );
 router.get(

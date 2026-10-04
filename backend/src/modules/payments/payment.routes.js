@@ -25,6 +25,7 @@ import {
 import {
   handleValidationErrors,
 } from "../../middleware/auth/validation.middleware.js";
+import { requireOwnedRegistrationForPayment } from "../teamOwner/teamOwner.payment.middleware.js";
 
 const router = express.Router();
 
@@ -44,6 +45,7 @@ router.post(
   ),
   createPaymentValidation,
   handleValidationErrors,
+  requireOwnedRegistrationForPayment,
   createPayment
 );
 

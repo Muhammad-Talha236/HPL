@@ -736,6 +736,16 @@ export const updateTeamPlayer =
         left_at,
       } = req.body;
 
+      if (
+        req.user.role === ROLES.TEAM_OWNER &&
+        (joined_at !== undefined || left_at !== undefined)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Team owners can only update jersey number",
+        });
+      }
+
       const result =
         await prisma.$transaction(
           async (tx) => {

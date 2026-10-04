@@ -34,6 +34,8 @@ import AdminRoute from "./routes/AdminRoute";
 import AdminLayout from "./layouts/AdminLayout";
 import ClubOwnerLayout from "./layouts/ClubOwnerLayout";
 import ClubOwnerRoute from "./routes/ClubOwnerRoute";
+import TeamOwnerLayout from "./layouts/TeamOwnerLayout";
+import TeamOwnerRoute from "./routes/TeamOwnerRoute";
 
 const AdminDashboardPage = lazy(() => import("./features/admin/pages/AdminDashboardPage"));
 const AdminUsersPage = lazy(() => import("./features/admin/pages/AdminUsersPage"));
@@ -82,6 +84,17 @@ const ClubPaymentsPage = lazy(() => import("./features/clubOwner/pages/ClubOwner
 const ClubOwnerRegistrationDetailsPage = lazy(() => import("./features/clubOwner/pages/ClubOwnerRegistrationDetailsPage"));
 const ClubOwnerTeamFormPage = lazy(() => import("./features/clubOwner/pages/ClubOwnerTeamFormPage"));
 const ClubOwnerPlayerDetailsPage = lazy(() => import("./features/clubOwner/pages/ClubOwnerPlayerDetailsPage"));
+const TeamOwnerDashboardPage = lazy(() => import("./features/teamOwner/pages/TeamOwnerPages").then((module) => ({ default: module.TeamOwnerDashboardPage })));
+const TeamOwnerProfilePage = lazy(() => import("./features/teamOwner/pages/TeamOwnerWorkflowPages").then((module) => ({ default: module.TeamOwnerProfilePage })));
+const TeamOwnerTeamEditPage = lazy(() => import("./features/teamOwner/pages/TeamOwnerWorkflowPages").then((module) => ({ default: module.TeamOwnerTeamEditPage })));
+const TeamOwnerPlayersPage = lazy(() => import("./features/teamOwner/pages/TeamOwnerWorkflowPages").then((module) => ({ default: module.TeamOwnerPlayersPage })));
+const TeamOwnerPlayerDetailsPage = lazy(() => import("./features/teamOwner/pages/TeamOwnerWorkflowPages").then((module) => ({ default: module.TeamOwnerPlayerDetailsPage })));
+const TeamOwnerRegistrationsPage = lazy(() => import("./features/teamOwner/pages/TeamOwnerPages").then((module) => ({ default: module.TeamOwnerRegistrationsPage })));
+const TeamOwnerPaymentsPage = lazy(() => import("./features/teamOwner/pages/TeamOwnerPages").then((module) => ({ default: module.TeamOwnerPaymentsPage })));
+const TeamOwnerCompetitionsPage = lazy(() => import("./features/teamOwner/pages/TeamOwnerCompetitionsPage"));
+const TeamOwnerRegistrationDetailPage = lazy(() => import("./features/teamOwner/pages/TeamOwnerRegistrationDetailPage"));
+const TeamOwnerMatchesPage = lazy(() => import("./features/teamOwner/pages/TeamOwnerMatchesPage"));
+const TeamOwnerMatchDetailPage = lazy(() => import("./features/teamOwner/pages/TeamOwnerMatchDetailPage"));
 
 function App() {
   return (
@@ -183,6 +196,24 @@ function App() {
             <Route path="/club/registrations/:registrationId" element={<ClubOwnerRegistrationDetailsPage />} />
             <Route path="/club/payments" element={<ClubPaymentsPage />} />
             <Route path="/club/*" element={<Navigate to="/club" replace />} />
+          </Route>
+        </Route>
+
+        <Route element={<TeamOwnerRoute />}>
+          <Route element={<TeamOwnerLayout />}>
+            <Route path="/team" element={<TeamOwnerDashboardPage />} />
+            <Route path="/team/profile" element={<TeamOwnerProfilePage />} />
+            <Route path="/team/teams/:teamId" element={<TeamOwnerProfilePage />} />
+            <Route path="/team/teams/:teamId/edit" element={<TeamOwnerTeamEditPage />} />
+            <Route path="/team/players" element={<TeamOwnerPlayersPage />} />
+            <Route path="/team/players/:playerId" element={<TeamOwnerPlayerDetailsPage />} />
+            <Route path="/team/competitions" element={<TeamOwnerCompetitionsPage />} />
+            <Route path="/team/registrations" element={<TeamOwnerRegistrationsPage />} />
+            <Route path="/team/registrations/:registrationId" element={<TeamOwnerRegistrationDetailPage />} />
+            <Route path="/team/matches" element={<TeamOwnerMatchesPage />} />
+            <Route path="/team/matches/:matchId" element={<TeamOwnerMatchDetailPage />} />
+            <Route path="/team/payments" element={<TeamOwnerPaymentsPage />} />
+            <Route path="/team/*" element={<Navigate to="/team" replace />} />
           </Route>
         </Route>
 

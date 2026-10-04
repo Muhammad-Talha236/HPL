@@ -9,7 +9,7 @@ const PublicLayout = () => {
   // Admin routes own their complete shell. Keeping the public fixed Navbar
   // around them causes its viewport offsets and footer to interfere with the
   // admin sidebar/content layout.
-  if (pathname.startsWith("/admin") || pathname.startsWith("/club")) {
+  if (pathname.startsWith("/admin") || pathname.startsWith("/club") || pathname.startsWith("/team")) {
     return <Outlet />;
   }
 
