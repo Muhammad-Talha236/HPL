@@ -26,6 +26,8 @@ model User {
   audit_logs       AuditLog[]
   referee_profile  Referee?
   referee_evaluations RefereeEvaluation[]
+  player           Player?                       @relation("PlayerUser")
+  sent_player_invitations PlayerInvitation[]     @relation("PlayerInvitationInviter")
 
 }
 
@@ -77,6 +79,7 @@ model Team {
   team_players  TeamPlayer[]
   standings     TeamStanding[]
   rankings      TeamRanking[]
+  player_invitations PlayerInvitation[]
 }
 
 model Player {
@@ -92,6 +95,8 @@ model Player {
   status                String
   created_at            DateTime            @default(now())
   updated_at            DateTime            @updatedAt
+  user_id               Int?                @unique
+  user                  User?               @relation("PlayerUser", fields: [user_id], references: [user_id], onDelete: SetNull)
   competition_players   CompetitionPlayer[]
   event_players         MatchEvent[]        @relation("EventPlayer")
   related_event_players MatchEvent[]        @relation("RelatedEventPlayer")
@@ -433,20 +438,26 @@ model Notification {
 }
 
 model PlayerInvitation {
-  invitation_id Int       @id @default(autoincrement())
-  player_id     Int
-  invited_email String
-  token_hash    String    @unique
-  expires_at    DateTime
-  accepted_at   DateTime?
-  status        String
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-  player        Player    @relation(fields: [player_id], references: [player_id])
+  invitation_id      Int       @id @default(autoincrement())
+  player_id          Int
+  team_id            Int?
+  invited_by_user_id Int?
+  invited_email      String
+  token_hash         String    @unique
+  expires_at         DateTime
+  accepted_at        DateTime?
+  status             String
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  player             Player    @relation(fields: [player_id], references: [player_id])
+  team               Team?     @relation(fields: [team_id], references: [team_id], onDelete: SetNull)
+  invited_by         User?     @relation("PlayerInvitationInviter", fields: [invited_by_user_id], references: [user_id], onDelete: SetNull)
 
   @@index([invited_email])
   @@index([player_id])
   @@index([expires_at])
+  @@index([team_id, status])
+  @@index([invited_by_user_id, status])
 }
 
 model AuditLog {

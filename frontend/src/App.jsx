@@ -100,6 +100,7 @@ const AccountPage = lazy(() => import("./features/account/pages/AccountPage"));
 const ProfileEditPage = lazy(() => import("./features/account/pages/ProfileEditPage"));
 const PasswordChangePage = lazy(() => import("./features/account/pages/PasswordChangePage"));
 const NotificationCenterPage = lazy(() => import("./features/notifications/pages/NotificationCenterPage"));
+const PlayerInvitationAcceptancePage = lazy(() => import("./features/playerInvitations/pages/PlayerInvitationAcceptancePage"));
 
 function App() {
   return (
@@ -125,6 +126,7 @@ function App() {
         <Route path="/referees" element={<RefereesPage />} />
         <Route path="/referees/rankings" element={<RefereeRankingsPage />} />
         <Route path="/referees/:refereeId" element={<RefereeDetailsPage />} />
+        <Route path="/invitations/player/:token" element={<PlayerInvitationAcceptancePage />} />
 
         <Route element={<RefereeRoute />}>
           <Route path="/referee/dashboard" element={<RefereeDashboardPage />} />

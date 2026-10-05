@@ -16,6 +16,22 @@ const initialFormData = {
   password: "",
 };
 
+const hasControlCharacter = (value) => [...value].some((character) => {
+  const code = character.charCodeAt(0);
+  return code < 32 || code === 127;
+});
+
+const safeInternalReturnPath = (from) => {
+  const pathname = from?.pathname;
+  if (typeof pathname !== "string") return "/";
+  try {
+    const decodedPath = decodeURIComponent(pathname);
+    return pathname.startsWith("/") && !pathname.startsWith("//") && decodedPath.startsWith("/") && !decodedPath.startsWith("//") && !decodedPath.includes("\\") && !decodedPath.includes("://") && !hasControlCharacter(decodedPath) ? pathname : "/";
+  } catch {
+    return "/";
+  }
+};
+
 const getApiFieldErrors = (error) => {
   const apiErrors = error.response?.data?.errors;
 
@@ -50,7 +66,7 @@ const LoginPage = () => {
     if (location.state?.registrationSuccess) {
       navigate(location.pathname, {
         replace: true,
-        state: null,
+        state: location.state?.from ? { from: location.state.from } : null,
       });
     }
   }, [location.pathname, location.state, navigate]);
@@ -101,11 +117,7 @@ const LoginPage = () => {
 
       await login(credentials);
 
-      const requestedPath = location.state?.from?.pathname;
-      const destination =
-        requestedPath && requestedPath.startsWith("/")
-          ? requestedPath
-          : "/";
+      const destination = safeInternalReturnPath(location.state?.from);
 
       navigate(destination, {
         replace: true,

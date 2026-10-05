@@ -33,3 +33,31 @@ export const apiRateLimiter = rateLimit({
       "Too many requests. Please try again later.",
   },
 });
+
+export const playerInvitationAcceptanceRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { success: false, message: "Too many invitation attempts. Please try again later." },
+});
+
+export const playerInvitationResendRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 3,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: (req) => `${req.user?.user_id ?? "anonymous"}:${req.params.invitation_id ?? ""}`,
+  message: { success: false, message: "Too many invitation resend attempts. Please try again later." },
+});
+
+// Per-invitation throttling prevents repeated delivery to one recipient; this
+// companion limiter prevents an inviter from bypassing it across many records.
+export const playerInvitationResendActorRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: (req) => String(req.user?.user_id ?? "anonymous"),
+  message: { success: false, message: "Too many invitation resend attempts. Please try again later." },
+});
