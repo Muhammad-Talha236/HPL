@@ -1486,11 +1486,6 @@ export const getMatches = async (req, res) => {
             home_score: true,
             away_score: true,
 
-            match_notes: true,
-
-            created_at: true,
-            updated_at: true,
-
             // ------------------------------------------------
             // Competition
             // ------------------------------------------------
@@ -1689,11 +1684,6 @@ export const getMatchById = async (
 
           home_score: true,
           away_score: true,
-
-          match_notes: true,
-
-          created_at: true,
-          updated_at: true,
 
           // ==================================================
           // COMPETITION
@@ -2015,14 +2005,6 @@ export const getMatchById = async (
           away_score:
             match.away_score,
 
-          match_notes:
-            match.match_notes,
-
-          created_at:
-            match.created_at,
-
-          updated_at:
-            match.updated_at,
         },
 
         competition:

@@ -36,6 +36,7 @@ import ClubOwnerLayout from "./layouts/ClubOwnerLayout";
 import ClubOwnerRoute from "./routes/ClubOwnerRoute";
 import TeamOwnerLayout from "./layouts/TeamOwnerLayout";
 import TeamOwnerRoute from "./routes/TeamOwnerRoute";
+import UserAccountRoute from "./routes/UserAccountRoute";
 
 const AdminDashboardPage = lazy(() => import("./features/admin/pages/AdminDashboardPage"));
 const AdminUsersPage = lazy(() => import("./features/admin/pages/AdminUsersPage"));
@@ -95,6 +96,10 @@ const TeamOwnerCompetitionsPage = lazy(() => import("./features/teamOwner/pages/
 const TeamOwnerRegistrationDetailPage = lazy(() => import("./features/teamOwner/pages/TeamOwnerRegistrationDetailPage"));
 const TeamOwnerMatchesPage = lazy(() => import("./features/teamOwner/pages/TeamOwnerMatchesPage"));
 const TeamOwnerMatchDetailPage = lazy(() => import("./features/teamOwner/pages/TeamOwnerMatchDetailPage"));
+const AccountPage = lazy(() => import("./features/account/pages/AccountPage"));
+const ProfileEditPage = lazy(() => import("./features/account/pages/ProfileEditPage"));
+const PasswordChangePage = lazy(() => import("./features/account/pages/PasswordChangePage"));
+const NotificationCenterPage = lazy(() => import("./features/notifications/pages/NotificationCenterPage"));
 
 function App() {
   return (
@@ -131,6 +136,13 @@ function App() {
           <Route path="/competitions/:competitionId/register" element={<CompetitionRegistrationPage />} />
           <Route path="/my/registrations" element={<MyRegistrationsPage />} />
           <Route path="/my/registrations/:registrationId" element={<RegistrationDetailsPage />} />
+        </Route>
+
+        <Route element={<UserAccountRoute />}>
+          <Route path="/account" element={<AccountPage />} />
+          <Route path="/account/profile" element={<ProfileEditPage />} />
+          <Route path="/account/password" element={<PasswordChangePage />} />
+          <Route path="/account/notifications" element={<NotificationCenterPage />} />
         </Route>
 
         <Route element={<AdminRoute />}>

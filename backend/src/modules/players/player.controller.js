@@ -183,6 +183,7 @@ export const getPlayers = async (req, res) => {
         orderBy: {
           created_at: "desc",
         },
+        take: 100,
       });
 
     return res.status(200).json({

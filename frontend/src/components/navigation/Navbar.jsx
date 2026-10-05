@@ -7,6 +7,7 @@ import {
 import Logo from "../common/Logo";
 import Button from "../common/Button";
 import useAuth from "../../hooks/useAuth";
+import useNotifications from "../../hooks/useNotifications";
 
 const navItems = [
   { label: "HOME", path: "/" },
@@ -40,6 +41,8 @@ const getInitial = (name) => {
   return name.trim().charAt(0).toUpperCase();
 };
 
+const Avatar = ({ user, className }) => user?.profile_image ? <img src={user.profile_image} alt="" className={`${className} object-cover`} /> : <span className={`${className} grid place-items-center bg-[#FF553D] font-extrabold text-white`}>{getInitial(user?.name)}</span>;
+
 const Navbar = () => {
   const navigate = useNavigate();
 
@@ -49,6 +52,7 @@ const Navbar = () => {
     isAuthLoading,
     logout,
   } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] =
@@ -194,6 +198,8 @@ const Navbar = () => {
           )}
 
           {!isAuthLoading && isAuthenticated && user && (
+            <>
+              {user.role === "USER" && <NavLink to="/account/notifications" onClick={closeMenus} aria-label={unreadCount ? `${unreadCount > 9 ? "9+" : unreadCount} unread notifications` : "Notifications"} className="relative mr-3 grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#EEC058]/60"><span aria-hidden="true" className="text-lg">🔔</span>{unreadCount > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[#FF553D] px-1 text-center text-[10px] font-extrabold leading-4 text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>}</NavLink>}
             <div
               ref={userMenuRef}
               className="relative"
@@ -218,16 +224,7 @@ const Navbar = () => {
                 "
               >
                 {/* Avatar */}
-                <span
-                  className="
-                    flex h-9 w-9 shrink-0
-                    items-center justify-center
-                    rounded-full bg-[#FF553D]
-                    text-sm font-extrabold text-white
-                  "
-                >
-                  {getInitial(user.name)}
-                </span>
+                <Avatar user={user} className="h-9 w-9 shrink-0 rounded-full text-sm" />
 
                 {/* User Information */}
                 <span className="max-w-[150px]">
@@ -302,8 +299,11 @@ const Navbar = () => {
 
                   {/* Logout */}
                   <div className="p-2">
-                    {(user.role === "TEAM_OWNER" || user.role === "CLUB_OWNER") && <NavLink to="/my/registrations" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">MY REGISTRATIONS</NavLink>}
-                    {user.role === "SUPER_ADMIN" && <NavLink to="/admin/registrations" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">REGISTRATIONS</NavLink>}
+                    {user.role === "USER" && <NavLink to="/account" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">MY ACCOUNT</NavLink>}
+                    {user.role === "USER" && <NavLink to="/account/notifications" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">NOTIFICATIONS{unreadCount > 0 ? ` (${unreadCount > 9 ? "9+" : unreadCount})` : ""}</NavLink>}
+                    {user.role === "TEAM_OWNER" && <NavLink to="/team" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">TEAM PORTAL</NavLink>}
+                    {user.role === "CLUB_OWNER" && <NavLink to="/club" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">CLUB PORTAL</NavLink>}
+                    {user.role === "SUPER_ADMIN" && <NavLink to="/admin" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">ADMIN PORTAL</NavLink>}
                     {user.role === "REFEREE" && <>
                       <NavLink to="/referee/dashboard" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">REFEREE DASHBOARD</NavLink>
                       <NavLink to="/referee/matches" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">MY MATCHES</NavLink>
@@ -329,6 +329,7 @@ const Navbar = () => {
 
               )}
             </div>
+            </>
           )}
         </div>
 
@@ -471,16 +472,7 @@ const Navbar = () => {
             user && (
               <div className="mt-6 rounded-lg border border-white/10 bg-white/5 p-4">
                 <div className="flex items-center gap-3">
-                  <span
-                    className="
-                      flex h-11 w-11 shrink-0
-                      items-center justify-center
-                      rounded-full bg-[#FF553D]
-                      text-base font-extrabold text-white
-                    "
-                  >
-                    {getInitial(user.name)}
-                  </span>
+                  <Avatar user={user} className="h-11 w-11 shrink-0 rounded-full text-base" />
 
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-white">
@@ -497,6 +489,10 @@ const Navbar = () => {
                   </div>
                 </div>
 
+                {user.role === "USER" && <div className="mt-4 grid grid-cols-2 gap-2"><NavLink onClick={closeMobileMenu} to="/account" className="block rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">MY ACCOUNT</NavLink><NavLink onClick={closeMobileMenu} to="/account/notifications" aria-label={unreadCount ? `${unreadCount > 9 ? "9+" : unreadCount} unread notifications` : "Notifications"} className="relative block rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">NOTIFICATIONS{unreadCount > 0 && <span className="ml-1 rounded-full bg-[#FF553D] px-1.5 py-0.5 text-[10px] text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>}</NavLink></div>}
+                {user.role === "TEAM_OWNER" && <div className="mt-4"><NavLink onClick={closeMobileMenu} to="/team" className="block rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">TEAM PORTAL</NavLink></div>}
+                {user.role === "CLUB_OWNER" && <div className="mt-4"><NavLink onClick={closeMobileMenu} to="/club" className="block rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">CLUB PORTAL</NavLink></div>}
+                {user.role === "SUPER_ADMIN" && <div className="mt-4"><NavLink onClick={closeMobileMenu} to="/admin" className="block rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">ADMIN PORTAL</NavLink></div>}
                 {user.role === "REFEREE" && <div className="mt-4 grid grid-cols-2 gap-2"><NavLink onClick={closeMobileMenu} to="/referee/dashboard" className="rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">DASHBOARD</NavLink><NavLink onClick={closeMobileMenu} to="/referee/matches" className="rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">MY MATCHES</NavLink></div>}
                 <button
                   type="button"

@@ -58,6 +58,18 @@ const teamPlayerSelect = {
   },
 };
 
+const publicTeamPlayerSelect = {
+  team_player_id: true,
+  team_id: true,
+  player_id: true,
+  jersey_number: true,
+  joined_at: true,
+  left_at: true,
+  status: true,
+  team: { select: { team_id: true, name: true, gender: true, status: true } },
+  player: { select: { player_id: true, name: true, gender: true, position: true, registration_number: true, status: true } },
+};
+
 /*
   Check whether the authenticated user
   can manage a particular team.
@@ -137,10 +149,11 @@ export const getTeamPlayers = async (
   try {
     const teamPlayers =
       await prisma.teamPlayer.findMany({
-        select: teamPlayerSelect,
+        select: publicTeamPlayerSelect,
         orderBy: {
           created_at: "desc",
         },
+        take: 100,
       });
 
     return res.status(200).json({
@@ -201,7 +214,7 @@ export const getTeamSquad = async (
           status:
             TEAM_PLAYER_STATUS.ACTIVE,
         },
-        select: teamPlayerSelect,
+        select: publicTeamPlayerSelect,
         orderBy: [
           {
             jersey_number: "asc",
@@ -249,7 +262,7 @@ export const getTeamPlayerById =
             team_player_id:
               teamPlayerId,
           },
-          select: teamPlayerSelect,
+          select: publicTeamPlayerSelect,
         });
 
       if (!teamPlayer) {

@@ -102,6 +102,24 @@ export const AuthProvider = ({ children }) => {
     clearSession();
   }, [clearSession]);
 
+  const refreshUser = useCallback(async () => {
+    const response = await getCurrentUser();
+    const currentUser = response?.data;
+
+    if (!currentUser) {
+      throw new Error("Unable to refresh the current user.");
+    }
+
+    try {
+      localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+    } catch {
+      // The verified in-memory user still keeps the current tab in sync.
+    }
+
+    setUser(currentUser);
+    return currentUser;
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -175,6 +193,7 @@ export const AuthProvider = ({ children }) => {
       isAuthLoading,
       login,
       logout,
+      refreshUser,
     }),
     [
       user,
@@ -183,6 +202,7 @@ export const AuthProvider = ({ children }) => {
       isAuthLoading,
       login,
       logout,
+      refreshUser,
     ]
   );
 

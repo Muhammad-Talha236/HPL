@@ -75,6 +75,23 @@ const teamSelect = {
   },
 };
 
+// Public discovery must not reuse the operational/team-owner projection.
+// Team contact and ownership data are managed data, not football directory data.
+const publicTeamSelect = {
+  team_id: true,
+  name: true,
+  logo: true,
+  gender: true,
+  region: true,
+  district: true,
+  city: true,
+  description: true,
+  team_type: true,
+  status: true,
+  club: { select: { club_id: true, name: true, logo: true } },
+  home_venue: { select: { venue_id: true, name: true, city: true } },
+};
+
 // ======================================================
 // TEAM OWNERSHIP CHECK
 // ======================================================
@@ -438,12 +455,13 @@ export const getTeams = async (
   try {
     const teams =
       await prisma.team.findMany({
-        select:
-          teamSelect,
+        select: publicTeamSelect,
 
         orderBy: {
           created_at: "desc",
         },
+
+        take: 100,
       });
 
     return res.status(200).json({
@@ -482,8 +500,7 @@ export const getTeamById = async (
           team_id: teamId,
         },
 
-        select:
-          teamSelect,
+        select: publicTeamSelect,
       });
 
     if (!team) {

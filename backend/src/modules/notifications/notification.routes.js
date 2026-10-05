@@ -13,6 +13,7 @@ import { authenticate } from "../../middleware/auth/auth.middleware.js";
 import {
   notificationIdValidation,
   notificationActionValidation,
+  notificationListValidation,
 } from "./notification.validation.js";
 
 import {
@@ -33,7 +34,18 @@ const router = express.Router();
 router.get(
   "/",
   authenticate,
+  notificationListValidation,
+  handleValidationErrors,
   getNotifications
+);
+
+/*
+  Keep static routes before parameterized notification paths.
+*/
+router.patch(
+  "/read-all",
+  authenticate,
+  markAllNotificationsAsRead
 );
 
 /*
@@ -59,17 +71,6 @@ router.patch(
   notificationActionValidation,
   handleValidationErrors,
   markNotificationAsRead
-);
-
-/*
-  MARK ALL CURRENT USER'S NOTIFICATIONS AS READ
-
-  No notification ID is required.
-*/
-router.patch(
-  "/read-all",
-  authenticate,
-  markAllNotificationsAsRead
 );
 
 /*

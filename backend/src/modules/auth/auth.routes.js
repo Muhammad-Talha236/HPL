@@ -1,5 +1,5 @@
 import express from "express";
-import { register, login, getMe, updateUserRole } from "./auth.controller.js";
+import { register, login, getMe, updateMyProfile, changeMyPassword, updateUserRole } from "./auth.controller.js";
 import { authenticate } from "../../middleware/auth/auth.middleware.js";
 
 import { authorize } from "../../middleware/auth/role.middleware.js";
@@ -9,6 +9,8 @@ import {
   registerValidation,
   loginValidation,
   updateUserRoleValidation,
+  updateMyProfileValidation,
+  changeMyPasswordValidation,
 } from "./auth.validation.js";
 import { handleValidationErrors } from "../../middleware/auth/validation.middleware.js";
 
@@ -25,6 +27,24 @@ router.post(
 );
 
 router.get("/me", authenticate, getMe);
+
+router.patch(
+  "/me",
+  authenticate,
+  authorize(ROLES.USER),
+  updateMyProfileValidation,
+  handleValidationErrors,
+  updateMyProfile,
+);
+
+router.patch(
+  "/me/password",
+  authenticate,
+  authorize(ROLES.USER),
+  changeMyPasswordValidation,
+  handleValidationErrors,
+  changeMyPassword,
+);
 
 router.patch(
   "/users/:user_id/role",

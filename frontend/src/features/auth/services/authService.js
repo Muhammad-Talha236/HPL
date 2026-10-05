@@ -4,6 +4,7 @@ const AUTH_ENDPOINTS = {
   LOGIN: "/auth/login",
   REGISTER: "/auth/register",
   ME: "/auth/me",
+  PASSWORD: "/auth/me/password",
 };
 
 export const loginUser = async (credentials) => {
@@ -29,5 +30,15 @@ export const getCurrentUser = async () => {
     AUTH_ENDPOINTS.ME
   );
 
+  return response.data;
+};
+
+export const updateCurrentUser = async (profile) => {
+  const response = await apiClient.patch(AUTH_ENDPOINTS.ME, profile);
+  return response.data;
+};
+
+export const changeCurrentUserPassword = async (passwords) => {
+  const response = await apiClient.patch(AUTH_ENDPOINTS.PASSWORD, passwords);
   return response.data;
 };

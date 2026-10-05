@@ -241,6 +241,143 @@ export const getMe = async (req, res) => {
   }
 };
 
+const accountSelect = {
+  user_id: true,
+  name: true,
+  email: true,
+  phone: true,
+  role: true,
+  status: true,
+  profile_image: true,
+};
+
+// ============================================================
+// UPDATE CURRENT USER PROFILE
+// ============================================================
+
+export const updateMyProfile = async (req, res) => {
+  try {
+    const { name, phone, profile_image } = req.body;
+    const updateData = {
+      name: name.trim(),
+      phone: phone === undefined ? undefined : phone === null ? null : phone.trim(),
+      profile_image:
+        profile_image === undefined
+          ? undefined
+          : profile_image === null
+            ? null
+            : profile_image.trim(),
+    };
+
+    const user = await prisma.user.update({
+      where: { user_id: req.user.user_id },
+      data: updateData,
+      select: accountSelect,
+    });
+
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.USER_PROFILE_UPDATED,
+      entity_type: "USER",
+      entity_id: req.user.user_id,
+      details: {
+        fields: Object.keys(updateData).filter(
+          (field) => updateData[field] !== undefined,
+        ),
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: user,
+    });
+  } catch (error) {
+    console.error("Update current user profile error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while updating your profile",
+    });
+  }
+};
+
+// ============================================================
+// CHANGE CURRENT USER PASSWORD
+// ============================================================
+
+export const changeMyPassword = async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+    const user = await prisma.user.findUnique({
+      where: { user_id: req.user.user_id },
+      select: { user_id: true, password_hash: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const currentPasswordMatches = await bcrypt.compare(
+      current_password,
+      user.password_hash,
+    );
+
+    if (!currentPasswordMatches) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    const passwordValidation = validatePassword(new_password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: passwordValidation.message,
+      });
+    }
+
+    const isSamePassword = await bcrypt.compare(new_password, user.password_hash);
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from your current password",
+      });
+    }
+
+    const password_hash = await bcrypt.hash(
+      new_password,
+      SECURITY.BCRYPT_SALT_ROUNDS,
+    );
+
+    await prisma.user.update({
+      where: { user_id: req.user.user_id },
+      data: { password_hash },
+    });
+
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.USER_PASSWORD_CHANGED,
+      entity_type: "USER",
+      entity_id: req.user.user_id,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Credentials updated successfully",
+    });
+  } catch (error) {
+    console.error("Change current user password error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while changing your password",
+    });
+  }
+};
+
 // ============================================================
 // UPDATE USER ROLE
 // ============================================================

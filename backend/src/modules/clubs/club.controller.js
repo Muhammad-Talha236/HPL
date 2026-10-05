@@ -6,6 +6,17 @@ import { USER_STATUS } from "../../constants/statuses.js";
 import { createAuditLog } from "../../utils/auditLog.util.js";
 import { AUDIT_ACTIONS } from "../../constants/auditActions.js";
 
+const publicClubSelect = {
+  club_id: true,
+  name: true,
+  logo: true,
+  description: true,
+  region: true,
+  district: true,
+  city: true,
+  status: true,
+};
+
 
 // ======================================================
 // CREATE CLUB
@@ -116,9 +127,11 @@ export const createClub = async (req, res) => {
 export const getClubs = async (req, res) => {
   try {
     const clubs = await prisma.club.findMany({
+      select: publicClubSelect,
       orderBy: {
         created_at: "desc",
       },
+      take: 100,
     });
 
     return res.status(200).json({
@@ -149,6 +162,7 @@ export const getClubById = async (req, res) => {
       where: {
         club_id: Number(club_id),
       },
+      select: publicClubSelect,
     });
 
     if (!club) {

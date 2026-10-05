@@ -40,6 +40,18 @@ const venueSelect = {
   updated_at: true,
 };
 
+const publicVenueSelect = {
+  venue_id: true,
+  name: true,
+  region: true,
+  district: true,
+  city: true,
+  address: true,
+  capacity: true,
+  surface_type: true,
+  status: true,
+};
+
 // ======================================================
 // CREATE VENUE
 // ======================================================
@@ -204,11 +216,12 @@ export const getVenues = async (
   try {
     const venues =
       await prisma.venue.findMany({
-        select: venueSelect,
+        select: publicVenueSelect,
 
         orderBy: {
           created_at: "desc",
         },
+        take: 100,
       });
 
     return res.status(200).json({
@@ -250,7 +263,7 @@ export const getVenueById = async (
             venueId,
         },
 
-        select: venueSelect,
+        select: publicVenueSelect,
       });
 
     if (!venue) {

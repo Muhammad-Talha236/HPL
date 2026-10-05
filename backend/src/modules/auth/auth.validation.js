@@ -74,6 +74,75 @@ export const loginValidation = [
 ];
 
 // ============================================================
+// SELF-SERVICE ACCOUNT VALIDATION
+// ============================================================
+
+export const updateMyProfileValidation = [
+  body("name")
+    .isString()
+    .withMessage("Name must be a string")
+    .trim()
+    .notEmpty()
+    .withMessage("Name is required")
+    .isLength({ min: 2, max: 100 })
+    .withMessage("Name must be between 2 and 100 characters")
+    .matches(/^[A-Za-z][A-Za-z\s'-]*$/)
+    .withMessage(
+      "Name must start with a letter and contain only letters, spaces, apostrophes, or hyphens",
+    ),
+
+  body("phone")
+    .optional({ nullable: true })
+    .isString()
+    .withMessage("Phone number must be a string")
+    .trim()
+    .matches(/^03\d{9}$/)
+    .withMessage(
+      "Phone number must be an 11-digit mobile number starting with 03",
+    ),
+
+  body("profile_image")
+    .optional({ nullable: true })
+    .isString()
+    .withMessage("Profile image must be a URL")
+    .trim()
+    .isLength({ max: 2048 })
+    .withMessage("Profile image URL must be 2048 characters or fewer")
+    .isURL({ protocols: ["http", "https"], require_protocol: true })
+    .withMessage("Profile image must be a valid HTTP or HTTPS URL"),
+
+  checkExact([], {
+    message: "Unexpected fields are not allowed",
+  }),
+];
+
+export const changeMyPasswordValidation = [
+  body("current_password")
+    .isString()
+    .withMessage("Current password must be a string")
+    .notEmpty()
+    .withMessage("Current password is required"),
+
+  body("new_password")
+    .isString()
+    .withMessage("New password must be a string")
+    .notEmpty()
+    .withMessage("New password is required"),
+
+  body("confirm_password")
+    .isString()
+    .withMessage("Password confirmation must be a string")
+    .notEmpty()
+    .withMessage("Password confirmation is required")
+    .custom((value, { req }) => value === req.body.new_password)
+    .withMessage("New password and confirmation must match"),
+
+  checkExact([], {
+    message: "Unexpected fields are not allowed",
+  }),
+];
+
+// ============================================================
 // UPDATE USER ROLE VALIDATION
 // ============================================================
 

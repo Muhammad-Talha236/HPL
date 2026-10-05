@@ -216,6 +216,8 @@ export const getSeasons = async (
           created_at: true,
           updated_at: true,
         },
+
+        take: 100,
       });
 
     return res.status(200).json({

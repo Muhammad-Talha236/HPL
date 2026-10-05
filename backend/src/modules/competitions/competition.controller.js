@@ -436,6 +436,8 @@ export const getCompetitions = async (
             },
           },
         },
+
+        take: 100,
       });
 
     return res.status(200).json({

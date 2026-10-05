@@ -16,6 +16,7 @@ export const getRankings = async (req, res) => {
         matches_counted: true, wins: true, draws: true, losses: true, updated_at: true,
         team: { select: { team_id: true, name: true, logo: true, gender: true } },
       },
+      take: 100,
     });
 
     return res.status(200).json({ success: true, data: { gender, rankings } });

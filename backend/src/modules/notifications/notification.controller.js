@@ -25,26 +25,41 @@ const notificationSelect = {
 export const getNotifications = async (req, res, next) => {
   try {
     const userId = req.user.user_id;
+    const page = Number(req.query.page || 1);
+    const limit = Number(req.query.limit || 20);
+    const status = req.query.status || "ALL";
+    const where = {
+      user_id: userId,
+      ...(status === "UNREAD" ? { is_read: false } : {}),
+      ...(status === "READ" ? { is_read: true } : {}),
+    };
 
-    const notifications = await prisma.notification.findMany({
-      where: {
-        user_id: userId,
-      },
-      select: notificationSelect,
-      orderBy: {
-        created_at: "desc",
-      },
-    });
-
-    const unreadCount = notifications.filter(
-      (notification) => !notification.is_read
-    ).length;
+    const [notifications, total, unreadCount] = await Promise.all([
+      prisma.notification.findMany({
+        where,
+        select: notificationSelect,
+        orderBy: [{ created_at: "desc" }, { notification_id: "desc" }],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.notification.count({ where }),
+      prisma.notification.count({ where: { user_id: userId, is_read: false } }),
+    ]);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
 
     return res.status(200).json({
       success: true,
       count: notifications.length,
       unread_count: unreadCount,
       data: notifications,
+      pagination: {
+        page,
+        limit,
+        total,
+        total_pages: totalPages,
+        has_previous: page > 1,
+        has_next: page < totalPages,
+      },
     });
   } catch (error) {
     console.error("Get notifications error:", error);
@@ -150,9 +165,10 @@ export const markNotificationAsRead = async (
         });
       }
 
-      return res.status(400).json({
-        success: false,
+      return res.status(200).json({
+        success: true,
         message: "Notification is already marked as read",
+        data: notification,
       });
     }
 

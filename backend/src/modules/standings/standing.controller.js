@@ -76,6 +76,7 @@ export const getStandings = async (req, res, next) => {
           team_id: "asc",
         },
       ],
+      take: 100,
     });
 
     return res.status(200).json({
