@@ -1,48 +1,103 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  NavLink,
-  useNavigate,
-} from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 import Logo from "../common/Logo";
-import Button from "../common/Button";
 import useAuth from "../../hooks/useAuth";
 import useNotifications from "../../hooks/useNotifications";
 
 const navItems = [
-  { label: "HOME", path: "/" },
-  { label: "SEASONS", path: "/seasons" },
-  { label: "CLUBS", path: "/clubs" },
-  { label: "TEAMS", path: "/teams" },
-  { label: "MATCHES", path: "/matches" },
-  { label: "STANDINGS", path: "/standings" },
-  { label: "NEWS", path: "/news" },
+  { label: "Home", path: "/" },
+  { label: "Seasons", path: "/seasons" },
+  { label: "Clubs", path: "/clubs" },
+  { label: "Teams", path: "/teams" },
+  { label: "Matches", path: "/matches" },
+  { label: "Standings", path: "/standings" },
+  { label: "News", path: "/news" },
 ];
 
 const formatRole = (role) => {
-  if (!role) {
-    return "";
-  }
+  if (!role) return "";
 
   return role
     .toLowerCase()
     .split("_")
-    .map(
-      (word) =>
-        word.charAt(0).toUpperCase() + word.slice(1)
-    )
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 };
 
 const getInitial = (name) => {
-  if (!name) {
-    return "U";
-  }
+  if (!name) return "U";
 
   return name.trim().charAt(0).toUpperCase();
 };
 
-const Avatar = ({ user, className }) => user?.profile_image ? <img src={user.profile_image} alt="" className={`${className} object-cover`} /> : <span className={`${className} grid place-items-center bg-[#FF553D] font-extrabold text-white`}>{getInitial(user?.name)}</span>;
+const Avatar = ({ user, className = "" }) =>
+  user?.profile_image ? (
+    <img
+      src={user.profile_image}
+      alt={`${user.name || "User"} profile`}
+      className={`${className} object-cover`}
+    />
+  ) : (
+    <span
+      className={`
+        ${className}
+        grid place-items-center
+        bg-[#0B5D46]
+        font-bold text-white
+      `}
+    >
+      {getInitial(user?.name)}
+    </span>
+  );
+
+const UserIcon = ({ className = "h-5 w-5" }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+    className={className}
+  >
+    <path
+      d="M20 21a8 8 0 0 0-16 0"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+
+    <circle
+      cx="12"
+      cy="7"
+      r="4"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    />
+  </svg>
+);
+
+const BellIcon = ({ className = "h-5 w-5" }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+    className={className}
+  >
+    <path
+      d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+
+    <path
+      d="M10 21h4"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+    />
+  </svg>
+);
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -53,18 +108,21 @@ const Navbar = () => {
     isAuthLoading,
     logout,
   } = useAuth();
+
   const { unreadCount } = useNotifications();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] =
-    useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
   const userMenuRef = useRef(null);
 
+  /*
+   * Navbar shadow/spacing on scroll
+   */
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      setIsScrolled(window.scrollY > 15);
     };
 
     handleScroll();
@@ -76,6 +134,9 @@ const Navbar = () => {
     };
   }, []);
 
+  /*
+   * Close desktop user dropdown when clicking outside.
+   */
   useEffect(() => {
     const handleOutsideClick = (event) => {
       if (
@@ -86,18 +147,31 @@ const Navbar = () => {
       }
     };
 
-    document.addEventListener(
-      "mousedown",
-      handleOutsideClick
-    );
+    document.addEventListener("mousedown", handleOutsideClick);
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleOutsideClick
-      );
+      document.removeEventListener("mousedown", handleOutsideClick);
     };
   }, []);
+
+  /*
+   * Escape closes mobile navigation.
+   */
+  useEffect(() => {
+    if (!isMenuOpen) return undefined;
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isMenuOpen]);
 
   const handleLogout = () => {
     logout();
@@ -119,226 +193,463 @@ const Navbar = () => {
     setIsUserMenuOpen(false);
   };
 
+  /*
+   * Desktop navigation link.
+   *
+   * The active underline is intentionally positioned close
+   * to the text instead of at the bottom edge of the navbar.
+   */
   const getNavLinkClasses = ({ isActive }) =>
     [
-      "relative text-sm font-semibold tracking-wide",
+      "relative flex h-full items-center",
+      "whitespace-nowrap px-1",
+      "text-[15px] font-semibold",
       "transition-colors duration-200",
 
-      "after:absolute after:-bottom-2 after:left-0",
-      "after:h-[2px] after:bg-[#FF553D]",
-      "after:transition-all after:duration-200",
+      "after:absolute",
+      "after:bottom-[18px]",
+      "after:left-1/2",
+      "after:h-[2px]",
+      "after:-translate-x-1/2",
+      "after:rounded-full",
+      "after:bg-[#0B5D46]",
+      "after:transition-all",
+      "after:duration-200",
 
       isActive
-        ? "text-white after:w-full"
-        : "text-white/75 after:w-0 hover:text-white hover:after:w-full",
+        ? "text-[#0A513E] after:w-full"
+        : "text-[#1D2735] after:w-0 hover:text-[#0A513E] hover:after:w-full",
     ].join(" ");
-
-  const anchorLinkClasses =
-    "relative text-sm font-semibold tracking-wide text-white/75 transition-colors duration-200 after:absolute after:-bottom-2 after:left-0 after:h-[2px] after:w-0 after:bg-[#FF553D] after:transition-all after:duration-200 hover:text-white hover:after:w-full";
 
   return (
     <header
       className={`
         fixed left-0 top-0 z-50 w-full
+        px-3 pt-3
         transition-all duration-300
-        ${
-          isScrolled ||
-          isMenuOpen ||
-          isUserMenuOpen
-            ? "border-b border-white/10 bg-[#011427]/95 shadow-lg backdrop-blur-md"
-            : "bg-[#011427]/20 backdrop-blur-[2px]"
-        }
+        sm:px-5 sm:pt-4
+        lg:px-6
+        ${isScrolled ? "pt-2 sm:pt-2" : ""}
       `}
     >
       <nav
-        className="
-          mx-auto flex h-20 max-w-7xl
-          items-center justify-between
-          px-5 sm:px-6 lg:px-8
-        "
         aria-label="Main navigation"
+        className={`
+          relative mx-auto flex
+          h-[82px] max-w-[1500px]
+          items-center
+          rounded-[16px]
+          border border-black/[0.04]
+          bg-white
+          px-4
+          shadow-[0_10px_35px_rgba(15,23,42,0.10)]
+          transition-all duration-300
+          sm:h-[88px] sm:px-6
+          lg:px-7
+          ${
+            isScrolled
+              ? "shadow-[0_12px_38px_rgba(15,23,42,0.14)]"
+              : ""
+          }
+        `}
       >
-        {/* Logo */}
-        <Logo className="text-2xl" />
+        {/* =========================
+            LOGO
+        ========================== */}
 
-        {/* Desktop Navigation */}
-        <div className="hidden items-center gap-5 xl:gap-7 lg:flex">
+        <div className="relative z-20 flex min-w-[90px] items-center lg:min-w-[150px]">
+          <Logo />
+        </div>
+
+        {/* =========================
+            DESKTOP NAVIGATION
+        ========================== */}
+
+        <div
+          className="
+            absolute left-1/2 hidden
+            h-full -translate-x-1/2
+            items-center gap-5
+            lg:flex
+            xl:gap-7
+            2xl:gap-8
+          "
+        >
           {navItems.map((item) => (
-            item.href ? (
-              <a key={item.href} href={item.href} onClick={closeMenus} className={anchorLinkClasses}>
-                {item.label}
-              </a>
-            ) : (
-              <NavLink key={item.path} to={item.path} onClick={closeMenus} className={getNavLinkClasses}>
-                {item.label}
-              </NavLink>
-            )
+            <NavLink
+              key={item.path}
+              to={item.path}
+              onClick={closeMenus}
+              className={getNavLinkClasses}
+            >
+              {item.label}
+            </NavLink>
           ))}
         </div>
 
-        {/* Desktop Right Section */}
-        <div className="hidden items-center lg:flex">
-          {!isAuthLoading && !isAuthenticated && (
-            <div className="flex items-center gap-3">
-              <Button
-                to="/login"
-                variant="ghost"
-                size="sm"
-              >
-                LOGIN
-              </Button>
+        {/* =========================
+            DESKTOP RIGHT SIDE
+        ========================== */}
 
-              <Button
-                to="/signup"
-                variant="primary"
-                size="sm"
-              >
-                SIGN UP
-              </Button>
-            </div>
+        <div className="ml-auto hidden items-center lg:flex">
+          {/* Guest */}
+          {!isAuthLoading && !isAuthenticated && (
+            <NavLink
+              to="/login"
+              onClick={closeMenus}
+              className="
+                inline-flex min-h-[50px]
+                items-center justify-center gap-2.5
+                rounded-full
+                bg-[#0B5D46]
+                px-7
+                text-[15px] font-semibold
+                text-white
+                shadow-[0_8px_20px_rgba(11,93,70,0.18)]
+                transition-all duration-200
+                hover:bg-[#084B39]
+                hover:shadow-[0_10px_24px_rgba(11,93,70,0.25)]
+                focus:outline-none
+                focus:ring-2
+                focus:ring-[#0B5D46]/30
+                focus:ring-offset-2
+              "
+            >
+              <UserIcon />
+
+              Login
+            </NavLink>
           )}
 
+          {/* Authenticated */}
           {!isAuthLoading && isAuthenticated && user && (
-            <>
-              {user.role === "USER" && <NavLink to="/account/notifications" onClick={closeMenus} aria-label={unreadCount ? `${unreadCount > 9 ? "9+" : unreadCount} unread notifications` : "Notifications"} className="relative mr-3 grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#EEC058]/60"><span aria-hidden="true" className="text-lg">🔔</span>{unreadCount > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[#FF553D] px-1 text-center text-[10px] font-extrabold leading-4 text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>}</NavLink>}
-            <div
-              ref={userMenuRef}
-              className="relative"
-            >
-              {/* User Menu Button */}
-              <button
-                type="button"
-                onClick={() =>
-                  setIsUserMenuOpen(
-                    (previous) => !previous
-                  )
-                }
-                aria-expanded={isUserMenuOpen}
-                aria-haspopup="menu"
-                className="
-                  flex items-center gap-3 rounded-lg
-                  border border-white/10
-                  bg-white/5 px-3 py-2
-                  text-left
-                  transition-colors duration-200
-                  hover:bg-white/10
-                "
-              >
-                {/* Avatar */}
-                <Avatar user={user} className="h-9 w-9 shrink-0 rounded-full text-sm" />
-
-                {/* User Information */}
-                <span className="max-w-[150px]">
-                  <span className="block truncate text-sm font-bold text-white">
-                    {user.name}
-                  </span>
-
-                  <span className="block truncate text-[11px] font-medium text-white/45">
-                    {formatRole(user.role)}
-                  </span>
-                </span>
-
-                {/* Dropdown Arrow */}
-                <svg
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  aria-hidden="true"
-                  className={`
-                    h-4 w-4 text-white/50
-                    transition-transform duration-200
-                    ${
-                      isUserMenuOpen
-                        ? "rotate-180"
-                        : ""
-                    }
-                  `}
-                >
-                  <path
-                    d="M5 7.5L10 12.5L15 7.5"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-
-              {/* User Dropdown */}
-              {isUserMenuOpen && (
-                <div
-                  role="menu"
+            <div className="flex items-center">
+              {/* USER Notification Bell */}
+              {user.role === "USER" && (
+                <NavLink
+                  to="/account/notifications"
+                  onClick={closeMenus}
+                  aria-label={
+                    unreadCount
+                      ? `${
+                          unreadCount > 9 ? "9+" : unreadCount
+                        } unread notifications`
+                      : "Notifications"
+                  }
                   className="
-                    absolute right-0 top-[calc(100%+12px)]
-                    w-64 overflow-hidden
-                    rounded-lg border border-white/10
-                    bg-[#0B1D2F]
-                    shadow-2xl
+                    relative mr-3 grid h-11 w-11
+                    place-items-center rounded-full
+                    border border-[#DDE5E1]
+                    text-[#0B5D46]
+                    transition-colors
+                    hover:bg-[#F2F8F5]
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-[#0B5D46]/20
                   "
                 >
-                  {/* User Details */}
-                  <div className="border-b border-white/10 px-4 py-4">
-                    <p className="truncate text-sm font-bold text-white">
-                      {user.name}
-                    </p>
+                  <BellIcon />
 
-                    <p className="mt-1 truncate text-xs text-white/50">
-                      {user.email}
-                    </p>
-
+                  {unreadCount > 0 && (
                     <span
                       className="
-                        mt-3 inline-flex rounded-full
-                        bg-[#EEC058]/10
-                        px-2.5 py-1
+                        absolute -right-1 -top-1
+                        min-w-[18px] rounded-full
+                        bg-[#C93B32]
+                        px-1 text-center
                         text-[10px] font-bold
-                        tracking-wider text-[#EEC058]
+                        leading-[18px] text-white
                       "
                     >
-                      {formatRole(user.role).toUpperCase()}
+                      {unreadCount > 9
+                        ? "9+"
+                        : unreadCount}
                     </span>
-                  </div>
-
-                  {/* Logout */}
-                  <div className="p-2">
-                    {user.role === "USER" && <NavLink to="/account" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">MY ACCOUNT</NavLink>}
-                    {user.role === "USER" && <NavLink to="/account/notifications" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">NOTIFICATIONS{unreadCount > 0 ? ` (${unreadCount > 9 ? "9+" : unreadCount})` : ""}</NavLink>}
-                    {user.role === "TEAM_OWNER" && <NavLink to="/team" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">TEAM PORTAL</NavLink>}
-                    {user.role === "CLUB_OWNER" && <NavLink to="/club" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">CLUB PORTAL</NavLink>}
-                    {user.role === "SUPER_ADMIN" && <NavLink to="/admin" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">ADMIN PORTAL</NavLink>}
-                    {user.role === "REFEREE" && <>
-                      <NavLink to="/referee/dashboard" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">REFEREE DASHBOARD</NavLink>
-                      <NavLink to="/referee/matches" onClick={closeMenus} role="menuitem" className="flex rounded-md px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">MY MATCHES</NavLink>
-                    </>}
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={handleLogout}
-                      className="
-                        flex w-full items-center
-                        rounded-md px-3 py-2.5
-                        text-sm font-semibold
-                        text-red-300
-                        transition-colors
-                        hover:bg-red-500/10
-                        hover:text-red-200
-                      "
-                    >
-                      LOGOUT
-                    </button>
-                  </div>
-                </div>
-
+                  )}
+                </NavLink>
               )}
+
+              {/* User Menu */}
+              <div
+                ref={userMenuRef}
+                className="relative"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setIsUserMenuOpen(
+                      (previous) => !previous
+                    )
+                  }
+                  aria-expanded={isUserMenuOpen}
+                  aria-haspopup="menu"
+                  className="
+                    flex min-h-[50px]
+                    items-center gap-2.5
+                    rounded-full
+                    bg-[#0B5D46]
+                    py-1.5 pl-1.5 pr-4
+                    text-left text-white
+                    shadow-[0_8px_20px_rgba(11,93,70,0.16)]
+                    transition-colors
+                    hover:bg-[#084B39]
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-[#0B5D46]/30
+                    focus:ring-offset-2
+                  "
+                >
+                  <Avatar
+                    user={user}
+                    className="
+                      h-9 w-9 shrink-0
+                      rounded-full border-2
+                      border-white/80 text-sm
+                    "
+                  />
+
+                  <span className="max-w-[115px]">
+                    <span className="block truncate text-sm font-semibold">
+                      {user.name}
+                    </span>
+
+                    <span className="block truncate text-[10px] text-white/70">
+                      {formatRole(user.role)}
+                    </span>
+                  </span>
+
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    aria-hidden="true"
+                    className={`
+                      h-4 w-4 text-white/75
+                      transition-transform duration-200
+                      ${
+                        isUserMenuOpen
+                          ? "rotate-180"
+                          : ""
+                      }
+                    `}
+                  >
+                    <path
+                      d="M5 7.5L10 12.5L15 7.5"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+
+                {/* Desktop User Dropdown */}
+                {isUserMenuOpen && (
+                  <div
+                    role="menu"
+                    className="
+                      absolute right-0
+                      top-[calc(100%+14px)]
+                      w-64 overflow-hidden
+                      rounded-2xl
+                      border border-[#E5E7EB]
+                      bg-white
+                      shadow-[0_18px_50px_rgba(15,23,42,0.16)]
+                    "
+                  >
+                    {/* User Information */}
+                    <div className="border-b border-[#EEF0F2] px-4 py-4">
+                      <p className="truncate text-sm font-bold text-[#18202C]">
+                        {user.name}
+                      </p>
+
+                      <p className="mt-1 truncate text-xs text-[#697386]">
+                        {user.email}
+                      </p>
+
+                      <span
+                        className="
+                          mt-3 inline-flex
+                          rounded-full
+                          bg-[#EEF7F3]
+                          px-2.5 py-1
+                          text-[10px] font-bold
+                          tracking-wider
+                          text-[#0B5D46]
+                        "
+                      >
+                        {formatRole(
+                          user.role
+                        ).toUpperCase()}
+                      </span>
+                    </div>
+
+                    {/* Dropdown Actions */}
+                    <div className="p-2">
+                      {/* Normal User */}
+                      {user.role === "USER" && (
+                        <>
+                          <NavLink
+                            to="/account"
+                            onClick={closeMenus}
+                            role="menuitem"
+                            className="
+                              flex rounded-xl
+                              px-3 py-2.5
+                              text-sm font-semibold
+                              text-[#344054]
+                              hover:bg-[#F5F8F7]
+                            "
+                          >
+                            My Account
+                          </NavLink>
+
+                          <NavLink
+                            to="/account/notifications"
+                            onClick={closeMenus}
+                            role="menuitem"
+                            className="
+                              flex rounded-xl
+                              px-3 py-2.5
+                              text-sm font-semibold
+                              text-[#344054]
+                              hover:bg-[#F5F8F7]
+                            "
+                          >
+                            Notifications
+                            {unreadCount > 0
+                              ? ` (${
+                                  unreadCount > 9
+                                    ? "9+"
+                                    : unreadCount
+                                })`
+                              : ""}
+                          </NavLink>
+                        </>
+                      )}
+
+                      {/* Team Owner */}
+                      {user.role === "TEAM_OWNER" && (
+                        <NavLink
+                          to="/team"
+                          onClick={closeMenus}
+                          role="menuitem"
+                          className="
+                            flex rounded-xl
+                            px-3 py-2.5
+                            text-sm font-semibold
+                            text-[#344054]
+                            hover:bg-[#F5F8F7]
+                          "
+                        >
+                          Team Portal
+                        </NavLink>
+                      )}
+
+                      {/* Club Owner */}
+                      {user.role === "CLUB_OWNER" && (
+                        <NavLink
+                          to="/club"
+                          onClick={closeMenus}
+                          role="menuitem"
+                          className="
+                            flex rounded-xl
+                            px-3 py-2.5
+                            text-sm font-semibold
+                            text-[#344054]
+                            hover:bg-[#F5F8F7]
+                          "
+                        >
+                          Club Portal
+                        </NavLink>
+                      )}
+
+                      {/* Super Admin */}
+                      {user.role === "SUPER_ADMIN" && (
+                        <NavLink
+                          to="/admin"
+                          onClick={closeMenus}
+                          role="menuitem"
+                          className="
+                            flex rounded-xl
+                            px-3 py-2.5
+                            text-sm font-semibold
+                            text-[#344054]
+                            hover:bg-[#F5F8F7]
+                          "
+                        >
+                          Admin Portal
+                        </NavLink>
+                      )}
+
+                      {/* Referee */}
+                      {user.role === "REFEREE" && (
+                        <>
+                          <NavLink
+                            to="/referee/dashboard"
+                            onClick={closeMenus}
+                            role="menuitem"
+                            className="
+                              flex rounded-xl
+                              px-3 py-2.5
+                              text-sm font-semibold
+                              text-[#344054]
+                              hover:bg-[#F5F8F7]
+                            "
+                          >
+                            Referee Dashboard
+                          </NavLink>
+
+                          <NavLink
+                            to="/referee/matches"
+                            onClick={closeMenus}
+                            role="menuitem"
+                            className="
+                              flex rounded-xl
+                              px-3 py-2.5
+                              text-sm font-semibold
+                              text-[#344054]
+                              hover:bg-[#F5F8F7]
+                            "
+                          >
+                            My Matches
+                          </NavLink>
+                        </>
+                      )}
+
+                      {/* Logout */}
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={handleLogout}
+                        className="
+                          mt-1 flex w-full
+                          rounded-xl px-3 py-2.5
+                          text-sm font-semibold
+                          text-[#B42318]
+                          transition-colors
+                          hover:bg-[#FEF3F2]
+                        "
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            </>
           )}
         </div>
 
-        {/* Mobile Menu Button */}
+        {/* =========================
+            MOBILE MENU BUTTON
+        ========================== */}
+
         <button
           type="button"
           onClick={() =>
-            setIsMenuOpen((previous) => !previous)
+            setIsMenuOpen(
+              (previous) => !previous
+            )
           }
           aria-label={
             isMenuOpen
@@ -347,10 +658,16 @@ const Navbar = () => {
           }
           aria-expanded={isMenuOpen}
           className="
-            flex h-10 w-10 items-center justify-center
-            rounded-md border border-white/15
-            text-white transition-colors
-            hover:bg-white/10
+            ml-auto flex h-11 w-11
+            items-center justify-center
+            rounded-full
+            border border-[#DDE5E1]
+            text-[#0B5D46]
+            transition-colors
+            hover:bg-[#F2F8F5]
+            focus:outline-none
+            focus:ring-2
+            focus:ring-[#0B5D46]/20
             lg:hidden
           "
         >
@@ -363,7 +680,8 @@ const Navbar = () => {
           <div className="flex w-5 flex-col gap-[5px]">
             <span
               className={`
-                block h-[2px] w-full bg-current
+                block h-[2px] w-full
+                rounded-full bg-current
                 transition-transform duration-200
                 ${
                   isMenuOpen
@@ -375,7 +693,8 @@ const Navbar = () => {
 
             <span
               className={`
-                block h-[2px] w-full bg-current
+                block h-[2px] w-full
+                rounded-full bg-current
                 transition-opacity duration-200
                 ${
                   isMenuOpen
@@ -387,7 +706,8 @@ const Navbar = () => {
 
             <span
               className={`
-                block h-[2px] w-full bg-current
+                block h-[2px] w-full
+                rounded-full bg-current
                 transition-transform duration-200
                 ${
                   isMenuOpen
@@ -398,121 +718,300 @@ const Navbar = () => {
             />
           </div>
         </button>
-      </nav>
 
-      {/* Mobile Navigation */}
-      <div
-        className={`
-          overflow-hidden bg-[#011427]/95
-          backdrop-blur-md
-          transition-all duration-300
-          lg:hidden
-          ${
-            isMenuOpen
-              ? "max-h-[700px] border-t border-white/10 opacity-100"
-              : "max-h-0 border-t border-transparent opacity-0"
-          }
-        `}
-      >
-        <div className="mx-auto max-w-7xl px-5 py-6 sm:px-6">
-          {/* Mobile Navigation Links */}
-          <div className="flex flex-col">
-            {navItems.map((item) => (
-              item.href ? (
-                <a key={item.href} href={item.href} onClick={closeMobileMenu} className="border-b border-white/10 py-4 text-sm font-semibold tracking-wide text-white/75 transition-colors duration-200 hover:text-white">
-                  {item.label}
-                </a>
-              ) : (
+        {/* =========================
+            MOBILE MENU
+        ========================== */}
+
+        <div
+          className={`
+            absolute left-0 right-0
+            top-[calc(100%+10px)]
+            overflow-hidden
+            rounded-2xl
+            border border-black/[0.05]
+            bg-white
+            shadow-[0_18px_50px_rgba(15,23,42,0.16)]
+            transition-all duration-300
+            lg:hidden
+            ${
+              isMenuOpen
+                ? "visible translate-y-0 opacity-100"
+                : "invisible -translate-y-2 opacity-0"
+            }
+          `}
+        >
+          <div className="max-h-[calc(100vh-125px)] overflow-y-auto p-4">
+            {/* Public Navigation */}
+            <div className="flex flex-col">
+              {navItems.map((item) => (
                 <NavLink
                   key={item.path}
                   to={item.path}
                   onClick={closeMobileMenu}
                   className={({ isActive }) =>
                     [
-                      "border-b border-white/10 py-4",
-                      "text-sm font-semibold tracking-wide",
-                      "transition-colors duration-200",
+                      "flex items-center justify-between",
+                      "rounded-xl px-4 py-3.5",
+                      "text-sm font-semibold",
+                      "transition-colors",
+
                       isActive
-                        ? "text-[#FF553D]"
-                        : "text-white/75 hover:text-white",
+                        ? "bg-[#EEF7F3] text-[#0B5D46]"
+                        : "text-[#344054] hover:bg-[#F7F9F8]",
                     ].join(" ")
                   }
                 >
                   {item.label}
                 </NavLink>
-              )
-            ))}
-          </div>
-
-          {/* Guest Mobile Actions */}
-          {!isAuthLoading && !isAuthenticated && (
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <Button
-                to="/login"
-                variant="ghost"
-                fullWidth
-                onClick={closeMobileMenu}
-              >
-                LOGIN
-              </Button>
-
-              <Button
-                to="/signup"
-                variant="primary"
-                fullWidth
-                onClick={closeMobileMenu}
-              >
-                SIGN UP
-              </Button>
+              ))}
             </div>
-          )}
 
-          {/* Authenticated Mobile User */}
-          {!isAuthLoading &&
-            isAuthenticated &&
-            user && (
-              <div className="mt-6 rounded-lg border border-white/10 bg-white/5 p-4">
-                <div className="flex items-center gap-3">
-                  <Avatar user={user} className="h-11 w-11 shrink-0 rounded-full text-base" />
+            {/* =========================
+                MOBILE GUEST
+            ========================== */}
 
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-white">
-                      {user.name}
-                    </p>
-
-                    <p className="mt-0.5 truncate text-xs text-white/50">
-                      {user.email}
-                    </p>
-
-                    <p className="mt-1 text-[11px] font-semibold text-[#EEC058]">
-                      {formatRole(user.role)}
-                    </p>
-                  </div>
-                </div>
-
-                {user.role === "USER" && <div className="mt-4 grid grid-cols-2 gap-2"><NavLink onClick={closeMobileMenu} to="/account" className="block rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">MY ACCOUNT</NavLink><NavLink onClick={closeMobileMenu} to="/account/notifications" aria-label={unreadCount ? `${unreadCount > 9 ? "9+" : unreadCount} unread notifications` : "Notifications"} className="relative block rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">NOTIFICATIONS{unreadCount > 0 && <span className="ml-1 rounded-full bg-[#FF553D] px-1.5 py-0.5 text-[10px] text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>}</NavLink></div>}
-                {user.role === "TEAM_OWNER" && <div className="mt-4"><NavLink onClick={closeMobileMenu} to="/team" className="block rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">TEAM PORTAL</NavLink></div>}
-                {user.role === "CLUB_OWNER" && <div className="mt-4"><NavLink onClick={closeMobileMenu} to="/club" className="block rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">CLUB PORTAL</NavLink></div>}
-                {user.role === "SUPER_ADMIN" && <div className="mt-4"><NavLink onClick={closeMobileMenu} to="/admin" className="block rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">ADMIN PORTAL</NavLink></div>}
-                {user.role === "REFEREE" && <div className="mt-4 grid grid-cols-2 gap-2"><NavLink onClick={closeMobileMenu} to="/referee/dashboard" className="rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">DASHBOARD</NavLink><NavLink onClick={closeMobileMenu} to="/referee/matches" className="rounded border border-white/15 p-2 text-center text-xs font-bold text-[#EEC058]">MY MATCHES</NavLink></div>}
-                <button
-                  type="button"
-                  onClick={handleLogout}
+            {!isAuthLoading && !isAuthenticated && (
+              <div
+                className="
+                  mt-4 border-t
+                  border-[#EEF0F2] pt-4
+                "
+              >
+                {/* Only Login is shown.
+                    Create Account / Sign Up removed. */}
+                <NavLink
+                  to="/login"
+                  onClick={closeMobileMenu}
                   className="
-                    mt-4 w-full rounded-md
-                    border border-red-500/20
-                    px-4 py-2.5
-                    text-sm font-bold text-red-300
+                    flex min-h-[48px] w-full
+                    items-center justify-center gap-2
+                    rounded-full
+                    bg-[#0B5D46]
+                    px-5
+                    text-sm font-semibold
+                    text-white
                     transition-colors
-                    hover:bg-red-500/10
+                    hover:bg-[#084B39]
                   "
                 >
-                  LOGOUT
-                </button>
+                  <UserIcon />
+
+                  Login
+                </NavLink>
               </div>
             )}
+
+            {/* =========================
+                MOBILE AUTHENTICATED USER
+            ========================== */}
+
+            {!isAuthLoading &&
+              isAuthenticated &&
+              user && (
+                <div
+                  className="
+                    mt-4 border-t
+                    border-[#EEF0F2] pt-4
+                  "
+                >
+                  <div
+                    className="
+                      rounded-2xl
+                      bg-[#F7F9F8]
+                      p-4
+                    "
+                  >
+                    {/* User Identity */}
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        user={user}
+                        className="
+                          h-11 w-11 shrink-0
+                          rounded-full text-sm
+                        "
+                      />
+
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-[#18202C]">
+                          {user.name}
+                        </p>
+
+                        <p className="mt-0.5 truncate text-xs text-[#697386]">
+                          {user.email}
+                        </p>
+
+                        <p className="mt-1 text-[11px] font-semibold text-[#0B5D46]">
+                          {formatRole(user.role)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Normal User */}
+                    {user.role === "USER" && (
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <NavLink
+                          onClick={closeMobileMenu}
+                          to="/account"
+                          className="
+                            rounded-xl
+                            border border-[#DDE5E1]
+                            bg-white p-2.5
+                            text-center text-xs
+                            font-bold text-[#0B5D46]
+                          "
+                        >
+                          My Account
+                        </NavLink>
+
+                        <NavLink
+                          onClick={closeMobileMenu}
+                          to="/account/notifications"
+                          aria-label={
+                            unreadCount
+                              ? `${
+                                  unreadCount > 9
+                                    ? "9+"
+                                    : unreadCount
+                                } unread notifications`
+                              : "Notifications"
+                          }
+                          className="
+                            relative rounded-xl
+                            border border-[#DDE5E1]
+                            bg-white p-2.5
+                            text-center text-xs
+                            font-bold text-[#0B5D46]
+                          "
+                        >
+                          Notifications
+
+                          {unreadCount > 0 && (
+                            <span
+                              className="
+                                ml-1 rounded-full
+                                bg-[#C93B32]
+                                px-1.5 py-0.5
+                                text-[10px] text-white
+                              "
+                            >
+                              {unreadCount > 9
+                                ? "9+"
+                                : unreadCount}
+                            </span>
+                          )}
+                        </NavLink>
+                      </div>
+                    )}
+
+                    {/* Team Owner */}
+                    {user.role === "TEAM_OWNER" && (
+                      <NavLink
+                        onClick={closeMobileMenu}
+                        to="/team"
+                        className="
+                          mt-4 block rounded-xl
+                          border border-[#DDE5E1]
+                          bg-white p-2.5
+                          text-center text-xs
+                          font-bold text-[#0B5D46]
+                        "
+                      >
+                        Team Portal
+                      </NavLink>
+                    )}
+
+                    {/* Club Owner */}
+                    {user.role === "CLUB_OWNER" && (
+                      <NavLink
+                        onClick={closeMobileMenu}
+                        to="/club"
+                        className="
+                          mt-4 block rounded-xl
+                          border border-[#DDE5E1]
+                          bg-white p-2.5
+                          text-center text-xs
+                          font-bold text-[#0B5D46]
+                        "
+                      >
+                        Club Portal
+                      </NavLink>
+                    )}
+
+                    {/* Super Admin */}
+                    {user.role === "SUPER_ADMIN" && (
+                      <NavLink
+                        onClick={closeMobileMenu}
+                        to="/admin"
+                        className="
+                          mt-4 block rounded-xl
+                          border border-[#DDE5E1]
+                          bg-white p-2.5
+                          text-center text-xs
+                          font-bold text-[#0B5D46]
+                        "
+                      >
+                        Admin Portal
+                      </NavLink>
+                    )}
+
+                    {/* Referee */}
+                    {user.role === "REFEREE" && (
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <NavLink
+                          onClick={closeMobileMenu}
+                          to="/referee/dashboard"
+                          className="
+                            rounded-xl
+                            border border-[#DDE5E1]
+                            bg-white p-2.5
+                            text-center text-xs
+                            font-bold text-[#0B5D46]
+                          "
+                        >
+                          Dashboard
+                        </NavLink>
+
+                        <NavLink
+                          onClick={closeMobileMenu}
+                          to="/referee/matches"
+                          className="
+                            rounded-xl
+                            border border-[#DDE5E1]
+                            bg-white p-2.5
+                            text-center text-xs
+                            font-bold text-[#0B5D46]
+                          "
+                        >
+                          My Matches
+                        </NavLink>
+                      </div>
+                    )}
+
+                    {/* Logout */}
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="
+                        mt-3 w-full
+                        rounded-xl
+                        border border-[#F4C7C3]
+                        bg-white
+                        px-4 py-2.5
+                        text-sm font-semibold
+                        text-[#B42318]
+                        transition-colors
+                        hover:bg-[#FEF3F2]
+                      "
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
+          </div>
         </div>
-      </div>
+      </nav>
     </header>
   );
 };
