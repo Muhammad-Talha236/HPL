@@ -283,7 +283,7 @@ export const getPlayerInvitations = async (req, res, next) => {
       ...(req.query.player_id ? { player_id: req.query.player_id } : {}),
       ...(req.query.status ? { status: req.query.status } : {}),
     };
-    const [invitations, total] = await prisma.$transaction([
+    const [invitations, total] = await Promise.all([
       prisma.playerInvitation.findMany({ where, select: invitationListSelect, orderBy: [{ created_at: "desc" }, { invitation_id: "desc" }], skip: (page - 1) * limit, take: limit }),
       prisma.playerInvitation.count({ where }),
     ]);

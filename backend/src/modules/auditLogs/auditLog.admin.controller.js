@@ -48,7 +48,7 @@ export const getAdminAuditLogs = async (req, res, next) => {
     if ((date_from !== undefined && !from) || (date_to !== undefined && !to) || (from && to && from > to)) return res.status(400).json({ success: false, message: "Invalid date range" });
     if (from || to) where.created_at = { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) };
     if (q?.trim()) { const search = q.trim(); where.OR = [{ action: { contains: search, mode: "insensitive" } }, { entity_type: { contains: search, mode: "insensitive" } }, { actor: { is: { OR: [{ name: { contains: search, mode: "insensitive" } }, { email: { contains: search, mode: "insensitive" } }] } } }, ...( /^\d+$/.test(search) ? [{ entity_id: Number(search) }] : [])]; }
-    const [logs, total] = await prisma.$transaction([
+    const [logs, total] = await Promise.all([
       prisma.auditLog.findMany({ where, select: listSelect, orderBy: [{ created_at: "desc" }, { audit_id: "desc" }], skip: (pageNumber - 1) * limitNumber, take: limitNumber }),
       prisma.auditLog.count({ where }),
     ]);
@@ -69,7 +69,7 @@ export const getAdminAuditLogById = async (req, res, next) => {
 
 export const getAuditLogFilterOptions = async (req, res, next) => {
   try {
-    const [actions, targets] = await prisma.$transaction([
+    const [actions, targets] = await Promise.all([
       prisma.auditLog.findMany({ select: { action: true }, distinct: ["action"], orderBy: { action: "asc" }, take: 100 }),
       prisma.auditLog.findMany({ select: { entity_type: true }, distinct: ["entity_type"], orderBy: { entity_type: "asc" }, take: 100 }),
     ]);

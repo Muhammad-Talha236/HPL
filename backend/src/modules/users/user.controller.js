@@ -114,7 +114,7 @@ export const getUsers = async (
     if (role && !Object.values(ROLES).includes(role)) return res.status(400).json({ success: false, message: "Invalid role filter" });
     if (status && !Object.values(USER_STATUS).includes(status)) return res.status(400).json({ success: false, message: "Invalid status filter" });
     const where = { ...(role ? { role } : {}), ...(status ? { status } : {}), ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } }] } : {}) };
-    const [users, total] = await prisma.$transaction([prisma.user.findMany({ where, select: userSelect, orderBy: [{ created_at: "desc" }, { user_id: "desc" }], skip: (page - 1) * limit, take: limit }), prisma.user.count({ where })]);
+    const [users, total] = await Promise.all([prisma.user.findMany({ where, select: userSelect, orderBy: [{ created_at: "desc" }, { user_id: "desc" }], skip: (page - 1) * limit, take: limit }), prisma.user.count({ where })]);
 
     return res.status(200).json({
       success: true,

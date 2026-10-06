@@ -1462,7 +1462,7 @@ export const getMatches = async (req, res) => {
     // ==================================================
 
     const [matches, total] =
-      await prisma.$transaction([
+      await Promise.all([
         prisma.match.findMany({
           where,
 

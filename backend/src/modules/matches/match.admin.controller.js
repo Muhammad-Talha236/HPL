@@ -61,7 +61,7 @@ export const getAdminMatches = async (req, res, next) => {
       if (where.OR) where.AND = [{ OR: where.OR }, searchFilter], delete where.OR;
       else where.AND = [searchFilter];
     }
-    const [data, total, grouped] = await prisma.$transaction([
+    const [data, total, grouped] = await Promise.all([
       prisma.match.findMany({ where, select: listSelect, orderBy: [{ match_date: "desc" }, { start_time: "desc" }, { match_id: "desc" }], skip: (pageNumber - 1) * limitNumber, take: limitNumber }),
       prisma.match.count({ where }),
       prisma.match.groupBy({ by: ["status"], where, _count: { _all: true } }),
@@ -92,7 +92,7 @@ export const getAdminMatchOptions = async (req, res, next) => {
   try {
     const competitionId = req.query.competition_id === undefined ? null : positive(req.query.competition_id);
     if (req.query.competition_id !== undefined && !competitionId) return res.status(400).json({ success: false, message: "competition_id must be a positive integer" });
-    const [competitions, venues, referees, teams, registrations] = await prisma.$transaction([
+    const [competitions, venues, referees, teams, registrations] = await Promise.all([
       prisma.competition.findMany({ where: { status: "ACTIVE" }, select: { competition_id: true, name: true, season_id: true, gender: true, competition_start_date: true, competition_end_date: true, season: { select: { season_id: true, name: true, start_date: true, end_date: true } } }, orderBy: [{ season: { start_date: "desc" } }, { name: "asc" }], take: 50 }),
       prisma.venue.findMany({ where: { status: "ACTIVE" }, select: { venue_id: true, name: true, city: true, capacity: true, surface_type: true }, orderBy: { name: "asc" }, take: 100 }),
       prisma.referee.findMany({ where: { status: "ACTIVE" }, select: { referee_id: true, name: true, license_number: true, city: true }, orderBy: { name: "asc" }, take: 100 }),

@@ -22,7 +22,7 @@ export const getAdminNews = async (req, res, next) => {
     if (typeof category === "string" && category.trim().length > 50) return res.status(400).json({ success: false, message: "Category must not exceed 50 characters" });
     const where = { ...(q?.trim() ? { title: { contains: q.trim(), mode: "insensitive" } } : {}), ...(status ? { status } : {}), ...(category?.trim() ? { category: category.trim() } : {}) };
     if (author_id !== undefined) { const authorId = positive(author_id); if (!authorId) return res.status(400).json({ success: false, message: "author_id must be a positive integer" }); where.author_id = authorId; }
-    const [data, total, grouped] = await prisma.$transaction([
+    const [data, total, grouped] = await Promise.all([
       prisma.news.findMany({ where, select: listSelect, orderBy: [{ created_at: "desc" }, { news_id: "desc" }], skip: (pageNumber - 1) * limitNumber, take: limitNumber }),
       prisma.news.count({ where }),
       prisma.news.groupBy({ by: ["status"], where, _count: { _all: true } }),

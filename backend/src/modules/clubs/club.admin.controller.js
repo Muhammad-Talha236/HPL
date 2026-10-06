@@ -17,7 +17,7 @@ export const getAdminClubs = async (req, res, next) => {
     if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 50 || q.length > 100 || (ownerId !== undefined && (!Number.isInteger(ownerId) || ownerId < 1))) return res.status(400).json({ success: false, message: "Invalid club query" });
     if (status && !["PENDING", "ACTIVE", "INACTIVE", "REJECTED"].includes(status)) return res.status(400).json({ success: false, message: "Invalid club status filter" });
     const where = { ...(status ? { status } : {}), ...(ownerId ? { owner_id: ownerId } : {}), ...(q ? { name: { contains: q, mode: "insensitive" } } : {}) };
-    const [clubs, total] = await prisma.$transaction([prisma.club.findMany({ where, select: clubListSelect, orderBy: [{ created_at: "desc" }, { club_id: "desc" }], skip: (page - 1) * limit, take: limit }), prisma.club.count({ where })]);
+    const [clubs, total] = await Promise.all([prisma.club.findMany({ where, select: clubListSelect, orderBy: [{ created_at: "desc" }, { club_id: "desc" }], skip: (page - 1) * limit, take: limit }), prisma.club.count({ where })]);
     return res.json({ success: true, data: clubs.map(({ _count, ...club }) => ({ ...club, team_count: _count.teams })), pagination: { page, limit, total, total_pages: Math.ceil(total / limit) } });
   } catch (error) { next(error); }
 };

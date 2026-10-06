@@ -189,7 +189,7 @@ export const getClubs = async (req, res) => {
       ...(city ? { city: { equals: city, mode: "insensitive" } } : {}),
       ...(gender ? { teams: { some: { status: "ACTIVE", gender } } } : {}),
     };
-    const [clubs, total] = await prisma.$transaction([
+    const [clubs, total] = await Promise.all([
       prisma.club.findMany({ where, select: publicClubListSelect, orderBy: [{ name: "asc" }, { club_id: "asc" }], skip: (page - 1) * limit, take: limit }),
       prisma.club.count({ where }),
     ]);
@@ -236,7 +236,7 @@ export const getClubById = async (req, res) => {
     }
 
     const clubMatchWhere = { OR: [{ home_team: { club_id: clubId } }, { away_team: { club_id: clubId } }] };
-    const [upcoming_matches, recent_results] = await prisma.$transaction([
+    const [upcoming_matches, recent_results] = await Promise.all([
       prisma.match.findMany({ where: { ...clubMatchWhere, status: { in: ["SCHEDULED", "LIVE"] } }, select: publicClubMatchSelect, orderBy: [{ match_date: "asc" }, { start_time: "asc" }, { match_id: "asc" }], take: 4 }),
       prisma.match.findMany({ where: { ...clubMatchWhere, status: "COMPLETED" }, select: publicClubMatchSelect, orderBy: [{ match_date: "desc" }, { start_time: "desc" }, { match_id: "desc" }], take: 4 }),
     ]);

@@ -162,7 +162,7 @@ export const getNews = async (
     if (query.error) return res.status(400).json({ success: false, message: query.error });
 
     const where = buildPublicNewsWhere(NEWS_STATUS.PUBLISHED, query);
-    const [news, total] = await prisma.$transaction([
+    const [news, total] = await Promise.all([
       prisma.news.findMany({
         where,
         select: publicNewsListSelect,
