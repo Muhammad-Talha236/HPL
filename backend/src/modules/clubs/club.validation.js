@@ -1,8 +1,20 @@
 import {
   body,
   param,
+  query,
   checkExact,
 } from "express-validator";
+
+export const publicClubListValidation = [
+  query("page").optional().isInt({ min: 1 }).withMessage("Page must be a positive integer").toInt(),
+  query("limit").optional().isInt({ min: 1, max: 24 }).withMessage("Limit must be between 1 and 24").toInt(),
+  query("search").optional().trim().isLength({ min: 1, max: 100 }).withMessage("Search must be between 1 and 100 characters"),
+  query("gender").optional().isIn(["MEN", "WOMEN"]).withMessage("Gender must be MEN or WOMEN"),
+  query("region").optional().trim().isLength({ min: 1, max: 100 }).withMessage("Region must be between 1 and 100 characters"),
+  query("district").optional().trim().isLength({ min: 1, max: 100 }).withMessage("District must be between 1 and 100 characters"),
+  query("city").optional().trim().isLength({ min: 1, max: 100 }).withMessage("City must be between 1 and 100 characters"),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
+];
 // Validate club ID in URL
 export const clubIdValidation = [
   param("club_id")

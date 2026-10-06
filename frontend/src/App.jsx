@@ -7,6 +7,8 @@ import SeasonDetailsPage from "./features/seasons/pages/SeasonDetailsPage";
 import SeasonsPage from "./features/seasons/pages/SeasonsPage";
 import TeamDetailsPage from "./features/teams/pages/TeamDetailsPage";
 import TeamsPage from "./features/teams/pages/TeamsPage";
+import ClubsPage from "./features/clubs/pages/ClubsPage";
+import ClubDetailsPage from "./features/clubs/pages/ClubDetailsPage";
 import PlayerDetailsPage from "./features/players/pages/PlayerDetailsPage";
 import PlayersPage from "./features/players/pages/PlayersPage";
 import CompetitionDetailsPage from "./features/competitions/pages/CompetitionDetailsPage";
@@ -113,6 +115,8 @@ function App() {
         <Route path="/seasons/:seasonId" element={<SeasonDetailsPage />} />
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/teams/:teamId" element={<TeamDetailsPage />} />
+        <Route path="/clubs" element={<ClubsPage />} />
+        <Route path="/clubs/:clubId" element={<ClubDetailsPage />} />
         <Route path="/players" element={<PlayersPage />} />
         <Route path="/players/:playerId" element={<PlayerDetailsPage />} />
         <Route path="/competitions" element={<CompetitionsPage />} />

@@ -17,6 +17,7 @@ import { ROLES } from "../../constants/roles.js";
 
 import {
   clubIdValidation,
+  publicClubListValidation,
   createClubValidation,
   updateClubValidation,
   transferClubOwnershipValidation,
@@ -29,7 +30,7 @@ import { handleValidationErrors } from "../../middleware/auth/validation.middlew
 const router = express.Router();
 
 // Public routes
-router.get("/", getClubs);
+router.get("/", publicClubListValidation, handleValidationErrors, getClubs);
 
 router.get(
   "/:club_id",

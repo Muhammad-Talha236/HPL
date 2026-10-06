@@ -10,6 +10,8 @@ export const getTeamInitials = (name = "") =>
 export const getTeamLocation = (team) =>
   [team.city, team.district, team.region].filter(Boolean).join(", ");
 
+export const formatTeamGender = (gender) => ({ MEN: "Men", WOMEN: "Women" }[gender] || "Not available");
+
 export const formatTeamMatchDate = (value) => {
   if (!value) return "Date to be confirmed";
   return new Intl.DateTimeFormat("en-PK", {

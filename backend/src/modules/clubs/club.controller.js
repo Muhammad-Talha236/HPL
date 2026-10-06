@@ -14,7 +14,37 @@ const publicClubSelect = {
   region: true,
   district: true,
   city: true,
+};
+
+const publicClubListSelect = {
+  ...publicClubSelect,
+  _count: { select: { teams: { where: { status: "ACTIVE" } } } },
+};
+
+const publicClubTeamSelect = {
+  team_id: true,
+  name: true,
+  logo: true,
+  gender: true,
+  region: true,
+  district: true,
+  city: true,
+  description: true,
+  team_type: true,
+  home_venue: { select: { venue_id: true, name: true, city: true } },
+};
+
+const publicClubMatchSelect = {
+  match_id: true,
+  match_date: true,
+  start_time: true,
   status: true,
+  home_score: true,
+  away_score: true,
+  competition: { select: { competition_id: true, name: true, gender: true } },
+  home_team: { select: { team_id: true, name: true, logo: true, gender: true } },
+  away_team: { select: { team_id: true, name: true, logo: true, gender: true } },
+  venue: { select: { venue_id: true, name: true, city: true } },
 };
 
 
@@ -126,17 +156,28 @@ export const createClub = async (req, res) => {
 
 export const getClubs = async (req, res) => {
   try {
-    const clubs = await prisma.club.findMany({
-      select: publicClubSelect,
-      orderBy: {
-        created_at: "desc",
-      },
-      take: 100,
-    });
+    const query = req.query || {};
+    const page = query.page || 1;
+    const limit = query.limit || 12;
+    const { search, gender, region, district, city } = query;
+    const where = {
+      status: "ACTIVE",
+      ...(search ? { name: { contains: search, mode: "insensitive" } } : {}),
+      ...(region ? { region: { equals: region, mode: "insensitive" } } : {}),
+      ...(district ? { district: { equals: district, mode: "insensitive" } } : {}),
+      ...(city ? { city: { equals: city, mode: "insensitive" } } : {}),
+      ...(gender ? { teams: { some: { status: "ACTIVE", gender } } } : {}),
+    };
+    const [clubs, total] = await prisma.$transaction([
+      prisma.club.findMany({ where, select: publicClubListSelect, orderBy: [{ name: "asc" }, { club_id: "asc" }], skip: (page - 1) * limit, take: limit }),
+      prisma.club.count({ where }),
+    ]);
+    const data = clubs.map(({ _count, ...club }) => ({ ...club, public_team_count: _count.teams }));
 
     return res.status(200).json({
       success: true,
-      data: clubs,
+      data,
+      pagination: { page, limit, total, total_pages: Math.max(1, Math.ceil(total / limit)) },
     });
 
   } catch (error) {
@@ -156,13 +197,14 @@ export const getClubs = async (req, res) => {
 
 export const getClubById = async (req, res) => {
   try {
-    const { club_id } = req.params;
+    const clubId = Number(req.params.club_id);
 
-    const club = await prisma.club.findUnique({
-      where: {
-        club_id: Number(club_id),
+    const club = await prisma.club.findFirst({
+      where: { club_id: clubId, status: "ACTIVE" },
+      select: {
+        ...publicClubSelect,
+        teams: { where: { status: "ACTIVE" }, select: publicClubTeamSelect, orderBy: [{ gender: "asc" }, { name: "asc" }, { team_id: "asc" }], take: 50 },
       },
-      select: publicClubSelect,
     });
 
     if (!club) {
@@ -172,10 +214,13 @@ export const getClubById = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      data: club,
-    });
+    const clubMatchWhere = { OR: [{ home_team: { club_id: clubId } }, { away_team: { club_id: clubId } }] };
+    const [upcoming_matches, recent_results] = await prisma.$transaction([
+      prisma.match.findMany({ where: { ...clubMatchWhere, status: { in: ["SCHEDULED", "LIVE"] } }, select: publicClubMatchSelect, orderBy: [{ match_date: "asc" }, { start_time: "asc" }, { match_id: "asc" }], take: 4 }),
+      prisma.match.findMany({ where: { ...clubMatchWhere, status: "COMPLETED" }, select: publicClubMatchSelect, orderBy: [{ match_date: "desc" }, { start_time: "desc" }, { match_id: "desc" }], take: 4 }),
+    ]);
+
+    return res.status(200).json({ success: true, data: { ...club, upcoming_matches, recent_results } });
 
   } catch (error) {
     console.error("Get club error:", error);

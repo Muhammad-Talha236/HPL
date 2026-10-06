@@ -5,6 +5,7 @@ import Logo from "../common/Logo";
 const quickLinks = [
   { label: "Home", path: "/" },
   { label: "Seasons", path: "/seasons" },
+  { label: "Clubs", path: "/clubs" },
   { label: "Teams", path: "/teams" },
   { label: "Players", path: "/players" },
   { label: "Competitions", path: "/competitions" },

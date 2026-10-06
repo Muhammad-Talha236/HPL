@@ -23,10 +23,13 @@ test("public Team, Club, and TeamPlayer directory queries use safe bounded proje
   const restores = [
     replace(prisma.team, "findMany", async (input) => { teamQuery = input; return []; }),
     replace(prisma.club, "findMany", async (input) => { clubQuery = input; return []; }),
+    replace(prisma.club, "count", async () => 0),
     replace(prisma.teamPlayer, "findMany", async (input) => { membershipQuery = input; return []; }),
+    replace(prisma, "$transaction", async (operations) => Promise.all(operations)),
   ];
   await getTeams({}, response()); await getClubs({}, response()); await getTeamPlayers({}, response()); restores.reverse().forEach((restore) => restore());
-  for (const query of [teamQuery, clubQuery, membershipQuery]) { assert.equal(query.take, 100); const select = JSON.stringify(query.select).toLowerCase(); for (const field of privateFields) assert.equal(select.includes(field), false); }
+  for (const query of [teamQuery, membershipQuery]) { assert.equal(query.take, 100); const select = JSON.stringify(query.select).toLowerCase(); for (const field of privateFields) assert.equal(select.includes(field), false); }
+  assert.equal(clubQuery.take, 12); assert.equal(clubQuery.where.status, "ACTIVE"); const clubSelect = JSON.stringify(clubQuery.select).toLowerCase(); for (const field of privateFields) assert.equal(clubSelect.includes(field), false);
   assert.equal(JSON.stringify(teamQuery.select).includes("home_venue"), true); assert.equal(JSON.stringify(membershipQuery.select).includes("jersey_number"), true);
 });
 

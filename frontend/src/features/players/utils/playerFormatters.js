@@ -7,6 +7,8 @@ export const getPlayerInitials = (name = "") =>
     .join("")
     .toUpperCase() || "HPL";
 
+export const formatPlayerGender = (gender) => ({ MALE: "Men", FEMALE: "Women" }[gender] || "Not available");
+
 export const getCurrentMemberships = (memberships = []) =>
   memberships.filter((membership) => membership.status === "ACTIVE");
 

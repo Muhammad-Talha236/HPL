@@ -31,4 +31,4 @@ export const formatCompetitionTime = (value) => {
   }).format(date);
 };
 
-export const formatLabel = (value) => value?.replace(/_/g, " ") || "Not available";
+export const formatLabel = (value) => ({ MEN: "Men", WOMEN: "Women" }[value] || value?.replace(/_/g, " ") || "Not available");

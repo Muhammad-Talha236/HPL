@@ -5,11 +5,12 @@ import Footer from "../components/navigation/Footer";
 
 const PublicLayout = () => {
   const { pathname } = useLocation();
+  const isOperationalPortal = (root) => pathname === root || pathname.startsWith(`${root}/`);
 
   // Admin routes own their complete shell. Keeping the public fixed Navbar
   // around them causes its viewport offsets and footer to interfere with the
   // admin sidebar/content layout.
-  if (pathname.startsWith("/admin") || pathname.startsWith("/club") || pathname.startsWith("/team")) {
+  if (isOperationalPortal("/admin") || isOperationalPortal("/club") || isOperationalPortal("/team")) {
     return <Outlet />;
   }
 

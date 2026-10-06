@@ -12,6 +12,7 @@ import useNotifications from "../../hooks/useNotifications";
 const navItems = [
   { label: "HOME", path: "/" },
   { label: "SEASONS", path: "/seasons" },
+  { label: "CLUBS", path: "/clubs" },
   { label: "TEAMS", path: "/teams" },
   { label: "MATCHES", path: "/matches" },
   { label: "STANDINGS", path: "/standings" },
