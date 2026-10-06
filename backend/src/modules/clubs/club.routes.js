@@ -43,7 +43,7 @@ router.get(
 router.post(
   "/",
   authenticate,
-  authorize(ROLES.CLUB_OWNER, ROLES.SUPER_ADMIN),
+  authorize(ROLES.USER, ROLES.CLUB_OWNER, ROLES.SUPER_ADMIN),
   createClubValidation,
   handleValidationErrors,
   createClub

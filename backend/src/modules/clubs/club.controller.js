@@ -66,12 +66,32 @@ export const createClub = async (req, res) => {
       representative_name,
     } = req.body;
 
-    // 1. Validate required field
     if (!name) {
       return res.status(400).json({
         success: false,
         message: "Club name is required",
       });
+    }
+
+    if (req.user.role === ROLES.USER) {
+      if (req.body.owner_id !== undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "Club registration owner is determined by the authenticated user",
+        });
+      }
+
+      const existingPendingClub = await prisma.club.findFirst({
+        where: { owner_id: req.user.user_id, status: "PENDING" },
+        select: { club_id: true },
+      });
+
+      if (existingPendingClub) {
+        return res.status(409).json({
+          success: false,
+          message: "You already have a pending club registration",
+        });
+      }
     }
 
     // A Club Owner can only create their own club. SUPER_ADMIN can select an
@@ -103,7 +123,6 @@ export const createClub = async (req, res) => {
       });
     }
 
-    // 4. Create club
     const club = await prisma.club.create({
       data: {
         owner_id,
@@ -116,14 +135,15 @@ export const createClub = async (req, res) => {
         contact_email,
         contact_phone,
         representative_name,
-        status: "ACTIVE",
+        status: req.user.role === ROLES.USER ? "PENDING" : "ACTIVE",
       },
     });
 
-    // 5. Create audit log
     await createAuditLog({
       actor_user_id: req.user.user_id,
-      action: AUDIT_ACTIONS.CLUB_CREATED,
+      action: req.user.role === ROLES.USER
+        ? AUDIT_ACTIONS.CLUB_REGISTRATION_SUBMITTED
+        : AUDIT_ACTIONS.CLUB_CREATED,
       entity_type: "CLUB",
       entity_id: club.club_id,
       details: {
@@ -132,10 +152,11 @@ export const createClub = async (req, res) => {
       },
     });
 
-    // 6. Return created club
     return res.status(201).json({
       success: true,
-      message: "Club created successfully",
+      message: req.user.role === ROLES.USER
+        ? "Club registration submitted for review"
+        : "Club created successfully",
       data: club,
     });
 

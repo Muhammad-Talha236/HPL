@@ -6,7 +6,7 @@ import { getAdminDashboard } from "./admin.controller.js";
 import { getAdminUserById } from "../users/user.controller.js";
 import { userIdValidation } from "../users/user.validation.js";
 import { handleValidationErrors } from "../../middleware/auth/validation.middleware.js";
-import { getAdminClubById, getAdminClubs } from "../clubs/club.admin.controller.js";
+import { approveClubRegistration, getAdminClubById, getAdminClubs, rejectClubRegistration } from "../clubs/club.admin.controller.js";
 import { clubIdValidation } from "../clubs/club.validation.js";
 import { getAdminTeamById, getAdminTeams } from "../teams/team.admin.controller.js";
 import { teamIdValidation } from "../teams/team.validation.js";
@@ -30,6 +30,8 @@ router.get("/dashboard", authenticate, authorize(ROLES.SUPER_ADMIN), getAdminDas
 router.get("/users/:user_id", authenticate, authorize(ROLES.SUPER_ADMIN), userIdValidation, handleValidationErrors, getAdminUserById);
 router.get("/clubs", authenticate, authorize(ROLES.SUPER_ADMIN), getAdminClubs);
 router.get("/clubs/:club_id", authenticate, authorize(ROLES.SUPER_ADMIN), clubIdValidation, handleValidationErrors, getAdminClubById);
+router.patch("/clubs/:club_id/approve", authenticate, authorize(ROLES.SUPER_ADMIN), clubIdValidation, handleValidationErrors, approveClubRegistration);
+router.patch("/clubs/:club_id/reject", authenticate, authorize(ROLES.SUPER_ADMIN), clubIdValidation, handleValidationErrors, rejectClubRegistration);
 router.get("/teams", authenticate, authorize(ROLES.SUPER_ADMIN), getAdminTeams);
 router.get("/teams/:team_id", authenticate, authorize(ROLES.SUPER_ADMIN), teamIdValidation, handleValidationErrors, getAdminTeamById);
 router.get("/players", authenticate, authorize(ROLES.SUPER_ADMIN), getAdminPlayers);
