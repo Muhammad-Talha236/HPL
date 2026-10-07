@@ -178,7 +178,32 @@ export const getPlayers = async (req, res) => {
   try {
     const players =
       await prisma.player.findMany({
-        select: publicPlayerSelect,
+        select: {
+          ...publicPlayerSelect,
+          team_players: {
+            where: {
+              status: "ACTIVE",
+            },
+            select: {
+              team_player_id: true,
+              player_id: true,
+              team_id: true,
+              jersey_number: true,
+              status: true,
+              team: {
+                select: {
+                  team_id: true,
+                  name: true,
+                  logo: true,
+                  status: true,
+                },
+              },
+            },
+            orderBy: {
+              joined_at: "desc",
+            },
+          },
+        },
 
         orderBy: {
           created_at: "desc",
@@ -222,7 +247,78 @@ export const getPlayerById = async (
           player_id: playerId,
         },
 
-        select: publicPlayerSelect,
+        select: {
+          ...publicPlayerSelect,
+          team_players: {
+            where: {
+              status: "ACTIVE",
+            },
+            select: {
+              team_player_id: true,
+              team_id: true,
+              jersey_number: true,
+              joined_at: true,
+              left_at: true,
+              status: true,
+              team: {
+                select: {
+                  team_id: true,
+                  name: true,
+                  logo: true,
+                  status: true,
+                },
+              },
+            },
+            orderBy: {
+              joined_at: "desc",
+            },
+          },
+          match_players: {
+            where: {
+              match: {
+                status: "COMPLETED",
+              },
+            },
+            select: {
+              team_id: true,
+              match: {
+                select: {
+                  match_id: true,
+                  competition: {
+                    select: {
+                      competition_id: true,
+                      name: true,
+                    },
+                  },
+                  season: {
+                    select: {
+                      season_id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+              team: {
+                select: {
+                  team_id: true,
+                  name: true,
+                  logo: true,
+                },
+              },
+            },
+          },
+          event_players: {
+            where: {
+              event_type: "GOAL",
+              match: {
+                status: "COMPLETED",
+              },
+            },
+            select: {
+              match_id: true,
+            },
+          },
+        },
       });
 
     if (!player) {
@@ -232,9 +328,64 @@ export const getPlayerById = async (
       });
     }
 
+    const memberships = player.team_players || [];
+    const appearances = player.match_players || [];
+    const goalEvents = player.event_players || [];
+    const currentTeamMembership = memberships[0] || null;
+    const currentTeam = currentTeamMembership?.team || null;
+    const goalsByMatch = goalEvents.reduce(
+      (counts, event) => ({
+        ...counts,
+        [event.match_id]: (counts[event.match_id] || 0) + 1,
+      }),
+      {}
+    );
+    const careerByKey = new Map();
+
+    for (const appearance of appearances) {
+      const { match, team } = appearance;
+      const key = [
+        match.season.season_id,
+        match.competition.competition_id,
+        team.team_id,
+      ].join(":");
+      const current = careerByKey.get(key) || {
+        season: match.season,
+        team,
+        competition: match.competition,
+        matches_played: 0,
+        goals: 0,
+        assists: null,
+      };
+
+      current.matches_played += 1;
+      current.goals += goalsByMatch[match.match_id] || 0;
+      careerByKey.set(key, current);
+    }
+
+    const {
+      team_players: _memberships,
+      match_players: _appearances,
+      event_players: _goals,
+      ...publicPlayer
+    } = player;
+
     return res.status(200).json({
       success: true,
-      data: player,
+      data: {
+        ...publicPlayer,
+        current_team: currentTeam
+          ? {
+              ...currentTeam,
+              position: player.position,
+              jersey_number: currentTeamMembership.jersey_number,
+              is_captain: null,
+            }
+          : null,
+        career: [...careerByKey.values()],
+        achievements: [],
+        gallery: [],
+      },
     });
   } catch (error) {
     console.error(

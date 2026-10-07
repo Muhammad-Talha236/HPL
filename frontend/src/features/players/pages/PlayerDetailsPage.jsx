@@ -1,62 +1,397 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { ChevronRight, Home } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 
-import PlayerImage from "../components/PlayerImage";
-import PlayerStatusBadge from "../components/PlayerStatusBadge";
-import PositionBadge from "../components/PositionBadge";
-import { getPlayerById, getPlayerMemberships } from "../services/playerService";
-import { formatPlayerDate, formatPlayerGender, getCurrentMemberships, getPlayerAge } from "../utils/playerFormatters";
+import PlayerProfileHeader from "../components/profile/PlayerProfileHeader";
+import PlayerCareerJourney from "../components/profile/PlayerCareerJourney";
+import PlayerAchievements from "../components/profile/PlayerAchievements";
+import PlayerPhotoGallery from "../components/profile/PlayerPhotoGallery";
 
-const MembershipCard = ({ membership, isCurrent }) => (
-  <Link to={`/teams/${membership.team_id}`} className="block rounded-lg border border-white/10 bg-[#0B1D2F] p-4 transition hover:border-[#EEC058]/45 hover:bg-white/[0.04] focus:outline-none focus:ring-2 focus:ring-[#FF553D]/60">
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0"><p className="truncate text-sm font-extrabold text-white">{membership.team?.name || "Team"}</p><p className="mt-1 text-xs text-white/50">{isCurrent ? "Current team association" : "Past team association"}</p></div>
-      {membership.jersey_number !== null && membership.jersey_number !== undefined && <span className="shrink-0 text-lg font-extrabold text-[#EEC058]">#{membership.jersey_number}</span>}
-    </div>
-    <p className="mt-4 text-xs text-white/50">Joined {formatPlayerDate(membership.joined_at)}{membership.left_at ? ` · Left ${formatPlayerDate(membership.left_at)}` : ""}</p>
-  </Link>
-);
+import { getPlayerById } from "../services/playerService";
+
+/* =========================================================
+   PLAYER DETAILS PAGE
+========================================================= */
 
 const PlayerDetailsPage = () => {
   const { playerId } = useParams();
-  const [playerState, setPlayerState] = useState({ data: null, status: "loading" });
-  const [membershipsState, setMembershipsState] = useState({ data: [], status: "loading" });
+
+  /* =======================================================
+     PLAYER STATE
+  ======================================================= */
+
+  const [playerState, setPlayerState] = useState({
+    data: null,
+    status: "loading",
+  });
+
+  /* =======================================================
+     LOAD PLAYER
+  ======================================================= */
 
   useEffect(() => {
-    let isCurrent = true;
+    let active = true;
 
     const loadPlayer = async () => {
-      try {
-        const player = await getPlayerById(playerId);
-        if (isCurrent) setPlayerState({ data: player, status: "success" });
-      } catch (error) {
-        if (isCurrent) setPlayerState({ data: null, status: error.response?.status === 404 || error.response?.status === 400 ? "notFound" : "error" });
-        return;
-      }
+      setPlayerState({
+        data: null,
+        status: "loading",
+      });
 
       try {
-        const memberships = await getPlayerMemberships(playerId);
-        if (isCurrent) setMembershipsState({ data: memberships, status: "success" });
-      } catch {
-        if (isCurrent) setMembershipsState({ data: [], status: "error" });
+        const player = await getPlayerById(playerId);
+
+        if (!active) return;
+
+        if (!player) {
+          setPlayerState({
+            data: null,
+            status: "notFound",
+          });
+
+          return;
+        }
+
+        setPlayerState({
+          data: player,
+          status: "success",
+        });
+      } catch (error) {
+        if (!active) return;
+
+        console.error("Failed to load player:", error);
+
+        setPlayerState({
+          data: null,
+          status:
+            error?.response?.status === 404
+              ? "notFound"
+              : "error",
+        });
       }
     };
 
     loadPlayer();
-    return () => { isCurrent = false; };
+
+    return () => {
+      active = false;
+    };
   }, [playerId]);
 
-  const currentMemberships = useMemo(() => getCurrentMemberships(membershipsState.data), [membershipsState.data]);
-  const formerMemberships = useMemo(() => membershipsState.data.filter((membership) => membership.status !== "ACTIVE"), [membershipsState.data]);
+  /* =======================================================
+     LOADING
+  ======================================================= */
 
-  if (playerState.status === "loading") return <main className="min-h-screen bg-[#011427] px-5 pb-20 pt-32 text-white sm:px-6"><div className="mx-auto max-w-7xl rounded-xl border border-white/10 bg-white/[0.03] p-8 text-sm text-white/55">Loading player profile…</div></main>;
-  if (playerState.status === "notFound" || playerState.status === "error") return <main className="min-h-screen bg-[#011427] px-5 pb-20 pt-32 text-white sm:px-6"><div className="mx-auto max-w-7xl rounded-xl border border-white/10 bg-white/[0.03] p-8"><h1 className="text-2xl font-extrabold">Player unavailable</h1><p className="mt-3 text-sm text-white/60">{playerState.status === "notFound" ? "The requested player could not be found." : "Player details are unavailable right now."}</p><Link to="/players" className="mt-6 inline-flex text-sm font-bold text-[#EEC058] hover:text-[#ffad9f]">← BACK TO PLAYERS</Link></div></main>;
+  if (playerState.status === "loading") {
+    return (
+      <main className="min-h-screen bg-[#f5f8f7] pt-[76px]">
+        <div
+          className="
+            mx-auto
+            w-full
+            max-w-[1500px]
+            px-5
+            py-10
+            sm:px-7
+            lg:px-10
+          "
+        >
+          <div
+            className="
+              grid
+              min-h-[430px]
+              place-items-center
+              rounded-2xl
+              border
+              border-[#e1e8e5]
+              bg-white
+              shadow-[0_6px_24px_rgba(15,23,42,0.04)]
+            "
+          >
+            <div className="text-center">
+              <div
+                className="
+                  mx-auto
+                  h-8
+                  w-8
+                  animate-spin
+                  rounded-full
+                  border-[3px]
+                  border-[#dfe8e4]
+                  border-t-[#078052]
+                "
+              />
+
+              <p
+                className="
+                  mt-4
+                  text-[12px]
+                  font-medium
+                  text-[#718096]
+                  sm:text-[13px]
+                "
+              >
+                Loading player profile...
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  /* =======================================================
+     ERROR / NOT FOUND
+  ======================================================= */
+
+  if (
+    playerState.status === "notFound" ||
+    playerState.status === "error"
+  ) {
+    const isNotFound = playerState.status === "notFound";
+
+    return (
+      <main className="min-h-screen bg-[#f5f8f7] pt-[76px]">
+        <div
+          className="
+            mx-auto
+            w-full
+            max-w-[1500px]
+            px-5
+            py-12
+            sm:px-7
+            lg:px-10
+          "
+        >
+          <div
+            className="
+              rounded-2xl
+              border
+              border-[#e1e8e5]
+              bg-white
+              p-8
+              shadow-[0_6px_24px_rgba(15,23,42,0.04)]
+            "
+          >
+            <h1
+              className="
+                text-[24px]
+                font-extrabold
+                tracking-[-0.03em]
+                text-[#07182d]
+                sm:text-[28px]
+              "
+            >
+              Player unavailable
+            </h1>
+
+            <p
+              className="
+                mt-2
+                max-w-[520px]
+                text-[12px]
+                leading-5
+                text-[#718096]
+                sm:text-[13px]
+              "
+            >
+              {isNotFound
+                ? "The requested player could not be found."
+                : "Player information is unavailable right now. Please try again later."}
+            </p>
+
+            <Link
+              to="/players"
+              className="
+                mt-6
+                inline-flex
+                cursor-pointer
+                items-center
+                rounded-lg
+                bg-[#078052]
+                px-4
+                py-2.5
+                text-[11px]
+                font-bold
+                text-white
+                transition-colors
+                hover:bg-[#056d46]
+                sm:text-[12px]
+              "
+            >
+              ← Back to Players
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  /* =======================================================
+     PLAYER DATA
+  ======================================================= */
 
   const player = playerState.data;
-  const age = getPlayerAge(player.date_of_birth);
-  const information = [["POSITION", player.position], ["GENDER", formatPlayerGender(player.gender)], ["NATIONALITY", player.nationality], ["AGE", age !== null ? `${age} years` : null]];
 
-  return <main className="min-h-screen bg-[#011427] pb-20 pt-32 text-white"><div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8"><Link to="/players" className="text-xs font-bold tracking-wide text-[#EEC058] hover:text-[#ffad9f]">← ALL PLAYERS</Link><section className="mt-6 overflow-hidden rounded-xl border border-[#EEC058]/25 bg-[linear-gradient(125deg,#17334a,#0B1D2F_60%,#07192a)]"><div className="grid lg:grid-cols-[minmax(260px,0.75fr)_1.25fr]"><PlayerImage player={player} size="hero" className="min-h-[280px] lg:min-h-[360px]" /><div className="flex flex-col justify-center p-6 sm:p-10"><div className="flex flex-wrap items-center gap-2"><PositionBadge position={player.position} /><PlayerStatusBadge status={player.status} /></div><h1 className="mt-5 text-4xl font-extrabold uppercase tracking-tight text-white sm:text-5xl">{player.name}</h1><p className="mt-3 text-sm text-white/60">Hunza Premier League player profile</p>{currentMemberships.length > 0 && <div className="mt-6 flex flex-wrap gap-2">{currentMemberships.map((membership) => <Link key={membership.team_player_id} to={`/teams/${membership.team_id}`} className="rounded-full border border-[#EEC058]/40 px-3 py-2 text-xs font-bold text-[#EEC058] transition hover:bg-[#EEC058] hover:text-[#011427]">{membership.team?.name || "View team"}{membership.jersey_number !== null && membership.jersey_number !== undefined ? ` · #${membership.jersey_number}` : ""}</Link>)}</div>}</div></div></section><section className="mt-16"><p className="text-[11px] font-bold tracking-[0.18em] text-[#EEC058]">PLAYER INFORMATION</p><h2 className="mt-3 text-2xl font-extrabold">Football profile</h2><span className="mt-3 block h-1 w-16 rounded-full bg-[#FF553D]" /><dl className="mt-7 grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">{information.filter(([, value]) => value).map(([label, value]) => <div key={label} className="bg-[#0B1D2F] p-5"><dt className="text-[10px] font-bold tracking-[0.14em] text-white/45">{label}</dt><dd className="mt-2 text-sm font-semibold text-white">{value}</dd></div>)}</dl></section><section className="mt-16"><p className="text-[11px] font-bold tracking-[0.18em] text-[#EEC058]">TEAM ASSOCIATIONS</p><h2 className="mt-3 text-2xl font-extrabold">Current teams</h2><span className="mt-3 block h-1 w-16 rounded-full bg-[#FF553D]" />{membershipsState.status === "loading" && <div className="mt-7 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-sm text-white/55">Loading team associations…</div>}{membershipsState.status === "error" && <div role="alert" className="mt-7 rounded-xl border border-red-400/25 bg-red-400/10 p-6 text-sm text-red-100">Team associations are unavailable right now.</div>}{membershipsState.status === "success" && currentMemberships.length === 0 && <div className="mt-7 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-sm text-white/55">No active team association is listed for this player.</div>}{membershipsState.status === "success" && currentMemberships.length > 0 && <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{currentMemberships.map((membership) => <MembershipCard key={membership.team_player_id} membership={membership} isCurrent />)}</div>}{membershipsState.status === "success" && formerMemberships.length > 0 && <><h3 className="mt-10 text-lg font-extrabold">Past associations</h3><div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{formerMemberships.map((membership) => <MembershipCard key={membership.team_player_id} membership={membership} />)}</div></>}</section></div></main>;
+  const playerName =
+    player?.name ||
+    player?.full_name ||
+    player?.fullName ||
+    "Player";
+
+  const career = Array.isArray(player?.career)
+    ? player.career
+    : [];
+
+  const achievements = Array.isArray(player?.achievements)
+    ? player.achievements
+    : [];
+
+  const gallery = Array.isArray(player?.gallery)
+    ? player.gallery
+    : [];
+
+  /* =======================================================
+     PAGE
+  ======================================================= */
+
+  return (
+    <main
+      className="
+        min-h-screen
+        bg-[#f5f8f7]
+        pb-16
+        pt-[76px]
+        text-[#07182d]
+      "
+    >
+      <div
+        className="
+          mx-auto
+          w-full
+          max-w-[1500px]
+          px-5
+          pt-5
+          sm:px-7
+          sm:pt-6
+          lg:px-10
+        "
+      >
+        {/* =================================================
+            BREADCRUMB
+        ================================================== */}
+
+        <nav
+          aria-label="Breadcrumb"
+          className="
+            mb-4
+            flex
+            min-w-0
+            items-center
+            gap-2
+            overflow-hidden
+            text-[10px]
+            font-medium
+            text-[#718096]
+            sm:text-[11px]
+          "
+        >
+          <Link
+            to="/"
+            className="
+              inline-flex
+              shrink-0
+              cursor-pointer
+              items-center
+              gap-1.5
+              transition-colors
+              duration-200
+              hover:text-[#078052]
+            "
+          >
+            <Home
+              size={13}
+              strokeWidth={1.8}
+            />
+
+            Home
+          </Link>
+
+          <ChevronRight
+            size={12}
+            strokeWidth={1.8}
+            className="shrink-0 text-[#a0aab7]"
+          />
+
+          <Link
+            to="/players"
+            className="
+              shrink-0
+              cursor-pointer
+              transition-colors
+              duration-200
+              hover:text-[#078052]
+            "
+          >
+            Players
+          </Link>
+
+          <ChevronRight
+            size={12}
+            strokeWidth={1.8}
+            className="shrink-0 text-[#a0aab7]"
+          />
+
+          <span
+            className="
+              truncate
+              font-semibold
+              text-[#25364d]
+            "
+          >
+            {playerName}
+          </span>
+        </nav>
+
+        {/* =================================================
+            PLAYER PROFILE
+        ================================================== */}
+
+        <PlayerProfileHeader player={player} />
+
+        {/* =================================================
+            CAREER JOURNEY
+
+            Backend already returns:
+            player.career
+
+            Component automatically hides if career is [].
+        ================================================== */}
+
+        <PlayerCareerJourney career={career} />
+
+        {/* =================================================
+            ACHIEVEMENTS
+
+            Currently backend returns [].
+            Component hides automatically.
+        ================================================== */}
+
+        <PlayerAchievements
+          achievements={achievements}
+        />
+
+        {/* =================================================
+            PHOTO GALLERY
+
+            Currently backend returns [].
+            Component hides automatically.
+        ================================================== */}
+
+        <PlayerPhotoGallery photos={gallery} />
+      </div>
+    </main>
+  );
 };
 
 export default PlayerDetailsPage;
