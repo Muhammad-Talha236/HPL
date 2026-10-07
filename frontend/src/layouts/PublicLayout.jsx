@@ -10,7 +10,7 @@ const PublicLayout = () => {
   // Admin routes own their complete shell. Keeping the public fixed Navbar
   // around them causes its viewport offsets and footer to interfere with the
   // admin sidebar/content layout.
-  if (isOperationalPortal("/admin") || isOperationalPortal("/club") || isOperationalPortal("/team")) {
+  if (isOperationalPortal("/admin") || isOperationalPortal("/club") || isOperationalPortal("/team") || isOperationalPortal("/referee")) {
     return <Outlet />;
   }
 

@@ -1,56 +1,791 @@
-import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-
-import PlayerPreviewCard from "../components/PlayerPreviewCard";
-import TeamLogo from "../components/TeamLogo";
-import TeamMatchCard from "../components/TeamMatchCard";
-import TeamStatusBadge from "../components/TeamStatusBadge";
 import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  Link,
+  useParams,
+} from "react-router-dom";
+
+/* =========================================================
+   PROFILE COMPONENTS
+========================================================= */
+
+import TeamProfileHero from "../components/profile/TeamProfileHero";
+import TeamProfileTabs from "../components/profile/TeamProfileTabs";
+import TeamOverview from "../components/profile/TeamOverview";
+import TeamSquad from "../components/profile/squad/TeamSquad";
+import TeamMatches from "../components/profile/matches/TeamMatches";
+
+/* =========================================================
+   SERVICES
+========================================================= */
+
+import {
+  getAllTeamMatches,
   getTeamById,
   getTeamRecentResults,
   getTeamSquad,
   getTeamUpcomingMatches,
 } from "../services/teamService";
-import { formatTeamGender, getTeamLocation } from "../utils/teamFormatters";
 
-const SectionState = ({ status, empty, error, children }) => {
-  if (status === "loading") return <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-sm text-white/55">Loading…</div>;
-  if (status === "error") return <div role="alert" className="rounded-xl border border-red-400/25 bg-red-400/10 p-6 text-sm text-red-100">{error}</div>;
-  const content = Array.isArray(children)
-    ? children
-    : children?.props?.children;
-  if (!content || content.length === 0) return <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-sm text-white/55">{empty}</div>;
-  return children;
+/* =========================================================
+   PLACEHOLDER FOR PENDING TABS
+========================================================= */
+
+const PendingTab = ({
+  title,
+}) => {
+  return (
+    <section
+      className="
+        mx-auto
+        w-full
+        max-w-[1500px]
+        px-5
+        pb-16
+        pt-6
+        sm:px-7
+        lg:px-10
+      "
+    >
+      <div
+        className="
+          min-h-[360px]
+          rounded-lg
+          border
+          border-[#e1e8e5]
+          bg-white
+          p-6
+          shadow-[0_3px_12px_rgba(15,23,42,0.035)]
+        "
+      >
+        <h2
+          className="
+            text-[22px]
+            font-extrabold
+            tracking-[-0.03em]
+            text-[#07182d]
+          "
+        >
+          {title}
+        </h2>
+
+        <span
+          className="
+            mt-2
+            block
+            h-[2px]
+            w-7
+            bg-[#e4a42b]
+          "
+        />
+
+        <div
+          className="
+            mt-6
+            grid
+            min-h-[250px]
+            place-items-center
+            rounded-lg
+            border
+            border-dashed
+            border-[#dce5e1]
+            bg-[#fafcfb]
+            px-6
+            text-center
+          "
+        >
+          <p
+            className="
+              text-[13px]
+              font-medium
+              text-[#718096]
+            "
+          >
+            {title} section will be implemented next.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
 };
+
+/* =========================================================
+   TEAM DETAILS PAGE
+========================================================= */
 
 const TeamDetailsPage = () => {
   const { teamId } = useParams();
-  const [teamState, setTeamState] = useState({ data: null, status: "loading" });
-  const [squadState, setSquadState] = useState({ data: [], status: "loading" });
-  const [resultsState, setResultsState] = useState({ data: [], status: "loading" });
-  const [upcomingState, setUpcomingState] = useState({ data: [], status: "loading" });
+
+  /* =======================================================
+     ACTIVE TAB
+  ======================================================= */
+
+  const [
+    activeTab,
+    setActiveTab,
+  ] = useState("overview");
+
+  /* =======================================================
+     TEAM STATE
+  ======================================================= */
+
+  const [
+    teamState,
+    setTeamState,
+  ] = useState({
+    data: null,
+    status: "loading",
+  });
+
+  /* =======================================================
+     SQUAD STATE
+  ======================================================= */
+
+  const [
+    squadState,
+    setSquadState,
+  ] = useState({
+    data: [],
+    status: "loading",
+  });
+
+  /* =======================================================
+     RECENT RESULTS STATE
+  ======================================================= */
+
+  const [
+    resultsState,
+    setResultsState,
+  ] = useState({
+    data: [],
+    status: "loading",
+  });
+
+  /* =======================================================
+     UPCOMING MATCHES STATE
+  ======================================================= */
+
+  const [
+    upcomingState,
+    setUpcomingState,
+  ] = useState({
+    data: [],
+    status: "loading",
+  });
+
+  /* =======================================================
+     ALL MATCHES STATE
+
+     Used by full Matches tab:
+     LIVE + SCHEDULED + COMPLETED
+  ======================================================= */
+
+  const [
+    matchesState,
+    setMatchesState,
+  ] = useState({
+    data: [],
+    status: "loading",
+  });
+
+  /* =======================================================
+     LOAD TEAM PROFILE
+  ======================================================= */
 
   useEffect(() => {
     let isCurrent = true;
-    const setSection = (setter, result) => { if (isCurrent) setter(result); };
-    const loadTeam = async () => {
-      try { setSection(setTeamState, { data: await getTeamById(teamId), status: "success" }); } catch (error) { setSection(setTeamState, { data: null, status: error.response?.status === 404 ? "notFound" : "error" }); }
-      const [squad, results, upcoming] = await Promise.allSettled([getTeamSquad(teamId), getTeamRecentResults(teamId), getTeamUpcomingMatches(teamId)]);
-      setSection(setSquadState, squad.status === "fulfilled" ? { data: squad.value.slice(0, 6), status: "success" } : { data: [], status: "error" });
-      setSection(setResultsState, results.status === "fulfilled" ? { data: results.value, status: "success" } : { data: [], status: "error" });
-      setSection(setUpcomingState, upcoming.status === "fulfilled" ? { data: upcoming.value, status: "success" } : { data: [], status: "error" });
+
+    const safeSetState = (
+      setter,
+      value
+    ) => {
+      if (isCurrent) {
+        setter(value);
+      }
     };
-    loadTeam();
-    return () => { isCurrent = false; };
+
+    const loadTeamProfile =
+      async () => {
+        /* -----------------------------------------------
+           RESET
+        ------------------------------------------------ */
+
+        setActiveTab("overview");
+
+        setTeamState({
+          data: null,
+          status: "loading",
+        });
+
+        setSquadState({
+          data: [],
+          status: "loading",
+        });
+
+        setResultsState({
+          data: [],
+          status: "loading",
+        });
+
+        setUpcomingState({
+          data: [],
+          status: "loading",
+        });
+
+        setMatchesState({
+          data: [],
+          status: "loading",
+        });
+
+        /* -----------------------------------------------
+           LOAD MAIN TEAM
+        ------------------------------------------------ */
+
+        try {
+          const team =
+            await getTeamById(
+              teamId
+            );
+
+          safeSetState(
+            setTeamState,
+            {
+              data: team,
+              status: "success",
+            }
+          );
+        } catch (error) {
+          safeSetState(
+            setTeamState,
+            {
+              data: null,
+
+              status:
+                error?.response
+                  ?.status === 404
+                  ? "notFound"
+                  : "error",
+            }
+          );
+
+          return;
+        }
+
+        /* -----------------------------------------------
+           LOAD RELATED DATA
+
+           All requests run independently.
+           One failed request will not break the others.
+        ------------------------------------------------ */
+
+        const [
+          squadResult,
+          recentResult,
+          upcomingResult,
+          allMatchesResult,
+        ] =
+          await Promise.allSettled(
+            [
+              getTeamSquad(
+                teamId
+              ),
+
+              getTeamRecentResults(
+                teamId
+              ),
+
+              getTeamUpcomingMatches(
+                teamId
+              ),
+
+              getAllTeamMatches(
+                teamId
+              ),
+            ]
+          );
+
+        /* -----------------------------------------------
+           SQUAD
+        ------------------------------------------------ */
+
+        safeSetState(
+          setSquadState,
+
+          squadResult.status ===
+            "fulfilled"
+            ? {
+                data:
+                  squadResult.value ||
+                  [],
+
+                status:
+                  "success",
+              }
+            : {
+                data: [],
+                status: "error",
+              }
+        );
+
+        /* -----------------------------------------------
+           RECENT RESULTS
+        ------------------------------------------------ */
+
+        safeSetState(
+          setResultsState,
+
+          recentResult.status ===
+            "fulfilled"
+            ? {
+                data:
+                  recentResult.value ||
+                  [],
+
+                status:
+                  "success",
+              }
+            : {
+                data: [],
+                status: "error",
+              }
+        );
+
+        /* -----------------------------------------------
+           UPCOMING
+        ------------------------------------------------ */
+
+        safeSetState(
+          setUpcomingState,
+
+          upcomingResult.status ===
+            "fulfilled"
+            ? {
+                data:
+                  upcomingResult.value ||
+                  [],
+
+                status:
+                  "success",
+              }
+            : {
+                data: [],
+                status: "error",
+              }
+        );
+
+        /* -----------------------------------------------
+           ALL MATCHES
+        ------------------------------------------------ */
+
+        safeSetState(
+          setMatchesState,
+
+          allMatchesResult.status ===
+            "fulfilled"
+            ? {
+                data:
+                  allMatchesResult.value ||
+                  [],
+
+                status:
+                  "success",
+              }
+            : {
+                data: [],
+                status: "error",
+              }
+        );
+      };
+
+    loadTeamProfile();
+
+    return () => {
+      isCurrent = false;
+    };
   }, [teamId]);
 
-  if (teamState.status === "loading") return <main className="min-h-screen bg-[#011427] px-5 pb-20 pt-32 text-white sm:px-6"><div className="mx-auto max-w-7xl rounded-xl border border-white/10 bg-white/[0.03] p-8 text-sm text-white/55">Loading team profile…</div></main>;
-  if (teamState.status === "notFound" || teamState.status === "error") return <main className="min-h-screen bg-[#011427] px-5 pb-20 pt-32 text-white sm:px-6"><div className="mx-auto max-w-7xl rounded-xl border border-white/10 bg-white/[0.03] p-8"><h1 className="text-2xl font-extrabold">Team unavailable</h1><p className="mt-3 text-sm text-white/60">{teamState.status === "notFound" ? "The requested team could not be found." : "Team details are unavailable right now."}</p><Link to="/teams" className="mt-6 inline-flex text-sm font-bold text-[#EEC058] hover:text-[#ffad9f]">← BACK TO TEAMS</Link></div></main>;
+  /* =======================================================
+     COUNTS
+  ======================================================= */
 
-  const team = teamState.data;
-  const overview = [["CLUB", team.club?.name || "Not available"], ["LOCATION", getTeamLocation(team) || "Not available"], ["TEAM TYPE", team.team_type || "Not available"], ["HOME VENUE", team.home_venue?.name || "Not available"], ["GENDER", formatTeamGender(team.gender)]];
+  const squadCount =
+    useMemo(() => {
+      if (
+        squadState.status !==
+        "success"
+      ) {
+        return 0;
+      }
 
-  return <main className="min-h-screen bg-[#011427] pb-20 pt-32 text-white"><div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8"><Link to="/teams" className="text-xs font-bold tracking-wide text-[#EEC058] hover:text-[#ffad9f]">← ALL TEAMS</Link><section className="mt-6 rounded-xl border border-[#EEC058]/25 bg-[linear-gradient(135deg,#17334a,#0B1D2F)] p-6 sm:p-10"><div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center"><TeamLogo logo={team.logo} name={team.name} size="lg" /><div><p className="text-[11px] font-bold tracking-[0.2em] text-[#EEC058]">HUNZA PREMIER LEAGUE TEAM</p><h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">{team.name}</h1><p className="mt-3 text-base text-white/65">{team.club?.name || "Club information unavailable"}</p><div className="mt-4"><TeamStatusBadge status={team.status} /></div></div></div></section><section className="mt-16"><p className="text-[11px] font-bold tracking-[0.18em] text-[#EEC058]">TEAM OVERVIEW</p><h2 className="mt-3 text-2xl font-extrabold">About the team</h2><span className="mt-3 block h-1 w-16 rounded-full bg-[#FF553D]" />{team.description && <p className="mt-6 max-w-3xl text-sm leading-7 text-white/65">{team.description}</p>}<dl className="mt-7 grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">{overview.map(([label, value]) => <div key={label} className="bg-[#0B1D2F] p-5"><dt className="text-[10px] font-bold tracking-[0.14em] text-white/45">{label}</dt><dd className="mt-2 text-sm font-semibold text-white">{value}</dd></div>)}</dl></section><section className="mt-16"><p className="text-[11px] font-bold tracking-[0.18em] text-[#EEC058]">SQUAD PREVIEW</p><h2 className="mt-3 text-2xl font-extrabold">Current squad</h2><span className="mt-3 block h-1 w-16 rounded-full bg-[#FF553D]" /><div className="mt-7"><SectionState status={squadState.status} empty="No active squad members are available yet." error="Squad information is unavailable right now."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{squadState.data.map((teamPlayer) => <PlayerPreviewCard key={teamPlayer.team_player_id} teamPlayer={teamPlayer} />)}</div></SectionState></div></section><div className="mt-16 grid gap-12 lg:grid-cols-2"><section><p className="text-[11px] font-bold tracking-[0.18em] text-[#EEC058]">RECENT RESULTS</p><h2 className="mt-3 text-2xl font-extrabold">Completed matches</h2><span className="mt-3 block h-1 w-16 rounded-full bg-[#FF553D]" /><div className="mt-7 space-y-4"><SectionState status={resultsState.status} empty="No completed matches are available yet." error="Recent results are unavailable right now.">{resultsState.data.map((match) => <TeamMatchCard key={match.match_id} match={match} type="result" />)}</SectionState></div></section><section><p className="text-[11px] font-bold tracking-[0.18em] text-[#EEC058]">UPCOMING FIXTURES</p><h2 className="mt-3 text-2xl font-extrabold">Next matches</h2><span className="mt-3 block h-1 w-16 rounded-full bg-[#FF553D]" /><div className="mt-7 space-y-4"><SectionState status={upcomingState.status} empty="No upcoming fixtures are scheduled." error="Upcoming fixtures are unavailable right now.">{upcomingState.data.map((match) => <TeamMatchCard key={match.match_id} match={match} type="upcoming" />)}</SectionState></div></section></div></div></main>;
+      return (
+        squadState.data?.length ||
+        0
+      );
+    }, [squadState]);
+
+  /*
+   * Hero ke liye actual total team matches.
+   *
+   * Agar all matches request fail ho jaye to
+   * recent results count fallback hai.
+   */
+  const matchCount =
+    useMemo(() => {
+      if (
+        matchesState.status ===
+        "success"
+      ) {
+        return (
+          matchesState.data
+            ?.length || 0
+        );
+      }
+
+      if (
+        resultsState.status ===
+        "success"
+      ) {
+        return (
+          resultsState.data
+            ?.length || 0
+        );
+      }
+
+      return 0;
+    }, [
+      matchesState,
+      resultsState,
+    ]);
+
+  /* =======================================================
+     LOADING
+  ======================================================= */
+
+  if (
+    teamState.status ===
+    "loading"
+  ) {
+    return (
+      <main
+        className="
+          min-h-screen
+          bg-[#f5f8f7]
+          pt-[76px]
+        "
+      >
+        <div
+          className="
+            mx-auto
+            max-w-[1500px]
+            px-5
+            py-16
+            sm:px-7
+            lg:px-10
+          "
+        >
+          <div
+            className="
+              rounded-lg
+              border
+              border-[#e1e8e5]
+              bg-white
+              p-8
+              text-[13px]
+              font-medium
+              text-[#718096]
+            "
+          >
+            Loading team profile…
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  /* =======================================================
+     ERROR / NOT FOUND
+  ======================================================= */
+
+  if (
+    teamState.status ===
+      "notFound" ||
+    teamState.status ===
+      "error"
+  ) {
+    return (
+      <main
+        className="
+          min-h-screen
+          bg-[#f5f8f7]
+          pt-[76px]
+        "
+      >
+        <div
+          className="
+            mx-auto
+            max-w-[1500px]
+            px-5
+            py-16
+            sm:px-7
+            lg:px-10
+          "
+        >
+          <div
+            className="
+              rounded-lg
+              border
+              border-[#e1e8e5]
+              bg-white
+              p-8
+            "
+          >
+            <h1
+              className="
+                text-[24px]
+                font-extrabold
+                text-[#07182d]
+              "
+            >
+              Team unavailable
+            </h1>
+
+            <p
+              className="
+                mt-3
+                text-[13px]
+                text-[#718096]
+              "
+            >
+              {teamState.status ===
+              "notFound"
+                ? "The requested team could not be found."
+                : "Team details are unavailable right now."}
+            </p>
+
+            <Link
+              to="/teams"
+              className="
+                mt-6
+                inline-flex
+                cursor-pointer
+                text-[12px]
+                font-bold
+                text-[#078052]
+                transition
+                hover:text-[#055f3e]
+              "
+            >
+              ← Back to Teams
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  /* =======================================================
+     TEAM
+  ======================================================= */
+
+  const team =
+    teamState.data;
+
+  /* =======================================================
+     TAB CONTENT
+  ======================================================= */
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      /* -----------------------------------------------
+         OVERVIEW
+      ------------------------------------------------ */
+
+      case "overview":
+        return (
+          <TeamOverview
+            team={team}
+            teamId={teamId}
+            squadState={
+              squadState
+            }
+            resultsState={
+              resultsState
+            }
+            upcomingState={
+              upcomingState
+            }
+            onOpenSquad={() =>
+              setActiveTab(
+                "squad"
+              )
+            }
+            onOpenMatches={() =>
+              setActiveTab(
+                "matches"
+              )
+            }
+          />
+        );
+
+      /* -----------------------------------------------
+         SQUAD
+      ------------------------------------------------ */
+
+      case "squad":
+        return (
+          <section
+            className="
+              mx-auto
+              w-full
+              max-w-[1500px]
+              px-5
+              pb-16
+              pt-6
+              sm:px-7
+              lg:px-10
+            "
+          >
+            <TeamSquad
+              team={team}
+              squadState={
+                squadState
+              }
+            />
+          </section>
+        );
+
+      /* -----------------------------------------------
+         STAFF
+         Currently intentionally pending
+      ------------------------------------------------ */
+
+      case "staff":
+        return (
+          <PendingTab
+            title="Staff"
+          />
+        );
+
+      /* -----------------------------------------------
+         MATCHES
+      ------------------------------------------------ */
+
+      case "matches":
+        return (
+          <TeamMatches
+            team={team}
+            matchesState={
+              matchesState
+            }
+          />
+        );
+
+      /* -----------------------------------------------
+         STATISTICS
+      ------------------------------------------------ */
+
+      case "statistics":
+        return (
+          <PendingTab
+            title="Statistics"
+          />
+        );
+
+      /* -----------------------------------------------
+         GALLERY
+      ------------------------------------------------ */
+
+      case "gallery":
+        return (
+          <PendingTab
+            title="Gallery"
+          />
+        );
+
+      /* -----------------------------------------------
+         DEFAULT
+      ------------------------------------------------ */
+
+      default:
+        return (
+          <TeamOverview
+            team={team}
+            teamId={teamId}
+            squadState={
+              squadState
+            }
+            resultsState={
+              resultsState
+            }
+            upcomingState={
+              upcomingState
+            }
+            onOpenSquad={() =>
+              setActiveTab(
+                "squad"
+              )
+            }
+            onOpenMatches={() =>
+              setActiveTab(
+                "matches"
+              )
+            }
+          />
+        );
+    }
+  };
+
+  /* =======================================================
+     PAGE
+  ======================================================= */
+
+  return (
+    <main
+      className="
+        min-h-screen
+        bg-[#f5f8f7]
+        pt-[76px]
+        text-[#07182d]
+      "
+    >
+      {/* ===============================================
+          HERO
+      ================================================ */}
+
+      <TeamProfileHero
+        team={team}
+        playerCount={
+          squadCount
+        }
+        matchCount={
+          matchCount
+        }
+      />
+
+      {/* ===============================================
+          SHARED TABS
+      ================================================ */}
+
+      <TeamProfileTabs
+        activeTab={
+          activeTab
+        }
+        onChange={
+          setActiveTab
+        }
+      />
+
+      {/* ===============================================
+          ACTIVE TAB
+      ================================================ */}
+
+      {renderTabContent()}
+    </main>
+  );
 };
 
 export default TeamDetailsPage;

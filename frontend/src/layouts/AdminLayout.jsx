@@ -1,8 +1,21 @@
-import { NavLink, Outlet } from "react-router-dom";
-import { useEffect, useState } from "react";
-import useAuth from "../hooks/useAuth";
+import PortalShell from "./PortalShell";
 
-const links = [["OVERVIEW", "/admin", "Dashboard"], ["MANAGEMENT", "/admin/users", "Users"], ["", "/admin/clubs", "Clubs"], ["", "/admin/teams", "Teams"], ["", "/admin/players", "Players"], ["COMPETITION", "/admin/seasons", "Seasons"], ["", "/admin/competitions", "Competitions"], ["", "/admin/venues", "Venues"], ["", "/admin/matches", "Matches"], ["OFFICIALS", "/admin/referees", "Referees"], ["OPERATIONS", "/admin/registrations", "Registrations"], ["", "/admin/news", "News"], ["SYSTEM", "/admin/audit-logs", "Audit Logs"]];
-const AdminLayout = () => { const { user, logout } = useAuth(); const [open, setOpen] = useState(false); useEffect(() => { const close = (event) => { if (event.key === "Escape") setOpen(false); }; window.addEventListener("keydown", close); return () => window.removeEventListener("keydown", close); }, []); const sidebar = <aside className="flex h-full w-[260px] flex-col border-r border-white/10 bg-[#07192a] p-4"><div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4"><NavLink to="/admin" onClick={() => setOpen(false)} className="text-lg font-extrabold tracking-wide text-[#ffad9f]">HPL ADMIN</NavLink><button type="button" onClick={logout} className="text-[11px] font-bold text-white/55 hover:text-white">LOGOUT</button></div><p className="mt-3 truncate text-xs text-white/45">{user?.name || "Super Admin"}</p><nav className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">{links.map(([group, to, label]) => <div key={to}>{group && <p className="mt-4 text-[10px] font-bold tracking-[.16em] text-[#EEC058]">{group}</p>}<NavLink end={to === "/admin"} to={to} onClick={() => setOpen(false)} className={({ isActive }) => `mt-1 block rounded-md border-l-2 px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "border-[#FF553D] bg-[#FF553D]/15 text-white" : "border-transparent text-white/60 hover:bg-white/5 hover:text-white"}`}>{label}</NavLink></div>)}</nav></aside>; return <div className="min-h-screen bg-[#011427] text-white"><div className="hidden min-h-screen lg:flex">{sidebar}<div className="flex min-w-0 flex-1 flex-col"><Header user={user} /><main className="min-w-0 flex-1 overflow-x-hidden"><Outlet /></main></div></div><div className="lg:hidden"><Header user={user} onMenu={() => setOpen(true)} /><main className="min-w-0 overflow-x-hidden"><Outlet /></main>{open && <div className="fixed inset-0 z-50 flex"><button type="button" aria-label="Close navigation" onClick={() => setOpen(false)} className="flex-1 bg-black/65" />{sidebar}</div>}</div></div>; };
-const Header = ({ user, onMenu }) => <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-4 border-b border-white/10 bg-[#011427]/95 px-5 backdrop-blur sm:px-8"><div className="flex min-w-0 items-center gap-3">{onMenu && <button type="button" onClick={onMenu} aria-label="Open admin navigation" className="rounded border border-white/15 px-3 py-2 text-xs font-bold lg:hidden">MENU</button>}<p className="hidden truncate text-xs font-bold tracking-[.14em] text-white/45 sm:block">HUNZA PREMIER LEAGUE · ADMIN</p></div><div className="min-w-0 text-right"><p className="truncate text-sm font-bold">{user?.name || "Super Admin"}</p><p className="text-[11px] text-[#EEC058]">SUPER ADMIN</p></div></header>;
-export default AdminLayout;
+const navigation = [
+  { group: "OVERVIEW", label: "Dashboard", to: "/admin" },
+  { group: "MANAGEMENT", label: "Users", to: "/admin/users" },
+  { label: "Clubs", to: "/admin/clubs" },
+  { label: "Teams", to: "/admin/teams" },
+  { label: "Players", to: "/admin/players" },
+  { group: "COMPETITION", label: "Seasons", to: "/admin/seasons" },
+  { label: "Competitions", to: "/admin/competitions" },
+  { label: "Venues", to: "/admin/venues" },
+  { label: "Matches", to: "/admin/matches" },
+  { group: "OFFICIALS", label: "Referees", to: "/admin/referees" },
+  { group: "OPERATIONS", label: "Registrations", to: "/admin/registrations" },
+  { label: "News", to: "/admin/news" },
+  { group: "SYSTEM", label: "Audit Logs", to: "/admin/audit-logs" },
+];
+
+export default function AdminLayout() {
+  return <PortalShell roleLabel="SUPER ADMIN" brandLabel="ADMIN" navigation={navigation} />;
+}

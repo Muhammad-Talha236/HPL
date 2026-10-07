@@ -12,9 +12,9 @@ const Logo = ({ className = "" }) => {
         src={hplLogo}
         alt="Hunza Premier League"
         className="
-          h-[82px] w-auto object-contain
-          sm:h-[88px]
-          lg:h-[100px]
+          h-[60px] w-auto object-contain
+          sm:h-[70px]
+          lg:h-[80px]
         "
       />
     </Link>

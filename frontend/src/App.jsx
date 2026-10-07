@@ -72,6 +72,8 @@ import ClubOwnerRoute from "./routes/ClubOwnerRoute";
 
 import TeamOwnerLayout from "./layouts/TeamOwnerLayout";
 
+import RefereeLayout from "./layouts/RefereeLayout";
+
 import TeamOwnerRoute from "./routes/TeamOwnerRoute";
 
 import UserAccountRoute from "./routes/UserAccountRoute";
@@ -486,20 +488,22 @@ function App() {
           ========================= */}
 
           <Route element={<RefereeRoute />}>
-            <Route
-              path="/referee/dashboard"
-              element={<RefereeDashboardPage />}
-            />
+            <Route element={<RefereeLayout />}>
+              <Route
+                path="/referee/dashboard"
+                element={<RefereeDashboardPage />}
+              />
 
-            <Route
-              path="/referee/matches"
-              element={<RefereeMatchesPage />}
-            />
+              <Route
+                path="/referee/matches"
+                element={<RefereeMatchesPage />}
+              />
 
-            <Route
-              path="/referee/matches/:matchId"
-              element={<RefereeWorkspacePage />}
-            />
+              <Route
+                path="/referee/matches/:matchId"
+                element={<RefereeWorkspacePage />}
+              />
+            </Route>
           </Route>
 
           {/* =========================

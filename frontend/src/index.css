@@ -1,3 +1,81 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-hpl-navy: #011427;
+  --color-hpl-panel: #07192a;
+  --color-hpl-green: #087554;
+  --color-hpl-coral: #ff553d;
+  --color-hpl-gold: #eec058;
+}
 
+@layer base {
+  :root {
+    font-family: var(--font-sans);
+    color: #101828;
+    background: #ffffff;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-width: 320px;
+    margin: 0;
+    font-family: var(--font-sans);
+    line-height: 1.5;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  ::selection {
+    color: #ffffff;
+    background: #087554;
+  }
+}
+
+@layer components {
+  .hpl-portal {
+    min-height: 100vh;
+    background: #f4f7f5;
+    color: #14231d;
+  }
+
+  .hpl-portal-content {
+    width: min(100%, 1440px);
+    margin-inline: auto;
+  }
+
+  .hpl-portal-card {
+    border: 1px solid #dfe8e3;
+    border-radius: 1rem;
+    background: #ffffff;
+    box-shadow: 0 12px 32px rgb(16 56 39 / 6%);
+  }
+
+  .hpl-portal-sidebar {
+    background: linear-gradient(180deg, #071f31 0%, #061827 100%);
+    box-shadow: 10px 0 30px rgb(1 20 39 / 12%);
+  }
+
+  .hpl-portal-nav-active {
+    border-color: #ff553d;
+    background: rgb(255 85 61 / 14%);
+    color: #ffffff;
+    box-shadow: inset 3px 0 0 #ff553d;
+  }
+
+  .hpl-portal-nav-link {
+    border-color: transparent;
+    color: rgb(255 255 255 / 64%);
+  }
+
+  .hpl-portal-nav-link:hover {
+    background: rgb(255 255 255 / 8%);
+    color: #ffffff;
+  }
+}

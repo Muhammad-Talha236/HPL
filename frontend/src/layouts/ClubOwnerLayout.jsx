@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
-import useAuth from "../hooks/useAuth";
+import PortalShell from "./PortalShell";
 
-const links = [["OVERVIEW", "/club"], ["MY CLUB", "/club/profile"], ["TEAMS", "/club/teams"], ["PLAYERS", "/club/players"], ["COMPETITIONS", "/club/competitions"], ["REGISTRATIONS", "/club/registrations"], ["PAYMENTS", "/club/payments"]];
+const navigation = [
+  { group: "OVERVIEW", label: "Dashboard", to: "/club" },
+  { group: "CLUB", label: "My Club", to: "/club/profile" },
+  { label: "Teams", to: "/club/teams" },
+  { label: "Players", to: "/club/players" },
+  { group: "COMPETITIONS", label: "Competitions", to: "/club/competitions" },
+  { label: "Registrations", to: "/club/registrations" },
+  { group: "OPERATIONS", label: "Payments", to: "/club/payments" },
+];
+
 export default function ClubOwnerLayout() {
-  const { user, logout } = useAuth(); const [open, setOpen] = useState(false);
-  useEffect(() => { const close = (event) => event.key === "Escape" && setOpen(false); window.addEventListener("keydown", close); return () => window.removeEventListener("keydown", close); }, []);
-  const sidebar = <aside className="flex h-full w-64 flex-col border-r border-white/10 bg-[#07192a] p-4"><Link to="/club" onClick={() => setOpen(false)} className="border-b border-white/10 pb-4 text-lg font-extrabold tracking-wide text-[#ffad9f]">HPL <span className="text-white">CLUB</span></Link><p className="mt-3 truncate text-xs text-white/50">{user?.name || "Club Owner"}</p><nav className="mt-4 flex-1 overflow-y-auto">{links.map(([label, to]) => <NavLink key={to} end={to === "/club"} to={to} onClick={() => setOpen(false)} className={({ isActive }) => `mt-1 block rounded-md border-l-2 px-3 py-2.5 text-sm font-bold ${isActive ? "border-[#FF553D] bg-[#FF553D]/15 text-white" : "border-transparent text-white/60 hover:bg-white/5 hover:text-white"}`}>{label}</NavLink>)}</nav><div className="space-y-2 border-t border-white/10 pt-4"><Link to="/" className="block rounded px-3 py-2 text-xs font-bold text-[#EEC058] hover:bg-white/5">VIEW PUBLIC SITE</Link><Link to="/club/profile" className="block rounded px-3 py-2 text-xs font-bold text-white/70 hover:bg-white/5">CLUB PROFILE</Link><button type="button" onClick={logout} className="w-full rounded px-3 py-2 text-left text-xs font-bold text-white/70 hover:bg-white/5">LOGOUT</button></div></aside>;
-  const header = <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-5 text-slate-900 backdrop-blur sm:px-8"><button type="button" onClick={() => setOpen(true)} aria-label="Open club navigation" className="rounded border border-slate-300 px-3 py-2 text-xs font-bold lg:hidden">MENU</button><p className="hidden text-xs font-bold tracking-[.14em] text-slate-500 sm:block">HUNZA PREMIER LEAGUE · CLUB OWNER PORTAL</p><p className="truncate text-sm font-bold">{user?.name || "Club Owner"}</p></header>;
-  return <div className="min-h-screen bg-slate-100"><div className="hidden min-h-screen lg:flex">{sidebar}<div className="min-w-0 flex-1">{header}<main className="min-w-0 overflow-x-hidden"><Outlet /></main></div></div><div className="lg:hidden">{header}<main className="min-w-0 overflow-x-hidden"><Outlet /></main>{open && <div className="fixed inset-0 z-50 flex"><button type="button" aria-label="Close club navigation" onClick={() => setOpen(false)} className="flex-1 bg-black/60" />{sidebar}</div>}</div></div>;
+  return <PortalShell roleLabel="CLUB OWNER" brandLabel="CLUB" navigation={navigation} />;
 }

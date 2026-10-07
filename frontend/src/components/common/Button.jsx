@@ -2,16 +2,16 @@ import { Link } from "react-router-dom";
 
 const variants = {
   primary:
-    "bg-[#FF553D] text-white hover:bg-[#e94a35] border border-[#FF553D]",
+    "bg-[#087554] text-white hover:bg-[#0b644a] border border-[#087554]",
 
   secondary:
-    "bg-[#1A2D40] text-white hover:bg-[#243b52] border border-white/10",
+    "bg-[#10283d] text-white hover:bg-[#173750] border border-[#10283d]",
 
   outline:
-    "bg-transparent text-[#FF553D] border border-[#FF553D] hover:bg-[#FF553D] hover:text-white",
+    "bg-transparent text-[#087554] border border-[#087554] hover:bg-[#087554] hover:text-white",
 
   ghost:
-    "bg-transparent text-white border border-white/15 hover:bg-white/10",
+    "bg-transparent text-[#14231d] border border-[#cbd9d1] hover:bg-[#f4f7f5]",
 };
 
 const sizes = {
@@ -33,9 +33,9 @@ const Button = ({
 }) => {
   const classes = `
     inline-flex items-center justify-center
-    rounded-md font-bold tracking-wide
+    rounded-lg font-bold tracking-wide
     transition-all duration-200
-    focus:outline-none focus:ring-2 focus:ring-[#FF553D]/50
+    focus:outline-none focus:ring-2 focus:ring-[#087554]/30
     disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50
     ${variants[variant] ?? variants.primary}
     ${sizes[size] ?? sizes.md}

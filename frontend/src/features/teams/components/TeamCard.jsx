@@ -1,19 +1,178 @@
+import { ArrowRight, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import TeamLogo from "./TeamLogo";
-import { formatTeamGender, getTeamLocation } from "../utils/teamFormatters";
-
-const accentColors = ["#FF9E91", "#EEC058", "#3B82F6", "#10B981", "#F59E0B", "#E11D48", "#38BDF8", "#8B5CF6"];
+import logo from "../../../assets/logo.png";
+import { getTeamLocation } from "../utils/teamFormatters";
 
 const TeamCard = ({ team }) => {
-  const accent = accentColors[team.team_id % accentColors.length];
+  const location =
+    team.city ||
+    getTeamLocation(team) ||
+    "Hunza";
 
   return (
-  <article style={{ borderTopColor: accent }} className="group flex min-h-[300px] flex-col rounded-xl border border-white/10 border-t-6 bg-[#10283d] p-5 shadow-lg transition duration-200 hover:-translate-y-1 hover:border-x-white/20 hover:border-b-white/20 hover:shadow-2xl">
-    <div className="flex items-start justify-between gap-4"><TeamLogo logo={team.logo} name={team.name} /><div className="pt-1 text-right"><p className="text-[9px] font-bold tracking-[0.1em] text-[#EEC058]">TEAM PROFILE</p><p className="mt-1 text-base font-extrabold tracking-tight text-[#c7d9ef]">{team.team_type || "HPL TEAM"}</p><p className="mt-1 text-[10px] font-semibold text-white/50">{team.gender ? formatTeamGender(team.gender) : "HPL"}</p></div></div>
-    <div className="mt-6"><h2 className="text-2xl font-extrabold uppercase leading-none tracking-tight text-[#d8e7fb]">{team.name}</h2><p className="mt-3 text-xs font-semibold text-[#ffb5ab]">⌾ {getTeamLocation(team) || team.club?.name || "Hunza Premier League"}</p></div>
-    <Link to={`/teams/${team.team_id}`} className="mt-auto inline-flex min-h-12 items-center justify-center rounded-lg border border-[#EEC058]/80 px-4 py-3 text-xs font-bold tracking-wide text-[#EEC058] transition hover:bg-[#EEC058] hover:text-[#011427] focus:outline-none focus:ring-2 focus:ring-[#FF553D]/50">VIEW TEAM PROFILE</Link>
-  </article>
+    <article
+      className="
+        group
+        overflow-hidden
+        rounded-xl
+        border
+        border-[#dfe8e4]
+        bg-white
+        shadow-[0_5px_18px_rgba(15,23,42,0.06)]
+        transition-all
+        duration-300
+        hover:-translate-y-1
+        hover:shadow-[0_10px_28px_rgba(15,23,42,0.10)]
+      "
+    >
+      {/* ================================
+          IMAGE AREA
+      ================================= */}
+      <div className="relative h-[96px] overflow-visible bg-[#174e5c]">
+        {/* Background mountains */}
+        <div
+          className="
+            absolute
+            inset-0
+            overflow-hidden
+            bg-[linear-gradient(180deg,#1d5865_0%,#164957_100%)]
+          "
+        >
+          <div
+            className="
+              absolute
+              bottom-0
+              left-0
+              h-[65px]
+              w-[55%]
+              bg-white/[0.10]
+              [clip-path:polygon(0_100%,0_62%,18%_25%,37%_55%,58%_30%,100%_100%)]
+            "
+          />
+
+          <div
+            className="
+              absolute
+              bottom-0
+              right-0
+              h-[75px]
+              w-[65%]
+              bg-white/[0.11]
+              [clip-path:polygon(0_100%,24%_55%,45%_78%,68%_12%,100%_100%)]
+            "
+          />
+
+          <div
+            className="
+              absolute
+              bottom-0
+              left-0
+              h-[42px]
+              w-full
+              bg-[#0b3347]/60
+              [clip-path:polygon(0_100%,0_70%,18%_28%,38%_78%,54%_45%,72%_78%,88%_35%,100%_70%,100%_100%)]
+            "
+          />
+        </div>
+
+        {/* HPL Logo */}
+        <img
+          src={logo}
+          alt="HPL"
+          className="
+            absolute
+            bottom-0
+            left-1/2
+            z-20
+            h-[90px]
+            w-[90px]
+            -translate-x-1/2
+            translate-y-[38%]
+            object-contain
+            drop-shadow-[0_5px_8px_rgba(0,0,0,0.18)]
+            transition-transform
+            duration-300
+            group-hover:scale-105
+          "
+        />
+      </div>
+
+      {/* ================================
+          CARD BODY
+      ================================= */}
+      <div className="px-3 pb-3 pt-[34px] text-center">
+        {/* Team Name */}
+        <h3
+          className="
+            truncate
+            text-[15px]
+            font-extrabold
+            leading-5
+            text-[#07182d]
+          "
+          title={team.name}
+        >
+          {team.name}
+        </h3>
+
+        {/* Location */}
+        <div className="mt-2 flex items-center justify-center gap-1.5">
+          <MapPin
+            size={13}
+            strokeWidth={2}
+            className="shrink-0 text-[#078052]"
+          />
+
+          <span
+            className="
+              truncate
+              text-[12px]
+              font-medium
+              text-[#718096]
+            "
+            title={location}
+          >
+            {location}
+          </span>
+        </div>
+
+        {/* View Team */}
+        <Link
+          to={`/teams/${team.team_id}`}
+          className="
+            mt-3
+            flex
+            h-[44px]
+            w-full
+            items-center
+            justify-center
+            gap-2
+            rounded-lg
+            bg-[#edf8f4]
+            text-[12px]
+            font-extrabold
+            text-[#078052]
+            transition-all
+            duration-200
+            hover:bg-[#078052]
+            hover:text-white
+          "
+        >
+          View Team
+
+          <ArrowRight
+            size={14}
+            strokeWidth={2}
+            className="
+              transition-transform
+              duration-200
+              group-hover:translate-x-1
+            "
+          />
+        </Link>
+      </div>
+    </article>
   );
 };
 
