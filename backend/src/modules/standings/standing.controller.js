@@ -29,6 +29,7 @@ const standingSelect = {
     select: {
       team_id: true,
       name: true,
+      logo: true,
     },
   },
 };
@@ -79,10 +80,53 @@ export const getStandings = async (req, res, next) => {
       take: 100,
     });
 
+    const teamIds = standings.map((standing) => standing.team_id);
+    const formByTeam = new Map(
+      teamIds.map((teamId) => [teamId, []])
+    );
+
+    if (teamIds.length) {
+      const matches = await prisma.match.findMany({
+        where: {
+          competition_id: competitionId,
+          status: "COMPLETED",
+          OR: [
+            { home_team_id: { in: teamIds } },
+            { away_team_id: { in: teamIds } },
+          ],
+        },
+        select: {
+          home_team_id: true,
+          away_team_id: true,
+          home_score: true,
+          away_score: true,
+        },
+        orderBy: [
+          { match_date: "desc" },
+          { match_id: "desc" },
+        ],
+        take: 500,
+      });
+
+      const addResult = (teamId, scored, conceded) => {
+        const form = formByTeam.get(teamId);
+        if (!form || form.length >= 5) return;
+        form.push(scored > conceded ? "W" : scored < conceded ? "L" : "D");
+      };
+
+      for (const match of matches) {
+        addResult(match.home_team_id, match.home_score, match.away_score);
+        addResult(match.away_team_id, match.away_score, match.home_score);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       count: standings.length,
-      data: standings,
+      data: standings.map((standing) => ({
+        ...standing,
+        form: formByTeam.get(standing.team_id) || [],
+      })),
     });
   } catch (error) {
     console.error("Get standings error:", error);

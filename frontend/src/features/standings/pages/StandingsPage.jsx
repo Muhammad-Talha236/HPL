@@ -1,36 +1,403 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  CalendarDays,
+  Clock3,
+  Info,
+  ShieldCheck,
+  Trophy,
+  UsersRound,
+} from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
+import standingsBanner from "../../../assets/hunza-football-hero-alt.png";
 import CompetitionSelector from "../components/CompetitionSelector";
 import StandingsSkeleton from "../components/StandingsSkeleton";
 import StandingsTable from "../components/StandingsTable";
-import { getCompetitionStandings, getStandingsCompetitions } from "../services/standingsService";
-import { formatStandingsUpdatedAt, getLatestStandingUpdate } from "../utils/standingsFormatters";
+import {
+  getCompetitionStandings,
+  getStandingsCompetitions,
+} from "../services/standingsService";
+import {
+  formatStandingsUpdatedAt,
+  getLatestStandingUpdate,
+} from "../utils/standingsFormatters";
+
+const genderLabel = (value) => {
+  if (value === "MEN") return "Men";
+  if (value === "WOMEN") return "Women";
+  return value || "-";
+};
+
+const shortDate = (value) => {
+  if (!value || Number.isNaN(new Date(value).getTime())) return "-";
+  return new Intl.DateTimeFormat("en-PK", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+};
+
+const InfoRow = ({ icon: Icon, label, value }) => (
+  <div className="flex items-start gap-2 text-[10px]">
+    <Icon size={13} className="mt-0.5 shrink-0 text-[#0b6548]" />
+    <div>
+      <span className="block text-[#7d899a]">{label}</span>
+      <strong className="mt-0.5 block text-[#27364c]">{value || "-"}</strong>
+    </div>
+  </div>
+);
+
+const Message = ({ tone = "neutral", text, action, actionLabel, compact = false }) => (
+  <div
+    role={tone === "neutral" ? undefined : "alert"}
+    className={`rounded-lg border ${compact ? "p-3" : "p-5"} ${
+      tone === "error"
+        ? "border-red-200 bg-red-50 text-red-800"
+        : tone === "warning"
+          ? "border-amber-200 bg-amber-50 text-amber-800"
+          : "border-[#e2e9e6] bg-white text-[#65758b]"
+    }`}
+  >
+    <p className="text-[11px] font-medium">{text}</p>
+    {action && (
+      <button
+        type="button"
+        onClick={action}
+        className="mt-2 rounded border border-current/25 px-3 py-1.5 text-[9px] font-bold transition hover:bg-black/[0.04]"
+      >
+        {actionLabel}
+      </button>
+    )}
+  </div>
+);
 
 const StandingsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [competitionsState, setCompetitionsState] = useState({ data: [], status: "loading" });
+  const [competitionsState, setCompetitionsState] = useState({
+    data: [],
+    status: "loading",
+  });
   const [standingsState, setStandingsState] = useState({ data: [], status: "loading" });
+  const [seasonId, setSeasonId] = useState("");
+  const [gender, setGender] = useState("");
   const requestedCompetitionId = searchParams.get("competition");
 
-  const loadCompetitions = async (showLoading = true) => { if (showLoading) setCompetitionsState((previous) => ({ ...previous, status: "loading" })); try { setCompetitionsState({ data: await getStandingsCompetitions(), status: "success" }); } catch { setCompetitionsState({ data: [], status: "error" }); } };
+  const loadCompetitions = async () => {
+    setCompetitionsState((current) => ({ ...current, status: "loading" }));
 
-  useEffect(() => { let isCurrent = true; const load = async () => { try { const competitions = await getStandingsCompetitions(); if (isCurrent) setCompetitionsState({ data: competitions, status: "success" }); } catch { if (isCurrent) setCompetitionsState({ data: [], status: "error" }); } }; load(); return () => { isCurrent = false; }; }, []);
+    try {
+      const data = await getStandingsCompetitions();
+      setCompetitionsState({ data, status: "success" });
+    } catch {
+      setCompetitionsState({ data: [], status: "error" });
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    getStandingsCompetitions()
+      .then((data) => {
+        if (active) setCompetitionsState({ data, status: "success" });
+      })
+      .catch(() => {
+        if (active) setCompetitionsState({ data: [], status: "error" });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const selectedCompetition = useMemo(() => {
-    if (competitionsState.status !== "success" || competitionsState.data.length === 0) return null;
-    if (requestedCompetitionId) return competitionsState.data.find((competition) => String(competition.competition_id) === requestedCompetitionId) || null;
-    return competitionsState.data.find((competition) => competition.status === "ACTIVE") || competitionsState.data[0];
+    if (competitionsState.status !== "success" || !competitionsState.data.length) {
+      return null;
+    }
+
+    if (requestedCompetitionId) {
+      return competitionsState.data.find(
+        (competition) => String(competition.competition_id) === requestedCompetitionId,
+      ) || null;
+    }
+
+    return competitionsState.data.find((competition) => competition.status === "ACTIVE")
+      || competitionsState.data[0];
   }, [competitionsState, requestedCompetitionId]);
-  const invalidSelection = Boolean(requestedCompetitionId && competitionsState.status === "success" && !selectedCompetition);
 
-  useEffect(() => { let isCurrent = true; if (!selectedCompetition) return () => { isCurrent = false; }; const load = async () => { try { const standings = await getCompetitionStandings(selectedCompetition.competition_id); if (isCurrent) setStandingsState({ data: standings, status: "success" }); } catch { if (isCurrent) setStandingsState({ data: [], status: "error" }); } }; load(); return () => { isCurrent = false; }; }, [competitionsState.status, selectedCompetition]);
+  const invalidSelection = Boolean(
+    requestedCompetitionId
+      && competitionsState.status === "success"
+      && !selectedCompetition,
+  );
+  const selectedSeasonId = seasonId || String(selectedCompetition?.season_id || "");
+  const selectedGender = gender || selectedCompetition?.gender || "";
 
-  const updateCompetition = (competitionId) => { setStandingsState({ data: [], status: "loading" }); setSearchParams(competitionId ? { competition: competitionId } : {}); };
-  const retryStandings = async () => { if (!selectedCompetition) return; setStandingsState((previous) => ({ ...previous, status: "loading" })); try { setStandingsState({ data: await getCompetitionStandings(selectedCompetition.competition_id), status: "success" }); } catch { setStandingsState({ data: [], status: "error" }); } };
-  const updatedAt = formatStandingsUpdatedAt(getLatestStandingUpdate(standingsState.data));
+  useEffect(() => {
+    let active = true;
 
-  return <main className="min-h-screen bg-[#011427] pb-20 pt-20 text-white"><section className="border-b border-white/10 bg-[linear-gradient(135deg,#07192a,#10283d_55%,#011427)]"><div className="mx-auto max-w-7xl px-5 py-11 sm:px-6 sm:py-14 lg:px-8"><p className="text-[11px] font-bold tracking-[0.22em] text-[#EEC058]">HUNZA PREMIER LEAGUE</p><h1 className="mt-3 text-4xl font-extrabold uppercase tracking-tight text-[#ffad9f] sm:text-5xl">LEAGUE TABLE</h1><p className="mt-3 max-w-xl text-sm leading-6 text-white/65">Follow the latest competition standings across Hunza Premier League football.</p></div></section><section className="mx-auto max-w-7xl px-5 py-8 sm:px-6 lg:px-8"><CompetitionSelector competitions={competitionsState.data} selectedId={selectedCompetition?.competition_id} onChange={updateCompetition} loading={competitionsState.status === "loading"} />{competitionsState.status === "error" && <div role="alert" className="mt-6 rounded-xl border border-red-400/25 bg-red-400/10 p-6"><p className="text-sm text-red-100">Unable to load competitions right now.</p><button type="button" onClick={() => loadCompetitions()} className="mt-4 rounded-md border border-red-200/30 px-4 py-2 text-xs font-bold text-red-100 transition hover:bg-red-200/10 focus:outline-none focus:ring-2 focus:ring-[#FF553D]/50">TRY AGAIN</button></div>}{competitionsState.status === "success" && competitionsState.data.length === 0 && <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-8 text-sm text-white/55">No competitions are currently available.</div>}{invalidSelection && <div role="alert" className="mt-6 rounded-xl border border-amber-400/25 bg-amber-400/10 p-6"><p className="text-sm text-amber-100">The selected competition could not be found.</p><button type="button" onClick={() => updateCompetition("")} className="mt-4 rounded-md border border-amber-200/30 px-4 py-2 text-xs font-bold text-amber-100 transition hover:bg-amber-200/10 focus:outline-none focus:ring-2 focus:ring-[#FF553D]/50">VIEW AVAILABLE COMPETITIONS</button></div>}{selectedCompetition && !invalidSelection && <><section className="mt-8 rounded-xl border border-[#EEC058]/25 bg-[linear-gradient(125deg,#17334a,#0B1D2F_60%,#07192a)] p-6"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[10px] font-bold tracking-[0.16em] text-[#EEC058]">CURRENT TABLE</p><h2 className="mt-2 text-2xl font-extrabold text-white">{selectedCompetition.name}</h2>{selectedCompetition.season && <Link to={`/seasons/${selectedCompetition.season_id}`} className="mt-2 inline-flex text-sm font-bold text-[#ffad9f] transition hover:text-[#EEC058] focus:outline-none focus:ring-2 focus:ring-[#FF553D]/60">{selectedCompetition.season.name} season →</Link>}</div><Link to={`/competitions/${selectedCompetition.competition_id}`} className="rounded-md border border-[#EEC058]/65 px-4 py-2 text-xs font-extrabold tracking-wide text-[#EEC058] transition hover:bg-[#EEC058] hover:text-[#011427] focus:outline-none focus:ring-2 focus:ring-[#FF553D]/60">VIEW COMPETITION</Link></div></section><section className="mt-12"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[11px] font-bold tracking-[0.18em] text-[#EEC058]">OFFICIAL STANDINGS</p><h2 className="mt-3 text-2xl font-extrabold">League positions</h2><span className="mt-3 block h-1 w-16 rounded-full bg-[#FF553D]" /></div>{updatedAt && <p className="text-xs text-white/45">Last updated {updatedAt}</p>}</div><div className="mt-7">{standingsState.status === "loading" && <StandingsSkeleton />}{standingsState.status === "error" && <div role="alert" className="rounded-xl border border-red-400/25 bg-red-400/10 p-6"><p className="text-sm text-red-100">Unable to load standings right now.</p><button type="button" onClick={retryStandings} className="mt-4 rounded-md border border-red-200/30 px-4 py-2 text-xs font-bold text-red-100 transition hover:bg-red-200/10 focus:outline-none focus:ring-2 focus:ring-[#FF553D]/50">TRY AGAIN</button></div>}{standingsState.status === "success" && standingsState.data.length === 0 && <div className="rounded-xl border border-white/10 bg-white/[0.03] p-8"><h3 className="text-lg font-extrabold text-white">STANDINGS NOT AVAILABLE YET</h3><p className="mt-2 text-sm text-white/55">The league table will appear when standings data becomes available.</p></div>}{standingsState.status === "success" && standingsState.data.length > 0 && <StandingsTable standings={standingsState.data} />}</div></section></>}</section></main>;
+    if (!selectedCompetition) {
+      return () => {
+        active = false;
+      };
+    }
+
+    getCompetitionStandings(selectedCompetition.competition_id)
+      .then((data) => {
+        if (active) setStandingsState({ data, status: "success" });
+      })
+      .catch(() => {
+        if (active) setStandingsState({ data: [], status: "error" });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCompetition]);
+
+  const updateCompetition = (competitionId) => {
+    setStandingsState({ data: [], status: "loading" });
+    setSearchParams(competitionId ? { competition: competitionId } : {});
+  };
+
+  const findCompetition = (nextSeasonId, nextGender) => (
+    competitionsState.data.find(
+      (competition) => String(competition.season_id) === String(nextSeasonId)
+        && competition.gender === nextGender,
+    ) || null
+  );
+
+  const changeSeason = (nextSeasonId) => {
+    const matchingCompetition = findCompetition(nextSeasonId, selectedGender)
+      || competitionsState.data.find(
+        (competition) => String(competition.season_id) === String(nextSeasonId),
+      );
+
+    setSeasonId(nextSeasonId);
+    setGender(matchingCompetition?.gender || "");
+    if (matchingCompetition) updateCompetition(matchingCompetition.competition_id);
+  };
+
+  const changeGender = (nextGender) => {
+    const matchingCompetition = findCompetition(selectedSeasonId, nextGender);
+    setGender(nextGender);
+    if (matchingCompetition) updateCompetition(matchingCompetition.competition_id);
+  };
+
+  const retryStandings = async () => {
+    if (!selectedCompetition) return;
+
+    setStandingsState({ data: [], status: "loading" });
+    try {
+      const data = await getCompetitionStandings(selectedCompetition.competition_id);
+      setStandingsState({ data, status: "success" });
+    } catch {
+      setStandingsState({ data: [], status: "error" });
+    }
+  };
+
+  const updatedAt = formatStandingsUpdatedAt(
+    getLatestStandingUpdate(standingsState.data),
+  );
+
+  const hasSelectedCompetition = selectedCompetition && !invalidSelection;
+
+  return (
+    <main className="min-h-screen bg-[#f6f9f8] pb-12 pt-[76px] text-[#13223a]">
+      <section
+        className="relative h-[146px] overflow-hidden border-b border-[#e5ece9] bg-[#e6f0ef]"
+        style={{
+          backgroundImage: `linear-gradient(90deg, rgba(247,251,250,.97) 0%, rgba(247,251,250,.86) 38%, rgba(230,240,239,.2) 100%), url(${standingsBanner})`,
+          backgroundPosition: "center 31%",
+          backgroundSize: "cover",
+        }}
+      >
+        <div className="mx-auto h-full max-w-[1200px] px-5 py-4 sm:px-7 lg:px-8">
+          <nav aria-label="Breadcrumb" className="text-[10px] font-semibold text-[#4e5d70]">
+            <Link to="/" className="transition hover:text-[#0b6d4b]">Home</Link>
+            <span className="mx-1.5 text-[#9ba7b4]">›</span>
+            <span>Standings</span>
+          </nav>
+          <div className="mt-2">
+            <h1 className="text-[27px] font-extrabold tracking-[-.04em] text-[#101d36] sm:text-[31px]">
+              Team Standings
+            </h1>
+            <p className="mt-1 text-[11px] font-medium text-[#53647b]">
+              View the latest standings of all teams across seasons and competitions.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="mx-auto w-full max-w-[1200px] px-5 sm:px-7 lg:px-8">
+        {competitionsState.status === "error" && (
+          <div className="mt-3">
+            <Message
+              tone="error"
+              text="Unable to load competitions right now."
+              action={loadCompetitions}
+              actionLabel="Try again"
+            />
+          </div>
+        )}
+
+        {competitionsState.status === "success" && !competitionsState.data.length && (
+          <div className="mt-3"><Message text="No competitions are available yet." /></div>
+        )}
+
+        {invalidSelection && (
+          <div className="mt-3">
+            <Message
+              tone="warning"
+              text="The selected competition could not be found."
+              action={() => updateCompetition("")}
+              actionLabel="View available competitions"
+            />
+          </div>
+        )}
+
+        {hasSelectedCompetition ? (
+          <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_270px]">
+            <div className="min-w-0">
+              <CompetitionSelector
+                competitions={competitionsState.data}
+                selectedId={selectedCompetition.competition_id}
+                seasonId={selectedSeasonId}
+                gender={selectedGender}
+                onChange={updateCompetition}
+                onSeasonChange={changeSeason}
+                onGenderChange={changeGender}
+                loading={competitionsState.status === "loading"}
+              />
+
+              <section className="mt-3 min-w-0 rounded-lg border border-[#e4ebe8] bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,.025)] sm:p-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 px-0.5 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Trophy size={15} className="text-[#12213a]" />
+                    <h2 className="text-[14px] font-extrabold tracking-[-.02em] text-[#14223a]">
+                      {selectedCompetition.name}
+                    </h2>
+                    <span className="rounded bg-[#e9edf0] px-2 py-0.5 text-[8px] font-bold text-[#4f5e70]">
+                      {genderLabel(selectedCompetition.gender)}
+                    </span>
+                  </div>
+                  {updatedAt && (
+                    <span className="inline-flex items-center gap-1 text-[8px] font-medium text-[#7b889a]">
+                      <Clock3 size={10} /> Last Updated: {updatedAt}
+                    </span>
+                  )}
+                </div>
+
+                {standingsState.status === "loading" && <StandingsSkeleton />}
+                {standingsState.status === "error" && (
+                  <Message
+                    tone="error"
+                    text="Unable to load standings right now."
+                    action={retryStandings}
+                    actionLabel="Try again"
+                    compact
+                  />
+                )}
+                {standingsState.status === "success" && !standingsState.data.length && (
+                  <Message text="No standings are available for this competition yet." compact />
+                )}
+                {standingsState.status === "success" && standingsState.data.length > 0 && (
+                  <StandingsTable standings={standingsState.data} />
+                )}
+              </section>
+            </div>
+
+            <aside className="space-y-3">
+              <section className="rounded-lg border border-[#e4ebe8] bg-white p-4 shadow-[0_4px_16px_rgba(15,23,42,.025)]">
+                <div className="flex items-center gap-2">
+                  <Trophy size={14} className="text-[#16243c]" />
+                  <h2 className="text-[12px] font-extrabold text-[#17243b]">Competition Info</h2>
+                </div>
+                <div
+                  role="img"
+                  aria-label="Competition logo unavailable"
+                  className="mx-auto mt-3 grid h-14 w-20 place-items-center rounded-full bg-[#f6f9f8] text-[#bd8b1e]"
+                >
+                  <Trophy size={34} strokeWidth={1.6} />
+                </div>
+                <h3 className="mt-1 text-center text-[13px] font-extrabold text-[#16243c]">
+                  {selectedCompetition.name}
+                </h3>
+                <div className="mt-1 flex justify-center gap-1">
+                  <span className="rounded bg-[#edf1f3] px-1.5 py-0.5 text-[8px] font-bold text-[#5c697a]">
+                    {selectedCompetition.season?.name || "-"}
+                  </span>
+                  <span className="rounded bg-[#edf1f3] px-1.5 py-0.5 text-[8px] font-bold text-[#5c697a]">
+                    {genderLabel(selectedCompetition.gender)}
+                  </span>
+                </div>
+                {selectedCompetition.description && (
+                  <p className="mt-3 text-center text-[9px] leading-[14px] text-[#637287]">
+                    {selectedCompetition.description}
+                  </p>
+                )}
+                <div className="mt-3 space-y-3 border-t border-[#edf1ef] pt-3">
+                  <InfoRow icon={CalendarDays} label="Season" value={selectedCompetition.season?.name} />
+                  <InfoRow icon={UsersRound} label="Gender" value={genderLabel(selectedCompetition.gender)} />
+                  <InfoRow
+                    icon={ShieldCheck}
+                    label="Total Teams"
+                    value={standingsState.status === "success" ? standingsState.data.length : "-"}
+                  />
+                  <InfoRow
+                    icon={CalendarDays}
+                    label="Duration"
+                    value={`${shortDate(selectedCompetition.competition_start_date)} - ${shortDate(selectedCompetition.competition_end_date)}`}
+                  />
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-[#e4ebe8] bg-white p-4 shadow-[0_4px_16px_rgba(15,23,42,.025)]">
+                <div className="flex items-center gap-2">
+                  <Info size={13} className="text-[#16243c]" />
+                  <h2 className="text-[11px] font-extrabold text-[#17243b]">Legend</h2>
+                </div>
+                <div className="mt-3 space-y-1.5 text-[8px] font-medium text-[#58697e]">
+                  <p className="flex items-center gap-2">
+                    <span className="grid h-4 w-4 place-items-center rounded bg-[#0b8a5a] text-[8px] font-bold text-white">1</span>
+                    Champion / title winner
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span className="grid h-4 w-4 place-items-center rounded bg-[#edf1f3] text-[8px] font-bold text-[#5d6a7c]">2</span>
+                    Leading positions
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span className="grid h-4 w-4 place-items-center rounded bg-[#edf1f3] text-[8px] font-bold text-[#5d6a7c]">4</span>
+                    Regular positions
+                  </p>
+                </div>
+                <div className="mt-3 border-t border-[#edf1ef] pt-3">
+                  <h3 className="text-[10px] font-extrabold text-[#17243b]">Form Guide</h3>
+                  <div className="mt-2 flex items-center justify-between text-[8px] font-medium text-[#65758a]">
+                    <span className="flex items-center gap-1"><b className="grid h-4 w-4 place-items-center rounded-[3px] bg-[#159568] text-white">W</b>Win</span>
+                    <span className="flex items-center gap-1"><b className="grid h-4 w-4 place-items-center rounded-[3px] bg-[#f3bf49] text-[#634600]">D</b>Draw</span>
+                    <span className="flex items-center gap-1"><b className="grid h-4 w-4 place-items-center rounded-[3px] bg-[#ef3f4d] text-white">L</b>Loss</span>
+                  </div>
+                </div>
+              </section>
+            </aside>
+          </div>
+        ) : competitionsState.status === "loading" ? (
+          <div className="mt-3">
+            <CompetitionSelector
+              competitions={[]}
+              selectedId=""
+              seasonId=""
+              gender=""
+              onChange={() => {}}
+              onSeasonChange={() => {}}
+              onGenderChange={() => {}}
+              loading
+            />
+          </div>
+        ) : null}
+      </div>
+    </main>
+  );
 };
 
 export default StandingsPage;
