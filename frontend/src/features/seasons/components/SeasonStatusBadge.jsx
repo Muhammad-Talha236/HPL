@@ -1,15 +1,20 @@
 const statusStyles = {
-  ACTIVE: "border-green-400/25 bg-green-400/10 text-green-300",
-  INACTIVE: "border-white/15 bg-white/5 text-white/55",
+  ACTIVE: "bg-[#12a568] text-white",
+  INACTIVE: "bg-[#f1f4f5] text-[#607084]",
+};
+
+const statusLabels = {
+  ACTIVE: "Active",
+  INACTIVE: "Inactive",
 };
 
 const SeasonStatusBadge = ({ status }) => (
   <span
-    className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-[0.14em] ${
+    className={`inline-flex rounded px-2 py-1 text-[9px] font-extrabold ${
       statusStyles[status] || statusStyles.INACTIVE
     }`}
   >
-    {status}
+    {statusLabels[status] || status || "Unavailable"}
   </span>
 );
 

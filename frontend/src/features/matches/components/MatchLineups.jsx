@@ -1,7 +1,39 @@
 import { Link } from "react-router-dom";
 
-const SquadColumn = ({ title, players, align = "left" }) => <section className={`min-w-0 ${align === "right" ? "text-right" : ""}`}><h3 className="text-sm font-extrabold text-white">{title}</h3><div className="mt-4 space-y-2">{players.length ? players.map((entry) => <Link key={entry.match_player_id} to={`/players/${entry.player_id}`} className={`flex items-center gap-3 rounded-lg border border-white/10 bg-[#0B1D2F] p-3 transition hover:border-[#EEC058]/40 focus:outline-none focus:ring-2 focus:ring-[#FF553D]/60 ${align === "right" ? "flex-row-reverse" : ""}`}><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/10 text-[10px] font-extrabold text-[#EEC058]">{entry.shirt_number ?? "–"}</span><span className="min-w-0"><span className="block truncate text-xs font-bold text-white">{entry.player?.name || "Player"}</span><span className="mt-0.5 block text-[10px] text-white/45">{entry.starting_status}</span></span></Link>) : <p className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-xs text-white/50">No lineup has been published.</p>}</div></section>;
+import TeamLogo from "../../teams/components/TeamLogo";
 
-const MatchLineups = ({ squads }) => <div className="grid gap-6 md:grid-cols-2"><SquadColumn title="HOME LINEUP" players={squads.home?.players || []} /><SquadColumn title="AWAY LINEUP" players={squads.away?.players || []} align="right" /></div>;
+const PlayerList = ({ title, players }) => (
+  <div className="min-w-0">
+    <h4 className="text-[8px] font-extrabold uppercase tracking-[.05em] text-[#66768a]">{title}</h4>
+    <div className="mt-1.5 space-y-1">
+      {players.length ? players.map((entry) => <Link key={entry.match_player_id} to={`/players/${entry.player_id}`} className="flex min-w-0 items-center gap-1.5 text-[8px] text-[#405169] transition hover:text-[#087d50]"><span className="grid h-4 w-4 shrink-0 place-items-center rounded bg-[#edf2f1] text-[7px] font-bold">{entry.shirt_number ?? "-"}</span><span className="truncate font-semibold">{entry.player?.name || "Player"}</span></Link>) : <p className="text-[8px] text-[#93a0af]">Not announced</p>}
+    </div>
+  </div>
+);
+
+const LineupCard = ({ squad, team, away = false }) => {
+  const players = squad?.players || [];
+  const starters = players.filter((player) => player.starting_status === "STARTER");
+  const substitutes = players.filter((player) => player.starting_status === "SUBSTITUTE");
+
+  return (
+    <article className="rounded-lg border border-[#e0e8e6] bg-white p-3 shadow-[0_3px_12px_rgba(15,23,42,.02)]">
+      <div className="flex items-center justify-center gap-2"><TeamLogo logo={team?.logo} name={team?.name || "Team"} size="sm" /><h3 className="truncate text-[10px] font-extrabold text-[#203048]">{team?.name || "Team"} Lineup</h3></div>
+      <div className={`relative mt-3 grid h-[126px] place-items-center overflow-hidden rounded-md border ${away ? "border-[#142d52] bg-[linear-gradient(135deg,#152d50,#0b172b)]" : "border-[#12945f] bg-[linear-gradient(135deg,#159661,#077847)]"}`}>
+        <span className="absolute inset-x-3 top-1/2 border-t border-white/25" /><span className="absolute left-1/2 top-0 h-full border-l border-white/25" /><span className="absolute h-10 w-14 rounded-full border border-white/25" />
+        {starters.length ? <div className="relative z-10 grid w-[86%] grid-cols-4 gap-x-1 gap-y-2 text-center">{starters.slice(0, 11).map((entry) => <Link key={entry.match_player_id} to={`/players/${entry.player_id}`} className="min-w-0 text-white transition hover:text-[#f7d46d]"><span className="mx-auto grid h-4 w-4 place-items-center rounded-full bg-[#071827] text-[7px] font-extrabold">{entry.shirt_number ?? "-"}</span><span className="mt-0.5 block truncate text-[6px] font-semibold">{entry.player?.name || "Player"}</span></Link>)}</div> : <p className="relative z-10 rounded bg-[#071827]/45 px-3 py-2 text-[8px] font-bold text-white">Lineup not announced</p>}
+      </div>
+      {starters.length > 0 && <p className="mt-1 text-center text-[7px] text-[#8c99a8]">Tactical positions unavailable</p>}
+      <div className="mt-3 grid grid-cols-2 gap-3"><PlayerList title="Starting XI" players={starters} /><PlayerList title="Substitutes" players={substitutes} /></div>
+    </article>
+  );
+};
+
+const MatchLineups = ({ squads, homeTeam, awayTeam }) => (
+  <>
+    <LineupCard squad={squads.home} team={homeTeam} />
+    <LineupCard squad={squads.away} team={awayTeam} away />
+  </>
+);
 
 export default MatchLineups;

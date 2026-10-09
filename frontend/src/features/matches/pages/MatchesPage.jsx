@@ -1,40 +1,163 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Radio, Trophy } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
 
-import MatchCard from "../components/MatchCard";
+import matchesBanner from "../../../assets/hunza-football-hero-alt.png";
+import LiveMatchCard from "../components/LiveMatchCard";
+import MatchCategoryTabs from "../components/MatchCategoryTabs";
 import MatchCardSkeleton from "../components/MatchCardSkeleton";
-import { getCompetitionsForMatches, getMatches } from "../services/matchService";
+import MatchFilters from "../components/MatchFilters";
+import RecentMatchRow from "../components/RecentMatchRow";
+import UpcomingMatchCard from "../components/UpcomingMatchCard";
+import {
+  getCompetitionsForMatches,
+  getMatches,
+  getSeasonsForMatches,
+  getTeamsForMatches,
+} from "../services/matchService";
 
-const statusTabs = [{ label: "ALL", value: "" }, { label: "LIVE", value: "LIVE" }, { label: "UPCOMING", value: "SCHEDULED" }, { label: "RESULTS", value: "COMPLETED" }];
-const queryStatusMap = { live: "LIVE", upcoming: "SCHEDULED", results: "COMPLETED" };
-const statusQueryMap = { LIVE: "live", SCHEDULED: "upcoming", COMPLETED: "results" };
+const filterKeys = ["competition", "season", "team", "dateFrom", "dateTo"];
+
+const readFilters = (params) => ({
+  competition: params.get("competition") || "",
+  season: params.get("season") || "",
+  team: params.get("team") || "",
+  dateFrom: params.get("from") || "",
+  dateTo: params.get("to") || "",
+});
+
+const MatchSection = ({ title, count, live = false, action, children }) => (
+  <section className="mt-4">
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        {live ? <Radio size={15} className="text-[#e6424e]" /> : <Trophy size={15} className="text-[#13223a]" />}
+        <h2 className="text-[14px] font-extrabold text-[#15243b]">{title}</h2>
+        <span className={`rounded px-1.5 py-0.5 text-[8px] font-bold ${live ? "bg-red-50 text-[#d63240]" : "bg-[#edf2f1] text-[#657489]"}`}>{count}</span>
+      </div>
+      {action}
+    </div>
+    <div className="mt-2">{children}</div>
+  </section>
+);
+
+const SectionEmpty = ({ children }) => <div className="rounded-lg border border-dashed border-[#dce6e2] bg-white px-4 py-5 text-center text-[10px] text-[#718095]">{children}</div>;
 
 const MatchesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useState(() => readFilters(searchParams));
+  const [tab, setTab] = useState("all");
   const [matchesState, setMatchesState] = useState({ data: [], status: "loading" });
-  const [competitionsState, setCompetitionsState] = useState({ data: [], status: "loading" });
-  const selectedStatus = queryStatusMap[searchParams.get("status")] || "";
-  const selectedCompetition = searchParams.get("competition") || "";
+  const [filterData, setFilterData] = useState({ competitions: [], seasons: [], teams: [], status: "loading" });
+  const [reloadToken, setReloadToken] = useState(0);
 
-  const updateFilters = (nextStatus, nextCompetition) => {
-    const nextParams = new URLSearchParams();
-    if (nextStatus) nextParams.set("status", statusQueryMap[nextStatus]);
-    if (nextCompetition) nextParams.set("competition", nextCompetition);
-    setSearchParams(nextParams);
-  };
+  const requestParams = useMemo(() => ({
+    ...(filters.competition ? { competition_id: filters.competition } : {}),
+    ...(filters.season ? { season_id: filters.season } : {}),
+    ...(filters.team ? { team_id: filters.team } : {}),
+    ...(filters.dateFrom ? { date_from: filters.dateFrom } : {}),
+    ...(filters.dateTo ? { date_to: filters.dateTo } : {}),
+  }), [filters]);
 
-  const loadMatches = async (showLoading = true) => {
-    if (showLoading) setMatchesState((previous) => ({ ...previous, status: "loading" }));
-    try { const result = await getMatches({ ...(selectedStatus && { status: selectedStatus }), ...(selectedCompetition && { competition_id: selectedCompetition }) }); setMatchesState({ data: result.matches || [], status: "success" }); } catch { setMatchesState({ data: [], status: "error" }); }
-  };
+  useEffect(() => {
+    const controller = new AbortController();
 
-  useEffect(() => { let isCurrent = true; const load = async () => { try { const result = await getMatches({ ...(selectedStatus && { status: selectedStatus }), ...(selectedCompetition && { competition_id: selectedCompetition }) }); if (isCurrent) setMatchesState({ data: result.matches || [], status: "success" }); } catch { if (isCurrent) setMatchesState({ data: [], status: "error" }); } }; load(); return () => { isCurrent = false; }; }, [selectedCompetition, selectedStatus]);
-  useEffect(() => { let isCurrent = true; const load = async () => { try { const competitions = await getCompetitionsForMatches(); if (isCurrent) setCompetitionsState({ data: competitions, status: "success" }); } catch { if (isCurrent) setCompetitionsState({ data: [], status: "error" }); } }; load(); return () => { isCurrent = false; }; }, []);
+    getMatches({ ...requestParams, signal: controller.signal })
+      .then((result) => setMatchesState({ data: result.matches || [], status: "success" }))
+      .catch((error) => {
+        if (error.name !== "CanceledError" && error.code !== "ERR_CANCELED") {
+          setMatchesState({ data: [], status: "error" });
+        }
+      });
+
+    return () => controller.abort();
+  }, [requestParams, reloadToken]);
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all([getCompetitionsForMatches(), getSeasonsForMatches(), getTeamsForMatches()])
+      .then(([competitions, seasons, teams]) => {
+        if (active) setFilterData({ competitions, seasons, teams, status: "success" });
+      })
+      .catch(() => {
+        if (active) setFilterData({ competitions: [], seasons: [], teams: [], status: "error" });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const liveMatches = useMemo(() => matchesState.data.filter((match) => match.status === "LIVE"), [matchesState.data]);
-  const regularMatches = useMemo(() => matchesState.data.filter((match) => match.status !== "LIVE"), [matchesState.data]);
+  const upcomingMatches = useMemo(() => matchesState.data.filter((match) => match.status === "SCHEDULED"), [matchesState.data]);
+  const recentMatches = useMemo(() => matchesState.data.filter((match) => match.status === "COMPLETED").sort((left, right) => new Date(right.match_date) - new Date(left.match_date)), [matchesState.data]);
 
-  return <main className="min-h-screen bg-[#011427] pb-20 pt-20 text-white"><section className="border-b border-white/10 bg-[linear-gradient(135deg,#07192a,#10283d_55%,#011427)]"><div className="mx-auto max-w-7xl px-5 py-11 sm:px-6 sm:py-14 lg:px-8"><p className="text-[11px] font-bold tracking-[0.22em] text-[#EEC058]">HUNZA PREMIER LEAGUE</p><h1 className="mt-3 text-4xl font-extrabold uppercase tracking-tight text-[#ffad9f] sm:text-5xl">FIXTURES &amp; RESULTS</h1><p className="mt-3 max-w-xl text-sm leading-6 text-white/65">Follow upcoming fixtures, live action and completed HPL matches.</p></div></section><section className="mx-auto max-w-7xl px-5 py-8 sm:px-6 lg:px-8" aria-labelledby="matches-directory-heading"><h2 id="matches-directory-heading" className="sr-only">Matches directory</h2><div className="flex flex-col gap-4 border-b border-white/10 pb-6"><div className="flex gap-2 overflow-x-auto pb-1" aria-label="Match status filters">{statusTabs.map((tab) => <button key={tab.label} type="button" onClick={() => updateFilters(tab.value, selectedCompetition)} className={`shrink-0 rounded-full px-4 py-2 text-xs font-extrabold tracking-wide transition focus:outline-none focus:ring-2 focus:ring-[#FF553D]/60 ${selectedStatus === tab.value ? "bg-[#FF553D] text-white" : "border border-white/15 text-white/60 hover:border-[#EEC058]/50 hover:text-[#EEC058]"}`}>{tab.label}</button>)}</div><div className="flex flex-col gap-3 sm:flex-row sm:items-center"><label htmlFor="match-competition" className="sr-only">Filter by competition</label><select id="match-competition" value={selectedCompetition} onChange={(event) => updateFilters(selectedStatus, event.target.value)} className="h-11 rounded-md border border-white/15 bg-[#0B1D2F] px-3 text-sm text-white outline-none transition focus:border-[#FF553D] focus:ring-2 focus:ring-[#FF553D]/30"><option value="">All competitions</option>{competitionsState.data.map((competition) => <option key={competition.competition_id} value={competition.competition_id}>{competition.name}</option>)}</select><p className="text-xs font-bold tracking-[0.14em] text-white/50 sm:ml-auto">{matchesState.status === "success" ? `${matchesState.data.length} MATCHES` : "MATCHES"}</p></div></div>{matchesState.status === "loading" && <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }, (_, index) => <MatchCardSkeleton key={index} />)}</div>}{matchesState.status === "error" && <div role="alert" className="mt-6 rounded-xl border border-red-400/25 bg-red-400/10 p-6"><p className="text-sm text-red-100">Unable to load matches right now.</p><button type="button" onClick={() => loadMatches()} className="mt-4 rounded-md border border-red-200/30 px-4 py-2 text-xs font-bold text-red-100 transition hover:bg-red-200/10 focus:outline-none focus:ring-2 focus:ring-[#FF553D]/50">TRY AGAIN</button></div>}{matchesState.status === "success" && liveMatches.length > 0 && <section className="mt-8" aria-labelledby="live-now-heading"><div className="flex items-center gap-3"><span className="h-2 w-2 rounded-full bg-[#FF553D]" aria-hidden="true" /><h2 id="live-now-heading" className="text-xl font-extrabold text-white">LIVE NOW</h2></div><div className="mt-4 grid gap-4 md:grid-cols-2">{liveMatches.map((match) => <MatchCard key={match.match_id} match={match} />)}</div></section>}{matchesState.status === "success" && regularMatches.length === 0 && liveMatches.length === 0 && <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-8 text-sm text-white/55">No matches are available for these filters.</div>}{matchesState.status === "success" && regularMatches.length > 0 && <section className="mt-8" aria-labelledby="matches-list-heading"><h2 id="matches-list-heading" className="text-xl font-extrabold text-white">{selectedStatus === "SCHEDULED" ? "UPCOMING FIXTURES" : selectedStatus === "COMPLETED" ? "COMPLETED RESULTS" : "ALL MATCHES"}</h2><div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{regularMatches.map((match) => <MatchCard key={match.match_id} match={match} />)}</div></section>}</section></main>;
+  useEffect(() => {
+    if (!liveMatches.length) return undefined;
+
+    const interval = window.setInterval(() => {
+      getMatches(requestParams)
+        .then((result) => setMatchesState({ data: result.matches || [], status: "success" }))
+        .catch(() => {});
+    }, 30000);
+
+    return () => window.clearInterval(interval);
+  }, [liveMatches.length, requestParams]);
+
+  const updateUrl = (nextFilters) => {
+    const next = {};
+    if (nextFilters.competition) next.competition = nextFilters.competition;
+    if (nextFilters.season) next.season = nextFilters.season;
+    if (nextFilters.team) next.team = nextFilters.team;
+    if (nextFilters.dateFrom) next.from = nextFilters.dateFrom;
+    if (nextFilters.dateTo) next.to = nextFilters.dateTo;
+    setSearchParams(next);
+  };
+
+  const changeFilter = (key, value) => {
+    const nextFilters = { ...filters, [key]: value };
+    if (key === "dateFrom" && nextFilters.dateTo && value > nextFilters.dateTo) nextFilters.dateTo = "";
+    setMatchesState((current) => ({ ...current, status: "loading" }));
+    setFilters(nextFilters);
+    updateUrl(nextFilters);
+  };
+
+  const resetFilters = () => {
+    const cleared = Object.fromEntries(filterKeys.map((key) => [key, ""]));
+    setMatchesState((current) => ({ ...current, status: "loading" }));
+    setFilters(cleared);
+    setSearchParams({});
+  };
+
+  const counts = { all: matchesState.data.length, live: liveMatches.length, upcoming: upcomingMatches.length, recent: recentMatches.length };
+  const preview = tab === "all";
+  const sectionAction = (nextTab, label) => <button type="button" onClick={() => setTab(nextTab)} className="text-[9px] font-extrabold text-[#087d50] transition hover:text-[#055f3d]">{label} →</button>;
+
+  return (
+    <main className="min-h-screen bg-[#f6f9f8] pb-12 pt-[76px] text-[#13223a]">
+      <section className="relative h-[132px] overflow-hidden border-b border-[#e4ece9] bg-[#e8f0ef]" style={{ backgroundImage: `linear-gradient(90deg,rgba(247,251,250,.97),rgba(247,251,250,.83) 42%,rgba(232,240,239,.18)),url(${matchesBanner})`, backgroundPosition: "center 31%", backgroundSize: "cover" }}>
+        <div className="mx-auto h-full max-w-[1200px] px-5 py-4 sm:px-7 lg:px-8">
+          <nav aria-label="Breadcrumb" className="text-[10px] font-semibold text-[#526275]"><Link to="/" className="transition hover:text-[#087d50]">Home</Link><span className="mx-1.5 text-[#a2adba]">›</span><span>Matches</span></nav>
+          <h1 className="mt-2 text-[26px] font-extrabold tracking-[-.04em] text-[#10203b]">Matches</h1>
+          <p className="mt-1 text-[10px] font-medium text-[#5f7085]">Browse live matches, upcoming fixtures and recent results from Hunza Premier League.</p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1200px] px-5 pt-3 sm:px-7 lg:px-8">
+        <MatchFilters competitions={filterData.competitions} seasons={filterData.seasons} teams={filterData.teams} filters={filters} onChange={changeFilter} onReset={resetFilters} loading={filterData.status === "loading"} />
+        <div className="mt-3"><MatchCategoryTabs value={tab} counts={counts} onChange={setTab} /></div>
+
+        {matchesState.status === "loading" && <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <MatchCardSkeleton key={index} />)}</div>}
+        {matchesState.status === "error" && <section role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-[#9b2830]"><p className="text-[11px] font-medium">Unable to load matches right now.</p><button type="button" onClick={() => setReloadToken((value) => value + 1)} className="mt-2 rounded border border-current/25 px-3 py-1.5 text-[9px] font-bold">Try again</button></section>}
+
+        {matchesState.status === "success" && (preview || tab === "live") && <MatchSection title="Live Matches" count={liveMatches.length} live action={preview ? sectionAction("live", "View All Live") : null}>{liveMatches.length ? <div className="grid gap-3 md:grid-cols-2">{(preview ? liveMatches.slice(0, 2) : liveMatches).map((match) => <LiveMatchCard key={match.match_id} match={match} />)}</div> : <SectionEmpty>No live matches currently.</SectionEmpty>}</MatchSection>}
+
+        {matchesState.status === "success" && (preview || tab === "upcoming") && <MatchSection title="Upcoming Matches" count={upcomingMatches.length} action={preview ? sectionAction("upcoming", "View All") : null}>{upcomingMatches.length ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{(preview ? upcomingMatches.slice(0, 4) : upcomingMatches).map((match) => <UpcomingMatchCard key={match.match_id} match={match} />)}</div> : <SectionEmpty>No upcoming matches found.</SectionEmpty>}</MatchSection>}
+
+        {matchesState.status === "success" && (preview || tab === "recent") && <MatchSection title="Recent Matches" count={recentMatches.length} action={preview ? sectionAction("recent", "View All") : null}>{recentMatches.length ? <div className="overflow-hidden rounded-lg border border-[#e0e8e6] bg-white">{(preview ? recentMatches.slice(0, 3) : recentMatches).map((match) => <RecentMatchRow key={match.match_id} match={match} />)}</div> : <SectionEmpty>No recent results available.</SectionEmpty>}</MatchSection>}
+      </section>
+    </main>
+  );
 };
 
 export default MatchesPage;

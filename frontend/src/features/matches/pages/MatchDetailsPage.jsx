@@ -1,22 +1,82 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import MatchLineups from "../components/MatchLineups";
-import MatchScoreboard from "../components/MatchScoreboard";
-import MatchStatusBadge from "../components/MatchStatusBadge";
-import MatchTimeline from "../components/MatchTimeline";
+
+import LiveMatchDetails from "../components/LiveMatchDetails";
+import StandardMatchDetails from "../components/StandardMatchDetails";
 import { getMatchById } from "../services/matchService";
-import { formatMatchDate, formatMatchTime } from "../utils/matchFormatters";
+
+const DetailsSkeleton = () => (
+  <div className="animate-pulse"><div className="h-52 rounded-lg bg-[#19313c]" /><div className="mt-3 grid gap-3 xl:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-72 rounded-lg bg-white" />)}</div></div>
+);
 
 const MatchDetailsPage = () => {
   const { matchId } = useParams();
-  const [state, setState] = useState({ data: null, status: "loading" });
-  useEffect(() => { let active = true; getMatchById(matchId).then((data) => active && setState({ data, status: "success" })).catch((error) => active && setState({ data: null, status: error.response?.status === 404 ? "notFound" : "error" })); return () => { active = false; }; }, [matchId]);
-  if (state.status === "loading") return <main className="min-h-screen bg-[#011427] pt-32 text-center text-white/55">Loading match details…</main>;
-  if (state.status !== "success") return <main className="min-h-screen bg-[#011427] pt-32 text-center text-white"><p>Match unavailable.</p><Link to="/matches" className="mt-5 inline-block text-sm font-bold text-[#EEC058]">← BACK TO MATCHES</Link></main>;
+  const validId = /^\d+$/.test(matchId || "");
+  const [state, setState] = useState({ data: null, status: validId ? "loading" : "not-found" });
+  const [reloadToken, setReloadToken] = useState(0);
+  const isLive = state.data?.match?.status === "LIVE";
+
+  useEffect(() => {
+    if (!validId) return undefined;
+
+    const controller = new AbortController();
+    getMatchById(matchId, controller.signal)
+      .then((data) => setState({ data, status: "success" }))
+      .catch((error) => {
+        if (error.name !== "CanceledError" && error.code !== "ERR_CANCELED") {
+          setState({ data: null, status: error.response?.status === 404 ? "not-found" : "error" });
+        }
+      });
+
+    return () => controller.abort();
+  }, [matchId, reloadToken, validId]);
+
+  useEffect(() => {
+    if (!validId || !isLive) return undefined;
+
+    let active = true;
+    let inFlight = false;
+    const refresh = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      const controller = new AbortController();
+      try {
+        const data = await getMatchById(matchId, controller.signal);
+        if (active) setState({ data, status: "success" });
+      } catch {
+        // Keep the last confirmed detail data visible during a transient poll failure.
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    const interval = window.setInterval(refresh, 30000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [isLive, matchId, validId]);
+
+  if (state.status === "loading") {
+    return <main className="min-h-screen bg-[#f6f9f8] px-5 pb-12 pt-[76px] sm:px-7"><div className="mx-auto max-w-[1200px] pt-3"><DetailsSkeleton /></div></main>;
+  }
+
+  if (!validId || state.status === "not-found" || state.status === "error") {
+    const missing = !validId || state.status === "not-found";
+    return <main className="min-h-screen bg-[#f6f9f8] px-5 pb-12 pt-[100px] sm:px-7"><section className="mx-auto max-w-xl rounded-lg border border-[#e0e8e6] bg-white p-6 text-center"><h1 className="text-[20px] font-extrabold text-[#182842]">{missing ? "Match not found" : "Unable to load match"}</h1><p className="mt-2 text-[10px] text-[#708095]">{missing ? "This match may no longer be available." : "Please try again shortly."}</p>{!missing && <button type="button" onClick={() => setReloadToken((value) => value + 1)} className="mt-4 rounded bg-[#087d50] px-3 py-2 text-[9px] font-extrabold text-white">Try again</button>}<Link to="/matches" className="mt-4 block text-[10px] font-extrabold text-[#087d50]">Back to Matches</Link></section></main>;
+  }
+
   const detail = state.data;
-  const match = { ...detail.match, home_team: detail.home_team, away_team: detail.away_team };
-  const hasLineups = detail.squads?.home?.total || detail.squads?.away?.total;
-  return <main className="min-h-screen bg-[#011427] pb-20 pt-32 text-white"><div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8"><Link to="/matches" className="text-xs font-bold tracking-wide text-[#EEC058] hover:text-[#ffad9f]">← ALL MATCHES</Link><section className={`mt-6 overflow-hidden rounded-xl border bg-[linear-gradient(125deg,#17334a,#0B1D2F_60%,#07192a)] p-6 sm:p-10 ${match.status === "LIVE" ? "border-[#FF553D]/60" : "border-[#EEC058]/25"}`}><div className="flex flex-wrap items-start justify-between gap-4"><div>{detail.competition && <Link to={`/competitions/${match.competition_id}`} className="text-[11px] font-bold tracking-[.2em] text-[#EEC058] hover:text-[#ffad9f]">{detail.competition.name}</Link>}{detail.season && <Link to={`/seasons/${match.season_id}`} className="ml-3 text-[11px] font-bold tracking-[.15em] text-white/45 hover:text-white">{detail.season.name}</Link>}</div><MatchStatusBadge status={match.status} /></div><div className="mt-8"><MatchScoreboard match={match} size="hero" /></div><p className="mt-8 text-center text-sm text-white/60">{formatMatchDate(match.match_date)} · {formatMatchTime(match.start_time)}</p></section><section className="mt-12 grid gap-4 sm:grid-cols-2"><article className="rounded-xl border border-white/10 bg-[#0B1D2F] p-5"><p className="text-[10px] font-bold tracking-[.14em] text-[#EEC058]">VENUE</p><p className="mt-3 text-base font-extrabold text-white">{detail.venue?.name || "Venue to be confirmed"}</p>{detail.venue?.city && <p className="mt-1 text-sm text-white/55">{detail.venue.city}</p>}</article>{detail.referee?.referee_id ? <article className="rounded-xl border border-white/10 bg-[#0B1D2F] p-5"><p className="text-[10px] font-bold tracking-[.14em] text-[#EEC058]">MATCH OFFICIAL</p><Link to={`/referees/${detail.referee.referee_id}`} className="mt-3 block text-base font-extrabold text-white hover:text-[#ffad9f]">{detail.referee.name}</Link><p className="mt-1 text-sm text-white/55">Assigned referee · View profile</p></article> : detail.referee ? <article className="rounded-xl border border-white/10 bg-[#0B1D2F] p-5"><p className="text-[10px] font-bold tracking-[.14em] text-[#EEC058]">MATCH OFFICIAL</p><p className="mt-3 text-base font-extrabold text-white">{detail.referee.name}</p><p className="mt-1 text-sm text-white/55">Assigned referee</p></article> : null}</section>{detail.events?.all?.length > 0 && <section className="mt-16"><p className="text-[11px] font-bold tracking-[.18em] text-[#EEC058]">MATCH EVENTS</p><h2 className="mt-3 text-2xl font-extrabold">Timeline</h2><div className="mt-7 max-w-3xl"><MatchTimeline events={detail.events.all} /></div></section>}{hasLineups ? <section className="mt-16"><p className="text-[11px] font-bold tracking-[.18em] text-[#EEC058]">MATCH SQUADS</p><h2 className="mt-3 text-2xl font-extrabold">Lineups</h2><div className="mt-7"><MatchLineups squads={detail.squads} /></div></section> : null}</div></main>;
+  const title = `${detail.home_team?.name || "Home Team"} vs ${detail.away_team?.name || "Away Team"}`;
+
+  return (
+    <main className="min-h-screen bg-[#f6f9f8] pb-8 pt-[76px] text-[#13223a]">
+      <div className="mx-auto max-w-[1400px] px-4 pt-2 sm:px-6 lg:px-7">
+        <nav aria-label="Breadcrumb" className="text-[9px] font-semibold text-[#526275]"><Link to="/" className="hover:text-[#087d50]">Home</Link><span className="mx-1.5 text-[#a2adba]">›</span><Link to="/matches" className="hover:text-[#087d50]">Matches</Link><span className="mx-1.5 text-[#a2adba]">›</span><span>{title}</span></nav>
+        <div className="mt-1">{detail.match.status === "LIVE" ? <LiveMatchDetails detail={detail} /> : <StandardMatchDetails detail={detail} />}</div>
+      </div>
+    </main>
+  );
 };
 
 export default MatchDetailsPage;

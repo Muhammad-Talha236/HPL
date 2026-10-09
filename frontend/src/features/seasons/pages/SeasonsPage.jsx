@@ -1,119 +1,65 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 
+import FeaturedSeason from "../components/FeaturedSeason";
 import SeasonCard from "../components/SeasonCard";
-import SeasonSelector from "../components/SeasonSelector";
+import SeasonsHero from "../components/SeasonsHero";
+import SeasonsToolbar from "../components/SeasonsToolbar";
 import { getSeasons } from "../services/seasonService";
 
 const SeasonsPage = () => {
-  const navigate = useNavigate();
   const [state, setState] = useState({ data: [], status: "loading" });
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("latest");
 
   useEffect(() => {
     let isCurrent = true;
 
-    const loadSeasons = async () => {
-      try {
-        const seasons = await getSeasons();
-
-        if (isCurrent) {
-          setState({ data: seasons, status: "success" });
-        }
-      } catch {
-        if (isCurrent) {
-          setState({ data: [], status: "error" });
-        }
-      }
-    };
-
-    loadSeasons();
+    getSeasons()
+      .then((seasons) => {
+        if (isCurrent) setState({ data: seasons, status: "success" });
+      })
+      .catch(() => {
+        if (isCurrent) setState({ data: [], status: "error" });
+      });
 
     return () => {
       isCurrent = false;
     };
   }, []);
 
-  const activeSeason = state.data.find(
-    (season) => season.status === "ACTIVE"
-  );
-  const pastSeasons = state.data.filter(
-    (season) => season.season_id !== activeSeason?.season_id
-  );
+  const activeSeason = state.data.find((season) => season.status === "ACTIVE");
+  const visibleSeasons = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const filtered = state.data.filter((season) => !query || season.name.toLowerCase().includes(query));
 
-  const handleSeasonChange = (event) => {
-    navigate(`/seasons/${event.target.value}`);
-  };
+    return [...filtered].sort((first, second) => {
+      const firstDate = new Date(first.start_date).getTime() || 0;
+      const secondDate = new Date(second.start_date).getTime() || 0;
+      return sort === "latest" ? secondDate - firstDate : firstDate - secondDate;
+    });
+  }, [search, sort, state.data]);
 
   return (
-    <main className="min-h-screen bg-[#011427] pb-20 pt-32 text-white">
-      <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-        <header className="max-w-3xl">
-          <p className="text-[11px] font-bold tracking-[0.22em] text-[#EEC058]">
-            HUNZA PREMIER LEAGUE
-          </p>
-          <h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">
-            SEASONS
-          </h1>
-          <p className="mt-4 text-base leading-7 text-white/60">
-            Explore HPL campaigns, their schedules and the competitions that shaped each season.
-          </p>
-        </header>
-
-        {state.status === "loading" && (
-          <div className="mt-10 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-10 text-sm text-white/55">
-            Loading HPL seasons…
-          </div>
-        )}
-
-        {state.status === "error" && (
-          <div role="alert" className="mt-10 rounded-xl border border-red-400/25 bg-red-400/10 px-6 py-10 text-sm text-red-100">
-            Seasons are unavailable right now. Please try again later.
-          </div>
-        )}
-
-        {state.status === "success" && state.data.length === 0 && (
-          <div className="mt-10 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-10 text-sm text-white/55">
-            No seasons are available yet.
-          </div>
-        )}
-
-        {state.status === "success" && state.data.length > 0 && (
-          <>
-            <div className="mt-10">
-              <SeasonSelector
-                seasons={state.data}
-                value={activeSeason?.season_id || state.data[0]?.season_id}
-                onChange={handleSeasonChange}
-              />
-            </div>
-
-            {activeSeason && (
-              <section className="mt-12">
-                <p className="text-[11px] font-bold tracking-[0.18em] text-[#EEC058]">
-                  CURRENT SEASON
-                </p>
-                <div className="mt-4 max-w-3xl">
-                  <SeasonCard season={activeSeason} featured />
-                </div>
-              </section>
-            )}
-
-            {pastSeasons.length > 0 && (
-              <section className="mt-16">
-                <h2 className="text-2xl font-extrabold tracking-wide text-white">
-                  {activeSeason ? "OTHER SEASONS" : "SEASONS"}
-                </h2>
-                <span className="mt-3 block h-1 w-16 rounded-full bg-[#FF553D]" />
-                <div className="mt-7 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                  {pastSeasons.map((season) => (
-                    <SeasonCard key={season.season_id} season={season} />
-                  ))}
-                </div>
-              </section>
-            )}
-          </>
-        )}
+    <main className="min-h-screen bg-[#f5f9f8] pb-14 pt-[76px] text-[#13223a]">
+      <SeasonsHero />
+      <div className="relative z-10 mx-auto -mt-[82px] w-full max-w-[1200px] px-5 sm:px-7 lg:px-8">
+        {state.status === "loading" && <div className="h-[265px] animate-pulse rounded-lg border border-[#dfe9e4] bg-white shadow-[0_10px_30px_rgba(20,48,43,.07)]" />}
+        {state.status === "error" && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-800">Seasons are unavailable right now. Please try again later.</div>}
+        {state.status === "success" && <FeaturedSeason season={activeSeason} />}
       </div>
+
+      {state.status === "success" && (
+        <section className="mx-auto mt-10 w-full max-w-[1200px] px-5 sm:px-7 lg:px-8">
+          <SeasonsToolbar search={search} sort={sort} onSearchChange={setSearch} onSortChange={setSort} />
+          {!visibleSeasons.length ? (
+            <div className="mt-5 rounded-lg border border-[#dfe9e4] bg-white p-6 text-sm text-[#66768a]">{state.data.length ? "No seasons match your search." : "No seasons are available yet."}</div>
+          ) : (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {visibleSeasons.map((season) => <SeasonCard key={season.season_id} season={season} />)}
+            </div>
+          )}
+        </section>
+      )}
     </main>
   );
 };
