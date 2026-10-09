@@ -95,6 +95,7 @@ const AdminPlayerDetailsPage = () => {
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[2fr_1fr]">
         <main className="min-w-0">
+          <ProfileContentManager player={player} onChanged={load} />
           <Card title="PLAYER INFORMATION"><p>{player.gender} · {player.position || "—"} · {player.nationality || "—"}</p><p className="mt-2">Born {formatDate(player.date_of_birth)}</p></Card>
           <Card title="CURRENT TEAM MEMBERSHIPS"><MembershipList memberships={currentMemberships} emptyMessage="No active team memberships." onEdit={(membership) => { setSelectedMembership(membership); setMembershipModalMode("edit"); }} onEnd={setMembershipBeingEnded} /></Card>
           <Card title="TEAM HISTORY"><MembershipList memberships={teamHistory} historical emptyMessage="No previous team memberships." /></Card>
@@ -106,6 +107,29 @@ const AdminPlayerDetailsPage = () => {
       {membershipBeingEnded && <EndMembershipDialog player={player} membership={membershipBeingEnded} busy={membershipActionPending} onCancel={() => !membershipActionPending && setMembershipBeingEnded(null)} onConfirm={endMembership} />}
     </div>
   );
+};
+
+const ProfileContentManager = ({ player, onChanged }) => {
+  const [achievement, setAchievement] = useState({ title: "", achievement_type: "", awarded_year: "" });
+  const [photo, setPhoto] = useState({ image_url: "", caption: "" });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const save = async (path, payload, reset) => {
+    setBusy(true); setError("");
+    try { await apiClient.post(`/players/${player.player_id}${path}`, payload); reset(); await onChanged(); }
+    catch (requestError) { setError(requestError.response?.data?.message || "Profile content could not be saved."); }
+    finally { setBusy(false); }
+  };
+  const remove = async (path, label) => {
+    if (!window.confirm(`Remove this ${label}?`)) return;
+    setBusy(true); setError("");
+    try { await apiClient.delete(`/players/${player.player_id}${path}`); await onChanged(); }
+    catch (requestError) { setError(requestError.response?.data?.message || `The ${label} could not be removed.`); }
+    finally { setBusy(false); }
+  };
+
+  return <Card title="PROFILE CONTENT"><p className="text-xs text-white/50">Only HTTPS image URLs or local /uploads/ paths are accepted.</p>{error && <p className="mt-3 text-xs text-red-200">{error}</p>}<div className="mt-4 grid gap-5 lg:grid-cols-2"><form onSubmit={(event) => { event.preventDefault(); save("/achievements", { ...achievement, awarded_year: achievement.awarded_year ? Number(achievement.awarded_year) : null }, () => setAchievement({ title: "", achievement_type: "", awarded_year: "" })); }} className="space-y-2"><h3 className="text-xs font-bold text-white">ACHIEVEMENTS</h3><input required value={achievement.title} onChange={(event) => setAchievement({ ...achievement, title: event.target.value })} placeholder="Title" maxLength="160" className="w-full rounded border border-white/15 bg-[#07192a] p-2 text-sm" /><input required value={achievement.achievement_type} onChange={(event) => setAchievement({ ...achievement, achievement_type: event.target.value })} placeholder="Type (e.g. Top Scorer)" maxLength="60" className="w-full rounded border border-white/15 bg-[#07192a] p-2 text-sm" /><input value={achievement.awarded_year} onChange={(event) => setAchievement({ ...achievement, awarded_year: event.target.value })} placeholder="Year (optional)" min="1900" max="2100" type="number" className="w-full rounded border border-white/15 bg-[#07192a] p-2 text-sm" /><button disabled={busy} className="rounded border border-[#EEC058]/60 px-3 py-2 text-xs font-bold text-[#EEC058] disabled:opacity-50">ADD ACHIEVEMENT</button><div className="space-y-1">{player.achievements.map((item) => <div key={item.achievement_id} className="flex items-center justify-between gap-2 rounded bg-[#07192a] p-2 text-xs"><span>{item.title}{item.awarded_year ? ` · ${item.awarded_year}` : ""}</span><button type="button" disabled={busy} onClick={() => remove(`/achievements/${item.achievement_id}`, "achievement")} className="text-[#ffad9f]">REMOVE</button></div>)}</div></form><form onSubmit={(event) => { event.preventDefault(); save("/gallery", photo, () => setPhoto({ image_url: "", caption: "" })); }} className="space-y-2"><h3 className="text-xs font-bold text-white">PHOTO GALLERY</h3><input required value={photo.image_url} onChange={(event) => setPhoto({ ...photo, image_url: event.target.value })} placeholder="HTTPS image URL or /uploads/ path" maxLength="500" className="w-full rounded border border-white/15 bg-[#07192a] p-2 text-sm" /><input value={photo.caption} onChange={(event) => setPhoto({ ...photo, caption: event.target.value })} placeholder="Caption (optional)" maxLength="240" className="w-full rounded border border-white/15 bg-[#07192a] p-2 text-sm" /><button disabled={busy} className="rounded border border-[#EEC058]/60 px-3 py-2 text-xs font-bold text-[#EEC058] disabled:opacity-50">ADD PHOTO</button><div className="space-y-1">{player.gallery_photos.map((item) => <div key={item.photo_id} className="flex items-center justify-between gap-2 rounded bg-[#07192a] p-2 text-xs"><span className="truncate">{item.caption || item.image_url}</span><button type="button" disabled={busy} onClick={() => remove(`/gallery/${item.photo_id}`, "photo")} className="shrink-0 text-[#ffad9f]">REMOVE</button></div>)}</div></form></div></Card>;
 };
 
 const MembershipList = ({ memberships, emptyMessage, historical = false, onEdit, onEnd }) => {

@@ -7,6 +7,10 @@ import {
   updatePlayer,
   deactivatePlayer,
   activatePlayer,
+  createPlayerAchievement,
+  deletePlayerAchievement,
+  addPlayerGalleryPhoto,
+  deletePlayerGalleryPhoto,
 } from "./player.controller.js";
 
 import {
@@ -26,6 +30,10 @@ import {
   createPlayerValidation,
   updatePlayerValidation,
   playerStatusValidation,
+  createPlayerAchievementValidation,
+  playerAchievementIdValidation,
+  addPlayerGalleryPhotoValidation,
+  playerGalleryPhotoIdValidation,
 } from "./player.validation.js";
 
 import {
@@ -112,6 +120,42 @@ router.patch(
   playerStatusValidation,
   handleValidationErrors,
   activatePlayer
+);
+
+router.post(
+  "/:player_id/achievements",
+  authenticate,
+  authorize(ROLES.SUPER_ADMIN),
+  createPlayerAchievementValidation,
+  handleValidationErrors,
+  createPlayerAchievement
+);
+
+router.delete(
+  "/:player_id/achievements/:achievement_id",
+  authenticate,
+  authorize(ROLES.SUPER_ADMIN),
+  playerAchievementIdValidation,
+  handleValidationErrors,
+  deletePlayerAchievement
+);
+
+router.post(
+  "/:player_id/gallery",
+  authenticate,
+  authorize(ROLES.SUPER_ADMIN),
+  addPlayerGalleryPhotoValidation,
+  handleValidationErrors,
+  addPlayerGalleryPhoto
+);
+
+router.delete(
+  "/:player_id/gallery/:photo_id",
+  authenticate,
+  authorize(ROLES.SUPER_ADMIN),
+  playerGalleryPhotoIdValidation,
+  handleValidationErrors,
+  deletePlayerGalleryPhoto
 );
 
 export default router;

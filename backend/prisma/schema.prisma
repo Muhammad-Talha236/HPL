@@ -78,6 +78,7 @@ model Team {
   home_venue         Venue                     @relation("TeamHomeVenue", fields: [home_venue_id], references: [venue_id])
   owner              User                      @relation("TeamOwner", fields: [owner_id], references: [user_id])
   team_players       TeamPlayer[]
+  player_achievements PlayerAchievement[]
   rankings           TeamRanking[]
   standings          TeamStanding[]
 }
@@ -91,6 +92,10 @@ model Player {
   position              String?
   phone                 String?
   nationality           String?
+  height_cm             Int?
+  weight_kg             Int?
+  preferred_foot        String?
+  bio                   String?
   registration_number   String              @unique
   status                String
   created_at            DateTime            @default(now())
@@ -103,6 +108,40 @@ model Player {
   user                  User?               @relation("PlayerUser", fields: [user_id], references: [user_id])
   invitations           PlayerInvitation?
   team_players          TeamPlayer[]
+  achievements          PlayerAchievement[]
+  gallery_photos        PlayerGalleryPhoto[]
+}
+
+model PlayerAchievement {
+  achievement_id   Int          @id @default(autoincrement())
+  player_id        Int
+  title            String
+  achievement_type String
+  awarded_year     Int?
+  season_id        Int?
+  team_id          Int?
+  competition_id   Int?
+  created_at       DateTime     @default(now())
+  updated_at       DateTime     @updatedAt
+  player           Player       @relation(fields: [player_id], references: [player_id], onDelete: Cascade)
+  season           Season?      @relation(fields: [season_id], references: [season_id], onDelete: SetNull)
+  team             Team?        @relation(fields: [team_id], references: [team_id], onDelete: SetNull)
+  competition      Competition? @relation(fields: [competition_id], references: [competition_id], onDelete: SetNull)
+
+  @@index([player_id, awarded_year])
+  @@index([competition_id])
+  @@index([team_id])
+}
+
+model PlayerGalleryPhoto {
+  photo_id     Int      @id @default(autoincrement())
+  player_id    Int
+  image_url    String
+  caption      String?
+  created_at   DateTime @default(now())
+  player       Player   @relation(fields: [player_id], references: [player_id], onDelete: Cascade)
+
+  @@index([player_id, created_at])
 }
 
 model TeamPlayer {
@@ -136,6 +175,7 @@ model Season {
   updated_at   DateTime      @updatedAt
   competitions Competition[]
   matches      Match[]
+  player_achievements PlayerAchievement[]
 }
 
 model Competition {
@@ -162,6 +202,7 @@ model Competition {
   registrations           CompetitionRegistration[]
   matches                 Match[]
   standings               TeamStanding[]
+  player_achievements     PlayerAchievement[]
 }
 
 model CompetitionRegistration {

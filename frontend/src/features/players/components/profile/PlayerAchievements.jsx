@@ -65,7 +65,15 @@ const PlayerAchievements = ({
   achievements = [],
 }) => {
   if (!achievements.length) {
-    return null;
+    return (
+      <section className="mt-5 rounded-xl border border-[#e1e8e5] bg-white p-5 shadow-[0_3px_14px_rgba(15,23,42,0.03)]">
+        <div className="flex items-center gap-2.5">
+          <Trophy size={18} strokeWidth={1.8} className="text-[#07182d]" />
+          <h2 className="text-[16px] font-bold text-[#07182d] xl:text-[17px]">Achievements</h2>
+        </div>
+        <p className="py-8 text-center text-[12px] font-medium text-[#718096]">No achievements recorded yet.</p>
+      </section>
+    );
   }
 
   return (

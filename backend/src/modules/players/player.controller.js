@@ -27,6 +27,10 @@ const playerSelect = {
   position: true,
   phone: true,
   nationality: true,
+  height_cm: true,
+  weight_kg: true,
+  preferred_foot: true,
+  bio: true,
   registration_number: true,
   status: true,
   created_at: true,
@@ -43,6 +47,10 @@ const publicPlayerSelect = {
   gender: true,
   position: true,
   nationality: true,
+  height_cm: true,
+  weight_kg: true,
+  preferred_foot: true,
+  bio: true,
   registration_number: true,
   status: true,
   created_at: true,
@@ -75,6 +83,10 @@ export const createPlayer = async (req, res) => {
       position,
       phone,
       nationality,
+      height_cm,
+      weight_kg,
+      preferred_foot,
+      bio,
     } = req.body;
 
     const registrationNumber =
@@ -111,6 +123,17 @@ export const createPlayer = async (req, res) => {
           nationality !== undefined &&
           nationality !== null
             ? nationality.trim()
+            : undefined,
+
+        height_cm: height_cm ?? undefined,
+        weight_kg: weight_kg ?? undefined,
+        preferred_foot:
+          preferred_foot !== undefined && preferred_foot !== null
+            ? preferred_foot.trim()
+            : undefined,
+        bio:
+          bio !== undefined && bio !== null
+            ? bio.trim()
             : undefined,
 
         registration_number:
@@ -318,6 +341,29 @@ export const getPlayerById = async (
               match_id: true,
             },
           },
+          achievements: {
+            select: {
+              achievement_id: true,
+              title: true,
+              achievement_type: true,
+              awarded_year: true,
+              season: { select: { season_id: true, name: true } },
+              team: { select: { team_id: true, name: true } },
+              competition: { select: { competition_id: true, name: true } },
+            },
+            orderBy: [{ awarded_year: "desc" }, { achievement_id: "desc" }],
+            take: 24,
+          },
+          gallery_photos: {
+            select: {
+              photo_id: true,
+              image_url: true,
+              caption: true,
+              created_at: true,
+            },
+            orderBy: { created_at: "desc" },
+            take: 24,
+          },
         },
       });
 
@@ -367,6 +413,8 @@ export const getPlayerById = async (
       team_players: _memberships,
       match_players: _appearances,
       event_players: _goals,
+      achievements,
+      gallery_photos,
       ...publicPlayer
     } = player;
 
@@ -383,8 +431,8 @@ export const getPlayerById = async (
             }
           : null,
         career: [...careerByKey.values()],
-        achievements: [],
-        gallery: [],
+        achievements,
+        gallery: gallery_photos,
       },
     });
   } catch (error) {
@@ -421,6 +469,10 @@ export const updatePlayer = async (
       position,
       phone,
       nationality,
+      height_cm,
+      weight_kg,
+      preferred_foot,
+      bio,
     } = req.body;
 
     // --------------------------------------------------
@@ -493,6 +545,23 @@ export const updatePlayer = async (
         nationality === null
           ? null
           : nationality.trim();
+    }
+
+    if (height_cm !== undefined) {
+      updateData.height_cm = height_cm;
+    }
+
+    if (weight_kg !== undefined) {
+      updateData.weight_kg = weight_kg;
+    }
+
+    if (preferred_foot !== undefined) {
+      updateData.preferred_foot =
+        preferred_foot === null ? null : preferred_foot.trim();
+    }
+
+    if (bio !== undefined) {
+      updateData.bio = bio === null ? null : bio.trim();
     }
 
     // --------------------------------------------------
@@ -591,6 +660,146 @@ export const updatePlayer = async (
       message:
         "Something went wrong while updating the player",
     });
+  }
+};
+
+const profileAchievementSelect = {
+  achievement_id: true,
+  title: true,
+  achievement_type: true,
+  awarded_year: true,
+  season: { select: { season_id: true, name: true } },
+  team: { select: { team_id: true, name: true } },
+  competition: { select: { competition_id: true, name: true } },
+};
+
+const ensurePlayerExists = async (playerId) => {
+  const player = await prisma.player.findUnique({
+    where: { player_id: playerId },
+    select: { player_id: true },
+  });
+
+  return Boolean(player);
+};
+
+// Profile content is managed only by super administrators through the routes
+// below. Public profile reads use a deliberately narrow projection above.
+export const createPlayerAchievement = async (req, res, next) => {
+  try {
+    const playerId = Number(req.params.player_id);
+    if (!(await ensurePlayerExists(playerId))) {
+      return res.status(404).json({ success: false, message: "Player not found" });
+    }
+
+    const achievement = await prisma.playerAchievement.create({
+      data: {
+        player_id: playerId,
+        title: req.body.title.trim(),
+        achievement_type: req.body.achievement_type.trim(),
+        awarded_year: req.body.awarded_year ?? null,
+        season_id: req.body.season_id ?? null,
+        team_id: req.body.team_id ?? null,
+        competition_id: req.body.competition_id ?? null,
+      },
+      select: profileAchievementSelect,
+    });
+
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.PLAYER_ACHIEVEMENT_CREATED,
+      entity_type: "PLAYER_ACHIEVEMENT",
+      entity_id: achievement.achievement_id,
+      details: { player_id: playerId, title: achievement.title },
+    });
+
+    return res.status(201).json({ success: true, data: achievement });
+  } catch (error) {
+    if (error.code === "P2003") {
+      return res.status(400).json({ success: false, message: "Related season, team, or competition was not found" });
+    }
+    next(error);
+  }
+};
+
+export const deletePlayerAchievement = async (req, res, next) => {
+  try {
+    const playerId = Number(req.params.player_id);
+    const achievementId = Number(req.params.achievement_id);
+    const result = await prisma.playerAchievement.deleteMany({
+      where: { achievement_id: achievementId, player_id: playerId },
+    });
+
+    if (!result.count) {
+      return res.status(404).json({ success: false, message: "Achievement not found" });
+    }
+
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.PLAYER_ACHIEVEMENT_DELETED,
+      entity_type: "PLAYER_ACHIEVEMENT",
+      entity_id: achievementId,
+      details: { player_id: playerId },
+    });
+
+    return res.status(200).json({ success: true, message: "Achievement removed" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const addPlayerGalleryPhoto = async (req, res, next) => {
+  try {
+    const playerId = Number(req.params.player_id);
+    if (!(await ensurePlayerExists(playerId))) {
+      return res.status(404).json({ success: false, message: "Player not found" });
+    }
+
+    const photo = await prisma.playerGalleryPhoto.create({
+      data: {
+        player_id: playerId,
+        image_url: req.body.image_url.trim(),
+        caption: req.body.caption ? req.body.caption.trim() : null,
+      },
+      select: { photo_id: true, image_url: true, caption: true, created_at: true },
+    });
+
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.PLAYER_GALLERY_PHOTO_ADDED,
+      entity_type: "PLAYER_GALLERY_PHOTO",
+      entity_id: photo.photo_id,
+      details: { player_id: playerId },
+    });
+
+    return res.status(201).json({ success: true, data: photo });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deletePlayerGalleryPhoto = async (req, res, next) => {
+  try {
+    const playerId = Number(req.params.player_id);
+    const photoId = Number(req.params.photo_id);
+    const result = await prisma.playerGalleryPhoto.deleteMany({
+      where: { photo_id: photoId, player_id: playerId },
+    });
+
+    if (!result.count) {
+      return res.status(404).json({ success: false, message: "Photo not found" });
+    }
+
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.PLAYER_GALLERY_PHOTO_DELETED,
+      entity_type: "PLAYER_GALLERY_PHOTO",
+      entity_id: photoId,
+      details: { player_id: playerId },
+    });
+
+    return res.status(200).json({ success: true, message: "Photo removed" });
+  } catch (error) {
+    next(error);
   }
 };
 

@@ -5,7 +5,6 @@ import {
   Footprints,
   Ruler,
   Scale,
-  Shield,
   Shirt,
   UserRound,
 } from "lucide-react";
@@ -37,6 +36,8 @@ const getPlayerImage = (player) =>
 const getJerseyNumber = (player) =>
   player?.jersey_number ??
   player?.jerseyNumber ??
+  player?.current_team?.jersey_number ??
+  player?.currentTeam?.jersey_number ??
   player?.team_player?.jersey_number ??
   player?.teamPlayer?.jersey_number ??
   null;
@@ -103,15 +104,13 @@ const getTeamLogo = (team) =>
   team?.logoUrl ||
   null;
 
-const isCaptain = (player) => {
-  const value =
+const getCaptainStatus = (player) =>
     player?.is_captain ??
     player?.isCaptain ??
+    player?.current_team?.is_captain ??
+    player?.currentTeam?.is_captain ??
     player?.team_player?.is_captain ??
     player?.teamPlayer?.isCaptain;
-
-  return value === true;
-};
 
 /* =========================================================
    DATE
@@ -255,7 +254,12 @@ const PlayerProfileHeader = ({
     getTeamLogo(team);
 
   const captain =
-    isCaptain(player);
+    getCaptainStatus(player);
+
+  const hasJerseyNumber =
+    jerseyNumber !== null &&
+    jerseyNumber !== undefined &&
+    jerseyNumber !== "";
 
   return (
     <section
@@ -298,7 +302,7 @@ const PlayerProfileHeader = ({
             "
           />
 
-          {jerseyNumber && (
+          {hasJerseyNumber && (
             <span
               className="
                 pointer-events-none
@@ -413,7 +417,7 @@ const PlayerProfileHeader = ({
                   {playerName}
                 </h1>
 
-                {jerseyNumber && (
+                {hasJerseyNumber && (
                   <span
                     className="
                       inline-flex
@@ -656,9 +660,11 @@ const PlayerProfileHeader = ({
                     text-[#07182d]
                   "
                 >
-                  {captain
+                  {captain === true
                     ? "Yes"
-                    : "No"}
+                    : captain === false
+                      ? "No"
+                      : "—"}
                 </strong>
 
                 <span

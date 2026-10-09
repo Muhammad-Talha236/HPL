@@ -29,12 +29,21 @@ import { Link } from "react-router-dom";
 ========================================================= */
 
 const PlayerCareerJourney = ({ career = [] }) => {
-  /* =======================================================
-     DON'T SHOW SECTION IF NO REAL CAREER DATA
-  ======================================================= */
-
   if (!Array.isArray(career) || career.length === 0) {
-    return null;
+    return (
+      <section className="mt-5 rounded-xl border border-[#e1e8e5] bg-white shadow-[0_3px_14px_rgba(15,23,42,0.03)]">
+        <div className="flex items-center gap-2.5 border-b border-[#edf1ef] px-5 py-4 sm:px-6">
+          <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#fff7e6] text-[#e5a329]">
+            <Activity size={17} strokeWidth={1.9} />
+          </div>
+          <div>
+            <h2 className="text-[16px] font-bold tracking-[-0.02em] text-[#07182d] sm:text-[17px]">Career Journey</h2>
+            <p className="mt-0.5 text-[9px] font-medium text-[#8a96a5] sm:text-[10px]">Competition history and match performance</p>
+          </div>
+        </div>
+        <p className="px-5 py-8 text-center text-[12px] font-medium text-[#718096] sm:px-6">No career records available yet.</p>
+      </section>
+    );
   }
 
   return (

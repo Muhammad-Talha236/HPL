@@ -4,6 +4,42 @@ import {
   checkExact,
 } from "express-validator";
 
+const profileDetailsValidation = [
+  body("height_cm")
+    .optional({ nullable: true })
+    .isInt({ min: 100, max: 260 })
+    .withMessage("Height must be between 100 and 260 cm"),
+  body("weight_kg")
+    .optional({ nullable: true })
+    .isInt({ min: 25, max: 250 })
+    .withMessage("Weight must be between 25 and 250 kg"),
+  body("preferred_foot")
+    .optional({ nullable: true })
+    .isString()
+    .bail()
+    .trim()
+    .isIn(["LEFT", "RIGHT", "BOTH"])
+    .withMessage("Preferred foot must be LEFT, RIGHT, or BOTH"),
+  body("bio")
+    .optional({ nullable: true })
+    .isString()
+    .bail()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage("Bio is too long"),
+];
+
+const isSafeImageUrl = (value) => {
+  if (value.startsWith("/uploads/") && !value.startsWith("//")) return true;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+};
+
 // ======================================================
 // PLAYER ID VALIDATION
 // ======================================================
@@ -80,7 +116,10 @@ export const createPlayerValidation = [
     })
     .withMessage(
       "Profile photo is too long"
-    ),
+    )
+    .bail()
+    .custom(isSafeImageUrl)
+    .withMessage("Profile photo must be an HTTPS URL or an /uploads/ path"),
 
   // ----------------------------------------------------
   // DATE OF BIRTH
@@ -225,6 +264,8 @@ export const createPlayerValidation = [
       "Nationality is too long"
     ),
 
+  ...profileDetailsValidation,
+
   // ----------------------------------------------------
   // BLOCK UNEXPECTED FIELDS
   // ----------------------------------------------------
@@ -300,7 +341,10 @@ export const updatePlayerValidation = [
     })
     .withMessage(
       "Profile photo is too long"
-    ),
+    )
+    .bail()
+    .custom(isSafeImageUrl)
+    .withMessage("Profile photo must be an HTTPS URL or an /uploads/ path"),
 
   // ----------------------------------------------------
   // DATE OF BIRTH
@@ -435,6 +479,8 @@ export const updatePlayerValidation = [
       "Nationality is too long"
     ),
 
+  ...profileDetailsValidation,
+
   // ----------------------------------------------------
   // BLOCK UNEXPECTED FIELDS
   // ----------------------------------------------------
@@ -465,4 +511,34 @@ export const playerStatusValidation = [
     message:
       "Unexpected fields are not allowed",
   }),
+];
+
+export const createPlayerAchievementValidation = [
+  param("player_id").isInt({ min: 1 }).withMessage("Player ID must be a positive integer"),
+  body("title").isString().bail().trim().isLength({ min: 2, max: 160 }).withMessage("Achievement title must be 2 to 160 characters"),
+  body("achievement_type").isString().bail().trim().isLength({ min: 2, max: 60 }).withMessage("Achievement type must be 2 to 60 characters"),
+  body("awarded_year").optional({ nullable: true }).isInt({ min: 1900, max: 2100 }).withMessage("Award year is invalid"),
+  body("season_id").optional({ nullable: true }).isInt({ min: 1 }).withMessage("Season ID must be a positive integer"),
+  body("team_id").optional({ nullable: true }).isInt({ min: 1 }).withMessage("Team ID must be a positive integer"),
+  body("competition_id").optional({ nullable: true }).isInt({ min: 1 }).withMessage("Competition ID must be a positive integer"),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
+];
+
+export const playerAchievementIdValidation = [
+  param("player_id").isInt({ min: 1 }).withMessage("Player ID must be a positive integer"),
+  param("achievement_id").isInt({ min: 1 }).withMessage("Achievement ID must be a positive integer"),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
+];
+
+export const addPlayerGalleryPhotoValidation = [
+  param("player_id").isInt({ min: 1 }).withMessage("Player ID must be a positive integer"),
+  body("image_url").isString().bail().trim().isLength({ min: 1, max: 500 }).bail().custom(isSafeImageUrl).withMessage("Image URL must be an HTTPS URL or an /uploads/ path"),
+  body("caption").optional({ nullable: true }).isString().bail().trim().isLength({ max: 240 }).withMessage("Caption is too long"),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
+];
+
+export const playerGalleryPhotoIdValidation = [
+  param("player_id").isInt({ min: 1 }).withMessage("Player ID must be a positive integer"),
+  param("photo_id").isInt({ min: 1 }).withMessage("Photo ID must be a positive integer"),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
 ];
