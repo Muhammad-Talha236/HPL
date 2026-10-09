@@ -42,14 +42,20 @@ const newsSelect = {
   },
 };
 
-// List responses intentionally exclude article content. A headline card must
-// not transfer every full article in a large archive.
+// List responses generate a bounded plain-text excerpt server-side. Full article
+// content remains available only through the individual public article endpoint.
 const publicNewsListSelect = {
   news_id: true,
   title: true,
+  content: true,
   featured_image: true,
   category: true,
   published_at: true,
+};
+
+const getNewsExcerpt = (content, maxLength = 180) => {
+  const text = String(content || "").replace(/\s+/g, " ").trim();
+  return text.length > maxLength ? `${text.slice(0, maxLength).trim()}…` : text;
 };
 
 const publicNewsDetailSelect = {
@@ -178,7 +184,10 @@ export const getNews = async (
     return res.status(200).json({
       success: true,
       count: news.length,
-      data: news,
+      data: news.map(({ content, ...article }) => ({
+        ...article,
+        excerpt: getNewsExcerpt(content),
+      })),
       pagination: {
         page: query.page,
         limit: query.limit,

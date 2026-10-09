@@ -1,7 +1,7 @@
 import apiClient from "../../../services/apiClient";
 
-export const getNews = async ({ page = 1, q = "", category = "", signal } = {}) => {
-  const response = await apiClient.get("/news", { params: { page, limit: 12, ...(q ? { q } : {}), ...(category ? { category } : {}) }, signal });
+export const getNews = async ({ page = 1, limit = 7, q = "", category = "", signal } = {}) => {
+  const response = await apiClient.get("/news", { params: { page, limit, ...(q ? { q } : {}), ...(category ? { category } : {}) }, signal });
   return { articles: response.data?.data || [], pagination: response.data?.pagination || {} };
 };
 
