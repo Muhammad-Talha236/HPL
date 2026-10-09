@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../../services/apiClient";
+import { FEATURES } from "../../../constants/features";
 
 const PlayerMembershipModal = ({ player, membership, onClose, onSaved }) => {
   const isAdding = !membership;
@@ -17,7 +18,7 @@ const PlayerMembershipModal = ({ player, membership, onClose, onSaved }) => {
     const timer = setTimeout(async () => {
       try {
         const response = await apiClient.get("/admin/teams", { params: { q: query, gender, status: "ACTIVE", page: 1, limit: 20 } });
-        setTeams(response.data.data || []);
+        setTeams((response.data.data || []).map(({ club, ...team }) => FEATURES.CLUBS_ENABLED ? { ...team, club } : team));
       } catch {
         setTeams([]);
       }
@@ -56,7 +57,7 @@ const PlayerMembershipModal = ({ player, membership, onClose, onSaved }) => {
             <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search compatible teams…" className="mt-2 w-full rounded border border-white/15 bg-[#07192a] p-3 text-sm" />
           </label>
           <div className="mt-2 max-h-40 overflow-y-auto rounded border border-white/10">
-            {teams.map((team) => <button type="button" key={team.team_id} onClick={() => setSelectedTeam(team)} className={`block w-full p-3 text-left text-sm ${selectedTeam?.team_id === team.team_id ? "bg-[#EEC058]/15" : "hover:bg-white/5"}`}><b>{team.name}</b> · {team.club.name} · {team.gender}</button>)}
+            {teams.map((team) => <button type="button" key={team.team_id} onClick={() => setSelectedTeam(team)} className={`block w-full p-3 text-left text-sm ${selectedTeam?.team_id === team.team_id ? "bg-[#EEC058]/15" : "hover:bg-white/5"}`}><b>{team.name}</b>{FEATURES.CLUBS_ENABLED && team.club?.name ? ` · ${team.club.name}` : ""} · {team.gender}</button>)}
             {!teams.length && <p className="p-3 text-sm text-white/50">No compatible active teams found.</p>}
           </div>
         </> : <div className="mt-5 rounded bg-[#07192a] p-3 text-sm"><b>{membership.team.name}</b><span className="ml-2 text-white/55">Team and player cannot be changed.</span></div>}

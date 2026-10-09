@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import PasswordInput from "../../auth/components/PasswordInput";
 import useAuth from "../../../hooks/useAuth";
 import apiClient from "../../../services/apiClient";
+import { FEATURES } from "../../../constants/features";
 
 const formatExpiry = (value) => value ? new Date(value).toLocaleString() : "";
 const unavailableCopy = { EXPIRED: ["This invitation has expired.", "Ask your team or club owner to create a new invitation if you still need one."], REVOKED: ["This invitation is no longer available.", "This invitation was revoked and cannot be accepted."], ACCEPTED: ["This invitation has already been used.", "A player profile can only be linked once."], UNAVAILABLE: ["Invitation unavailable", "This link is invalid or is no longer available."] };
@@ -11,7 +12,7 @@ const passwordError = (password) => !password ? "Password is required." : passwo
 export default function PlayerInvitationAcceptancePage() {
   const { token } = useParams(); const location = useLocation(); const navigate = useNavigate(); const { user, isAuthenticated, isAuthLoading } = useAuth();
   const [preview, setPreview] = useState({ kind: "loading" }); const [dialogOpen, setDialogOpen] = useState(false); const [submitting, setSubmitting] = useState(false); const [actionError, setActionError] = useState(""); const [success, setSuccess] = useState(null); const [setup, setSetup] = useState(false); const [account, setAccount] = useState({ name: "", password: "", confirm_password: "" }); const [fieldErrors, setFieldErrors] = useState({}); const [existingAccount, setExistingAccount] = useState(false);
-  const loadPreview = useCallback(async () => { setPreview({ kind: "loading" }); try { const response = await apiClient.get(`/player-invitations/accept/${token}`); setPreview({ kind: "ready", data: response.data.data }); } catch { setPreview({ kind: "ready", data: { valid: false, state: "UNAVAILABLE" } }); } }, [token]);
+  const loadPreview = useCallback(async () => { setPreview({ kind: "loading" }); try { const response = await apiClient.get(`/player-invitations/accept/${token}`); const { club, ...data } = response.data.data; setPreview({ kind: "ready", data: FEATURES.CLUBS_ENABLED ? { ...data, club } : data }); } catch { setPreview({ kind: "ready", data: { valid: false, state: "UNAVAILABLE" } }); } }, [token]);
   useEffect(() => { const timer = setTimeout(loadPreview, 0); return () => clearTimeout(timer); }, [loadPreview]);
   const signIn = (registered = false) => navigate("/login", { state: { ...(registered ? { registrationSuccess: true } : {}), from: { pathname: location.pathname } } });
   const accept = async () => { if (submitting) return; setSubmitting(true); setActionError(""); try { const response = await apiClient.post(`/player-invitations/accept/${token}`); setSuccess({ ...response.data.data, account_created: false }); setDialogOpen(false); } catch (error) { setActionError(error.response?.data?.message || "Invitation acceptance is unavailable right now."); setDialogOpen(false); await loadPreview(); } finally { setSubmitting(false); } };

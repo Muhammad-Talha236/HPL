@@ -1,4 +1,6 @@
 import PortalShell from "./PortalShell";
+import { Navigate } from "react-router-dom";
+import { FEATURES } from "../constants/features";
 
 const navigation = [
   { group: "OVERVIEW", label: "Dashboard", to: "/club" },
@@ -11,5 +13,7 @@ const navigation = [
 ];
 
 export default function ClubOwnerLayout() {
+  if (!FEATURES.CLUBS_ENABLED) return <Navigate to="/teams" replace />;
+
   return <PortalShell roleLabel="CLUB OWNER" brandLabel="CLUB" navigation={navigation} />;
 }

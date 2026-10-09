@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import apiClient from "../../../services/apiClient";
+import { FEATURES } from "../../../constants/features";
 
 const pageLimit = 20;
 const EMPTY_LIST = [];
@@ -9,6 +10,12 @@ const date = (value) => value ? new Date(value).toLocaleDateString() : "—";
 const amount = (value) => value === null || value === undefined ? "—" : Number(value).toLocaleString();
 const errorMessage = (error, fallback) => error.response?.data?.message || fallback;
 const initials = (name = "") => name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "P";
+const withoutClubReferences = (value) => {
+  if (FEATURES.CLUBS_ENABLED || value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(withoutClubReferences);
+  const { club: _club, ...rest } = value;
+  return Object.fromEntries(Object.entries(rest).map(([key, item]) => [key, withoutClubReferences(item)]));
+};
 
 function Badge({ children }) {
   return <span className="inline-flex max-w-full rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold tracking-wide text-slate-700">{children || "—"}</span>;
@@ -41,7 +48,7 @@ function useTeamOwnerData(path, fallback) {
     setState((current) => ({ ...current, kind: "loading" }));
     try {
       const response = await apiClient.get(path);
-      setState({ kind: "ready", data: response.data.data });
+      setState({ kind: "ready", data: withoutClubReferences(response.data.data) });
     } catch (error) {
       setState({ kind: "error", data: fallback, message: errorMessage(error, "This information could not be loaded.") });
     }
@@ -75,7 +82,7 @@ export function TeamOwnerProfilePage() {
   return <main className="min-w-0 p-5 sm:p-8"><PageHeader eyebrow="TEAM" title="MY TEAM">Review the identity and operational details of your assigned team.</PageHeader>{!teams.length ? <EmptyState>No team is assigned to this account yet.</EmptyState> : <section className="mt-6 grid min-w-0 gap-5 xl:grid-cols-2">{teams.map((team) => <article key={team.team_id} className="min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-center gap-4">{team.logo ? <img src={team.logo} alt={`${team.name} logo`} className="h-20 w-20 rounded-full border border-slate-200 object-contain p-1" /> : <div aria-label={`${team.name} logo unavailable`} className="grid h-20 w-20 place-items-center rounded-full bg-slate-100 text-xl font-extrabold text-slate-600">{initials(team.name)}</div>}<div className="min-w-0"><p className="text-xs font-extrabold tracking-[.14em] text-[#b83729]">TEAM IDENTITY</p><h2 className="mt-1 truncate text-2xl font-extrabold text-slate-900">{team.name}</h2><div className="mt-2 flex flex-wrap gap-2"><Badge>{team.status}</Badge><Badge>{team.gender}</Badge><Badge>{team.team_type}</Badge></div></div></div><dl className="mt-6 grid gap-4 border-t border-slate-100 pt-5 text-sm sm:grid-cols-2"><Info label="Team ID" value={`#${team.team_id}`} /><Info label="Club" value={team.club?.name} /><Info label="Home venue" value={team.home_venue?.name} /><Info label="City" value={team.city} /><Info label="Created" value={date(team.created_at)} /><Info label="Description" value={team.description} /></dl></article>)}</section>}</main>;
 }
 
-function Info({ label, value }) { return <div className="min-w-0"><dt className="text-[10px] font-extrabold tracking-[.12em] text-slate-500">{label.toUpperCase()}</dt><dd className="mt-1 break-words font-semibold text-slate-800">{value || "—"}</dd></div>; }
+function Info({ label, value }) { if (label === "Club" && !FEATURES.CLUBS_ENABLED) return null; return <div className="min-w-0"><dt className="text-[10px] font-extrabold tracking-[.12em] text-slate-500">{label.toUpperCase()}</dt><dd className="mt-1 break-words font-semibold text-slate-800">{value || "—"}</dd></div>; }
 
 export function TeamOwnerPlayersPage() {
   const [page, setPage] = useState(1); const [state, setState] = useState({ kind: "loading", data: [], pagination: {} });

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import apiClient from "../../../services/apiClient";
 import PlayerInvitationManager from "../../playerInvitations/components/PlayerInvitationManager";
+import { FEATURES } from "../../../constants/features";
 
 const today = new Date().toISOString().slice(0, 10);
 const date = (value) => value ? new Date(value).toLocaleDateString() : "—";
@@ -24,7 +25,7 @@ export function TeamOwnerProfilePage() {
   return <main className="min-w-0 p-5 sm:p-8"><Header eyebrow="TEAM" title="MY TEAM" action={team && <Link to={`/team/teams/${team.team_id}/edit`} className="rounded-md bg-[#d94d3d] px-4 py-2.5 text-xs font-extrabold text-white focus:outline-none focus:ring-2 focus:ring-[#d94d3d]">EDIT TEAM</Link>}>Review and maintain safe public team information.</Header><div className="mt-5"><TeamSelector teams={state.teams} value={selected} onChange={setSelected} /></div>{!team ? <Notice kind="info">{pathTeamId ? "This team is not available in your account." : "No team is assigned to this account yet."}</Notice> : <article className="mt-6 max-w-4xl rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-center gap-4">{team.logo ? <img src={team.logo} alt={`${team.name} logo`} className="h-20 w-20 rounded-full border border-slate-200 object-contain p-1"/> : <div className="grid h-20 w-20 place-items-center rounded-full bg-slate-100 text-xl font-extrabold text-slate-600">{initials(team.name)}</div>}<div className="min-w-0"><p className="text-xs font-extrabold tracking-[.14em] text-[#b83729]">TEAM IDENTITY</p><h2 className="mt-1 truncate text-2xl font-extrabold text-slate-900">{team.name}</h2><div className="mt-2 flex flex-wrap gap-2">{status(team.status)}{status(team.gender)}{status(team.team_type)}</div></div></div><dl className="mt-6 grid gap-4 border-t border-slate-100 pt-5 text-sm sm:grid-cols-2"><Field label="Club" value={team.club?.name}/><Field label="Home venue" value={team.home_venue?.name}/><Field label="City" value={team.city}/><Field label="Public email" value={team.contact_email}/><Field label="Public phone" value={team.contact_phone}/><Field label="Created" value={date(team.created_at)}/><Field label="Description" value={team.description}/></dl></article>}</main>;
 }
 
-function Field({ label, value }) { return <div className="min-w-0"><dt className="text-[10px] font-extrabold tracking-[.12em] text-slate-500">{label.toUpperCase()}</dt><dd className="mt-1 break-words font-semibold text-slate-800">{value || "—"}</dd></div>; }
+function Field({ label, value }) { if (label === "Club" && !FEATURES.CLUBS_ENABLED) return null; return <div className="min-w-0"><dt className="text-[10px] font-extrabold tracking-[.12em] text-slate-500">{label.toUpperCase()}</dt><dd className="mt-1 break-words font-semibold text-slate-800">{value || "—"}</dd></div>; }
 
 const formKeys = ["name", "team_type", "home_venue_id", "logo", "region", "district", "city", "description", "contact_email", "contact_phone"];
 export function TeamOwnerTeamEditPage() {

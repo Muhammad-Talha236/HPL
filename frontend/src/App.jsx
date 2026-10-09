@@ -78,6 +78,8 @@ import TeamOwnerRoute from "./routes/TeamOwnerRoute";
 
 import UserAccountRoute from "./routes/UserAccountRoute";
 
+import { FEATURES } from "./constants/features";
+
 /* =========================
    ADMIN LAZY PAGES
 ========================= */
@@ -576,17 +578,17 @@ function App() {
 
               <Route
                 path="/admin/clubs"
-                element={<AdminClubsPage />}
+                element={FEATURES.CLUBS_ENABLED ? <AdminClubsPage /> : <Navigate to="/admin/teams" replace />}
               />
 
               <Route
                 path="/admin/clubs/new"
-                element={<AdminClubFormPage />}
+                element={FEATURES.CLUBS_ENABLED ? <AdminClubFormPage /> : <Navigate to="/admin/teams" replace />}
               />
 
               <Route
                 path="/admin/clubs/:clubId"
-                element={<AdminClubDetailsPage />}
+                element={FEATURES.CLUBS_ENABLED ? <AdminClubDetailsPage /> : <Navigate to="/admin/teams" replace />}
               />
 
               <Route
@@ -780,7 +782,7 @@ function App() {
               CLUB OWNER
           ========================= */}
 
-          <Route element={<ClubOwnerRoute />}>
+          {FEATURES.CLUBS_ENABLED ? <Route element={<ClubOwnerRoute />}>
             <Route element={<ClubOwnerLayout />}>
               <Route
                 path="/club"
@@ -847,7 +849,7 @@ function App() {
                 element={<Navigate to="/club" replace />}
               />
             </Route>
-          </Route>
+          </Route> : <Route path="/club/*" element={<Navigate to="/teams" replace />} />}
 
           {/* =========================
               TEAM OWNER

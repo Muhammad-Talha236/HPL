@@ -51,7 +51,6 @@ const TeamProfileHero = ({
 
   const competition =
     team?.competition?.name ||
-    team?.club?.name ||
     "Premier League";
 
   const founded =

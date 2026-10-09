@@ -1,92 +1,118 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import SeasonStatusBadge from "../components/SeasonStatusBadge";
+import { getCompetitionStandings } from "../../competitions/services/competitionService";
+import { getMatches } from "../../matches/services/matchService";
+import CompletedSeasonDetails from "../components/details/CompletedSeasonDetails";
+import SeasonDetailsHero from "../components/details/SeasonDetailsHero";
+import SeasonDetailsNavigation from "../components/details/SeasonDetailsNavigation";
 import {
-  getSeasonById,
-  getSeasonCompetitions,
-} from "../services/seasonService";
-import { formatSeasonRange } from "../utils/seasonFormatters";
+  SeasonFixtures,
+  SeasonNextMatch,
+  SeasonProgress,
+  SeasonRecentResults,
+  SeasonStandings,
+  SeasonTeams,
+  SeasonTopPlayers,
+  SeasonVenues,
+} from "../components/details/SeasonOverview";
+import { getSeasonById, getSeasonCompetitions } from "../services/seasonService";
+
+const matchMoment = (match) => `${match.match_date || ""}T${String(match.start_time || "00:00").slice(11, 19)}`;
 
 const SeasonDetailsPage = () => {
   const { seasonId } = useParams();
-  const [seasonState, setSeasonState] = useState({
-    data: null,
-    status: "loading",
-  });
-  const [competitionsState, setCompetitionsState] = useState({
-    data: [],
-    status: "loading",
-  });
+  const [activeSection, setActiveSection] = useState("overview");
+  const [state, setState] = useState({ status: "loading", season: null, competitions: [], matches: [], standings: [] });
 
-  useEffect(() => {
-    let isCurrent = true;
+  const loadSeason = useCallback(async (showLoading = false) => {
+    if (showLoading) setState((current) => ({ ...current, status: "loading" }));
 
-    const loadSeason = async () => {
-      try {
-        const season = await getSeasonById(seasonId);
-
-        if (isCurrent) {
-          setSeasonState({ data: season, status: "success" });
-        }
-      } catch (error) {
-        if (isCurrent) {
-          setSeasonState({
-            data: null,
-            status: error.response?.status === 404 ? "notFound" : "error",
-          });
-        }
-      }
-
-      try {
-        const competitions = await getSeasonCompetitions(seasonId);
-
-        if (isCurrent) {
-          setCompetitionsState({ data: competitions, status: "success" });
-        }
-      } catch {
-        if (isCurrent) {
-          setCompetitionsState({ data: [], status: "error" });
-        }
-      }
-    };
-
-    loadSeason();
-
-    return () => {
-      isCurrent = false;
-    };
+    try {
+      const [season, competitions, matchData] = await Promise.all([
+        getSeasonById(seasonId),
+        getSeasonCompetitions(seasonId),
+        getMatches({ season_id: seasonId, limit: 100 }),
+      ]);
+      const matches = matchData.matches || [];
+      const selectedCompetition = competitions.find((competition) => competition.status === "ACTIVE") || competitions[0];
+      const standings = selectedCompetition ? await getCompetitionStandings(selectedCompetition.competition_id) : [];
+      setState({ status: "success", season, competitions, matches, standings });
+    } catch (error) {
+      setState({ status: error.response?.status === 404 ? "notFound" : "error", season: null, competitions: [], matches: [], standings: [] });
+    }
   }, [seasonId]);
 
-  if (seasonState.status === "loading") {
-    return <main className="min-h-screen bg-[#011427] px-5 pb-20 pt-32 text-white sm:px-6"><div className="mx-auto max-w-7xl rounded-xl border border-white/10 bg-white/[0.03] px-6 py-10 text-sm text-white/55">Loading season details…</div></main>;
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadSeason(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadSeason]);
+
+  const dashboard = useMemo(() => {
+    const completed = state.matches.filter((match) => match.status === "COMPLETED");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const upcoming = state.matches.filter((match) => match.status === "SCHEDULED" && new Date(match.match_date) >= today).sort((first, second) => matchMoment(first).localeCompare(matchMoment(second)));
+    const recentResults = [...completed].sort((first, second) => matchMoment(second).localeCompare(matchMoment(first))).slice(0, 4);
+    const teams = new Map();
+    const venues = new Map();
+    state.matches.forEach((match) => {
+      if (match.home_team?.team_id) teams.set(match.home_team.team_id, match.home_team);
+      if (match.away_team?.team_id) teams.set(match.away_team.team_id, match.away_team);
+      if (match.venue?.venue_id) venues.set(match.venue.venue_id, match.venue);
+    });
+
+    return {
+      primaryCompetition: state.competitions.find((competition) => competition.status === "ACTIVE") || state.competitions[0] || null,
+      metrics: { totalMatches: state.matches.length, completedMatches: completed.length, teamCount: teams.size, venueCount: venues.size },
+      nextMatch: upcoming[0] || null,
+      recentResults,
+      teams: [...teams.values()].sort((first, second) => first.name.localeCompare(second.name)),
+      venues: [...venues.values()].sort((first, second) => first.name.localeCompare(second.name)),
+      fixtures: [...state.matches].sort((first, second) => matchMoment(first).localeCompare(matchMoment(second))),
+    };
+  }, [state.competitions, state.matches]);
+
+  if (state.status === "loading") {
+    return <main className="min-h-screen bg-[#f5f9f8] pt-[76px]"><div className="h-[255px] animate-pulse bg-[#dce7e5]" /><div className="mx-auto -mt-4 max-w-[1200px] px-5 sm:px-7 lg:px-8"><div className="h-10 animate-pulse rounded bg-white" /><div className="mt-4 grid gap-3 lg:grid-cols-3"><div className="h-36 animate-pulse rounded bg-white" /><div className="h-36 animate-pulse rounded bg-white" /><div className="h-36 animate-pulse rounded bg-white" /></div></div></main>;
   }
 
-  if (seasonState.status === "notFound" || seasonState.status === "error") {
-    const message = seasonState.status === "notFound" ? "The requested season could not be found." : "Season details are unavailable right now.";
-    return <main className="min-h-screen bg-[#011427] px-5 pb-20 pt-32 text-white sm:px-6"><div className="mx-auto max-w-7xl rounded-xl border border-white/10 bg-white/[0.03] px-6 py-10"><h1 className="text-2xl font-extrabold">Season unavailable</h1><p className="mt-3 text-sm text-white/60">{message}</p><Link to="/seasons" className="mt-6 inline-flex text-sm font-bold text-[#EEC058] hover:text-[#ffad9f]">← BACK TO SEASONS</Link></div></main>;
+  if (state.status === "error" || state.status === "notFound") {
+    const text = state.status === "notFound" ? "The requested season could not be found." : "Season details are unavailable right now.";
+    return <main className="min-h-screen bg-[#f5f9f8] px-5 pb-14 pt-28 sm:px-7"><div className="mx-auto max-w-[800px] rounded-lg border border-[#e0e9e5] bg-white p-6 text-[#26384e]"><h1 className="text-xl font-extrabold">Season unavailable</h1><p className="mt-2 text-sm text-[#6e7e91]">{text}</p><div className="mt-5 flex gap-3"><button type="button" onClick={() => loadSeason(true)} className="rounded bg-[#10965f] px-3 py-2 text-xs font-bold text-white">Try again</button><Link to="/seasons" className="px-3 py-2 text-xs font-bold text-[#10965f]">All seasons</Link></div></div></main>;
   }
 
-  const season = seasonState.data;
+  const { season } = state;
+  const topScorers = season.top_scorers || [];
+  const topAppearances = season.top_appearances || [];
+  const hasPendingFixture = state.matches.some((match) => ["SCHEDULED", "LIVE", "POSTPONED"].includes(match.status));
+  const isCompletedSeason = season.status === "INACTIVE" && dashboard.metrics.completedMatches > 0 && !hasPendingFixture;
+  const champion = isCompletedSeason && state.competitions.length === 1 && state.standings.length
+    ? state.standings[0]
+    : null;
+  const closingMatch = isCompletedSeason
+    ? [...state.matches].filter((match) => match.status === "COMPLETED").sort((first, second) => matchMoment(second).localeCompare(matchMoment(first)))[0] || null
+    : null;
 
-  return (
-    <main className="min-h-screen bg-[#011427] pb-20 pt-32 text-white">
-      <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-        <Link to="/seasons" className="text-xs font-bold tracking-wide text-[#EEC058] transition hover:text-[#ffad9f]">← ALL SEASONS</Link>
-        <section className="mt-6 overflow-hidden rounded-xl border border-[#EEC058]/25 bg-[linear-gradient(135deg,#17334a,#0B1D2F)] p-6 sm:p-10">
-          <div className="flex flex-wrap items-start justify-between gap-5"><div><p className="text-[11px] font-bold tracking-[0.2em] text-[#EEC058]">HUNZA PREMIER LEAGUE SEASON</p><h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">{season.name}</h1><p className="mt-4 text-base font-medium text-white/70">{formatSeasonRange(season.start_date, season.end_date)}</p></div><SeasonStatusBadge status={season.status} /></div>
-          {season.description && <p className="mt-7 max-w-3xl text-sm leading-7 text-white/65">{season.description}</p>}
-        </section>
+  if (isCompletedSeason) {
+    return <CompletedSeasonDetails season={season} metrics={dashboard.metrics} champion={champion} closingMatch={closingMatch} standings={state.standings} competition={dashboard.primaryCompetition} scorers={topScorers} appearances={topAppearances} teams={dashboard.teams} venues={dashboard.venues} fixtures={dashboard.fixtures.filter((match) => match.status === "COMPLETED")} activeSection={activeSection} onChangeSection={setActiveSection} />;
+  }
 
-        <section className="mt-16"><p className="text-[11px] font-bold tracking-[0.18em] text-[#EEC058]">SEASON OVERVIEW</p><h2 className="mt-3 text-2xl font-extrabold">Competitions</h2><span className="mt-3 block h-1 w-16 rounded-full bg-[#FF553D]" />
-          {competitionsState.status === "loading" && <div className="mt-7 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-8 text-sm text-white/55">Loading season competitions…</div>}
-          {competitionsState.status === "error" && <div role="alert" className="mt-7 rounded-xl border border-red-400/25 bg-red-400/10 px-6 py-8 text-sm text-red-100">Competition information is unavailable right now.</div>}
-          {competitionsState.status === "success" && competitionsState.data.length === 0 && <div className="mt-7 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-8 text-sm text-white/55">No competitions have been added to this season yet.</div>}
-          {competitionsState.status === "success" && competitionsState.data.length > 0 && <div className="mt-7 grid gap-5 md:grid-cols-2 lg:grid-cols-3">{competitionsState.data.map((competition) => <article key={competition.competition_id} className="rounded-xl border border-white/10 bg-[#0B1D2F] p-5"><p className="text-[10px] font-bold tracking-[0.14em] text-[#EEC058]">{competition.status}</p><h3 className="mt-3 text-lg font-bold text-white">{competition.name}</h3><p className="mt-2 text-sm text-white/55">{competition.format}</p><p className="mt-4 text-xs text-white/45">{competition.max_teams ? `${competition.max_teams} teams` : "Team count to be confirmed"}</p><Link to={`/competitions/${competition.competition_id}`} className="mt-5 inline-flex text-xs font-bold tracking-wide text-[#EEC058] transition hover:text-[#ffad9f] focus:outline-none focus:ring-2 focus:ring-[#FF553D]/60">VIEW COMPETITION →</Link></article>)}</div>}
-        </section>
-      </div>
-    </main>
-  );
+  const overview = <>
+    <div className="grid gap-3 lg:grid-cols-[.9fr_1.05fr_1fr]"><SeasonProgress metrics={dashboard.metrics} /><SeasonNextMatch match={dashboard.nextMatch} /><SeasonRecentResults matches={dashboard.recentResults} /></div>
+    <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,2.15fr)_minmax(280px,.85fr)]"><SeasonStandings standings={state.standings.slice(0, 8)} competition={dashboard.primaryCompetition} compact /><SeasonTopPlayers players={topScorers} /></div>
+    <div className="mt-3"><SeasonTeams teams={dashboard.teams} seasonName={season.name} /></div>
+  </>;
+  const selectedContent = {
+    overview,
+    standings: <SeasonStandings standings={state.standings} competition={dashboard.primaryCompetition} />,
+    fixtures: dashboard.fixtures.length ? <SeasonFixtures matches={dashboard.fixtures} /> : <div className="rounded border border-[#e0e9e5] bg-white p-4 text-sm text-[#718095]">No fixtures are available for this season.</div>,
+    teams: <SeasonTeams teams={dashboard.teams} seasonName={season.name} compact />,
+    players: <SeasonTopPlayers players={topScorers} />,
+    venues: <SeasonVenues venues={dashboard.venues} />,
+  }[activeSection];
+
+  return <main className="min-h-screen bg-[#f5f9f8] pb-12 pt-[76px] text-[#13223a]"><SeasonDetailsHero season={season} metrics={dashboard.metrics} /><div className="relative z-10 mx-auto -mt-3 w-full max-w-[1200px] px-5 sm:px-7 lg:px-8"><SeasonDetailsNavigation activeSection={activeSection} onChange={setActiveSection} /><div className="mt-4">{selectedContent}</div></div></main>;
 };
 
 export default SeasonDetailsPage;

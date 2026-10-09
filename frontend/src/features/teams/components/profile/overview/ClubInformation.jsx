@@ -11,6 +11,7 @@ import {
   formatTeamGender,
   getTeamLocation,
 } from "../../../utils/teamFormatters";
+import { FEATURES } from "../../../../../constants/features";
 
 /* =========================================================
    HELPERS
@@ -86,6 +87,8 @@ const TeamColors = () => {
 ========================================================= */
 
 const ClubInformation = ({ team }) => {
+  if (!FEATURES.CLUBS_ENABLED) return null;
+
   const location =
     getTeamLocation(team) ||
     team?.city ||

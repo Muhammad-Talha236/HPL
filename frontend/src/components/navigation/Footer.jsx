@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import Logo from "../common/Logo";
+import { FEATURES } from "../../constants/features";
 
 /*
 |--------------------------------------------------------------------------
@@ -27,15 +28,14 @@ const quickLinks = [
 
 const userLinks = [
   { label: "Register Team", path: "/teams" },
-  { label: "Find Clubs", path: "/clubs" },
+  ...(FEATURES.CLUBS_ENABLED ? [{ label: "Find Clubs", path: "/clubs" }] : []),
   { label: "Browse Players", path: "/players" },
   { label: "View Fixtures", path: "/matches" },
   { label: "Latest News", path: "/news" },
   { label: "Team Rankings", path: "/rankings" },
 ];
 
-const clubLinks = [
-  { label: "Club Registration", path: "/clubs" },
+const teamLinks = [
   { label: "Team Registration", path: "/teams" },
   { label: "Competition Entry", path: "/competitions" },
   { label: "Player Management", path: "/players" },
@@ -421,7 +421,7 @@ const Footer = () => {
             >
               Hunza Premier League is a platform to promote
               football across Hunza and Gilgit-Baltistan,
-              uniting clubs, players and communities through
+              uniting teams, players and communities through
               the love of the game.
             </p>
 
@@ -537,7 +537,7 @@ const Footer = () => {
           </div>
 
           {/* ============================================================
-              CLUBS & TEAMS
+              TEAMS
           ============================================================ */}
 
           <div
@@ -552,11 +552,11 @@ const Footer = () => {
             "
           >
             <FooterHeading>
-              For Clubs & Teams
+              For Teams
             </FooterHeading>
 
             <ul className="mt-4 space-y-2">
-              {clubLinks.map((item) => (
+              {teamLinks.map((item) => (
                 <FooterLink
                   key={`${item.path}-${item.label}`}
                   to={item.path}

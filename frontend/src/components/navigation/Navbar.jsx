@@ -4,12 +4,13 @@ import { NavLink, useNavigate } from "react-router-dom";
 import Logo from "../common/Logo";
 import useAuth from "../../hooks/useAuth";
 import useNotifications from "../../hooks/useNotifications";
+import { FEATURES } from "../../constants/features";
 
 const navItems = [
   { label: "Home", path: "/" },
   { label: "Seasons", path: "/seasons" },
-  { label: "Clubs", path: "/clubs" },
-  { label: "Teams", path: "/teams" },
+  ...(FEATURES.CLUBS_ENABLED ? [{ label: "Clubs", path: "/clubs" }] : []),
+  { label: "Teams", path: "/teams4" },
   { label: "Matches", path: "/matches" },
   { label: "Standings", path: "/standings" },
   { label: "News", path: "/news" },
@@ -562,7 +563,7 @@ const Navbar = () => {
 
                         {/* Club Owner */}
 
-                        {user.role ===
+                        {FEATURES.CLUBS_ENABLED && user.role ===
                           "CLUB_OWNER" && (
                           <NavLink
                             to="/club"
@@ -932,7 +933,7 @@ const Navbar = () => {
 
                     {/* Club Owner */}
 
-                    {user.role ===
+                    {FEATURES.CLUBS_ENABLED && user.role ===
                       "CLUB_OWNER" && (
                       <NavLink
                         onClick={closeMobileMenu}

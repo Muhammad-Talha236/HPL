@@ -4,6 +4,7 @@ import useAuth from "../../../hooks/useAuth";
 import { ROLES } from "../../../constants/roles";
 import { USER_STATUS } from "../../../constants/statuses";
 import apiClient from "../../../services/apiClient";
+import { FEATURES } from "../../../constants/features";
 
 const formatDate = (value) => value ? new Intl.DateTimeFormat("en-PK", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
 const initials = (name = "") => name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "U";
@@ -47,7 +48,7 @@ const AdminUserDetailsPage = () => {
   if (state.status === "not-found") return <div className="p-8"><p className="text-sm text-white/55">User account was not found.</p><Link to="/admin/users" className="mt-4 inline-block text-sm font-bold text-[#EEC058]">← BACK TO USERS</Link></div>;
   if (state.status === "error") return <div className="p-8"><p className="text-sm text-red-200">User details could not be loaded.</p><button type="button" onClick={load} className="mt-4 text-sm font-bold text-[#EEC058]">TRY AGAIN</button></div>;
   const links = [
-    ...(account.owned_clubs || []).map((club) => ({ key: `club-${club.club_id}`, type: "Club ownership", id: club.club_id, name: club.name, status: club.status })),
+    ...(FEATURES.CLUBS_ENABLED ? (account.owned_clubs || []).map((club) => ({ key: `club-${club.club_id}`, type: "Club ownership", id: club.club_id, name: club.name, status: club.status })) : []),
     ...(account.owned_teams || []).map((team) => ({ key: `team-${team.team_id}`, type: "Team ownership", id: team.team_id, name: team.name, status: team.status })),
   ];
   return <div className="p-5 sm:p-8">

@@ -1,9 +1,10 @@
 import PortalShell from "./PortalShell";
+import { FEATURES } from "../constants/features";
 
 const navigation = [
   { group: "OVERVIEW", label: "Dashboard", to: "/admin" },
   { group: "MANAGEMENT", label: "Users", to: "/admin/users" },
-  { label: "Clubs", to: "/admin/clubs" },
+  ...(FEATURES.CLUBS_ENABLED ? [{ label: "Clubs", to: "/admin/clubs" }] : []),
   { label: "Teams", to: "/admin/teams" },
   { label: "Players", to: "/admin/players" },
   { group: "COMPETITION", label: "Seasons", to: "/admin/seasons" },

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import heroImage from "../../../assets/hunza-football-hero.png";
 import heroAlternateImage from "../../../assets/hunza-football-hero-alt.png";
 import heroThirdImage from "../../../assets/hero.png";
+import { FEATURES } from "../../../constants/features";
 
 const heroSlides = [
   {
@@ -392,8 +393,7 @@ const HeroSlider = () => {
               sm:mt-16
             "
           >
-            {/* Clubs */}
-            <div className="flex min-w-[150px] items-center gap-3 pr-6">
+            {FEATURES.CLUBS_ENABLED && <div className="flex min-w-[150px] items-center gap-3 pr-6">
               <ClubIcon />
 
               <div>
@@ -405,15 +405,15 @@ const HeroSlider = () => {
                   Clubs
                 </p>
               </div>
-            </div>
+            </div>}
 
-            <div
+            {FEATURES.CLUBS_ENABLED && <div
               className="
                 hidden h-11 w-px
                 bg-white/20
                 sm:block
               "
-            />
+            />}
 
             {/* Tournaments */}
             <div className="flex min-w-[180px] items-center gap-3 px-0 sm:px-7">

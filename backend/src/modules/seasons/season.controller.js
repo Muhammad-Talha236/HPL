@@ -301,6 +301,93 @@ export const getSeasonById = async (
       });
     }
 
+    // Goal events are the authoritative source for season scoring leaders.
+    // Keep this aggregate bounded and expose only public player/team fields.
+    const scorerGroups = await prisma.matchEvent.groupBy({
+      by: ["player_id", "team_id"],
+      where: {
+        event_type: "GOAL",
+        match: {
+          season_id: seasonId,
+          status: "COMPLETED",
+        },
+      },
+      _count: {
+        player_id: true,
+      },
+      orderBy: {
+        _count: {
+          player_id: "desc",
+        },
+      },
+      take: 5,
+    });
+
+    const appearanceGroups = await prisma.matchPlayer.groupBy({
+      by: ["player_id", "team_id"],
+      where: {
+        match: {
+          season_id: seasonId,
+          status: "COMPLETED",
+        },
+      },
+      _count: {
+        player_id: true,
+      },
+      orderBy: {
+        _count: {
+          player_id: "desc",
+        },
+      },
+      take: 5,
+    });
+
+    const playerIds = [...new Set([...scorerGroups, ...appearanceGroups].map((group) => group.player_id))];
+    const teamIds = [...new Set([...scorerGroups, ...appearanceGroups].map((group) => group.team_id))];
+    const [players, teams] = await Promise.all([
+      playerIds.length
+        ? prisma.player.findMany({
+          where: { player_id: { in: playerIds } },
+          select: {
+            player_id: true,
+            name: true,
+            profile_photo: true,
+          },
+        })
+        : [],
+      teamIds.length
+        ? prisma.team.findMany({
+          where: { team_id: { in: teamIds } },
+          select: {
+            team_id: true,
+            name: true,
+          },
+        })
+        : [],
+    ]);
+
+    const playersById = new Map(players.map((player) => [player.player_id, player]));
+    const teamsById = new Map(teams.map((team) => [team.team_id, team]));
+    const toPlayerLeaders = (groups, countKey) => groups
+      .map((group) => {
+        const player = playersById.get(group.player_id);
+        const team = teamsById.get(group.team_id);
+        if (!player || !team) return null;
+
+        return {
+          player_id: player.player_id,
+          name: player.name,
+          profile_photo: player.profile_photo,
+          team_id: team.team_id,
+          team_name: team.name,
+          [countKey]: group._count.player_id,
+        };
+      })
+      .filter(Boolean);
+
+    const topScorers = toPlayerLeaders(scorerGroups, "goals");
+    const topAppearances = toPlayerLeaders(appearanceGroups, "appearances");
+
     // ==================================================
     // 3. RESPONSE
     // ==================================================
@@ -308,7 +395,11 @@ export const getSeasonById = async (
     return res.status(200).json({
       success: true,
 
-      data: season,
+      data: {
+        ...season,
+        top_scorers: topScorers,
+        top_appearances: topAppearances,
+      },
     });
   } catch (error) {
     console.error(
