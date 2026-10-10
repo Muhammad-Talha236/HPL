@@ -1,12 +1,57 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
   --color-hpl-navy: #011427;
   --color-hpl-panel: #07192a;
   --color-hpl-green: #087554;
   --color-hpl-coral: #ff553d;
   --color-hpl-gold: #eec058;
+}
+
+@layer utilities {
+  /* Semantic typography utilities keep public and portal UI on one scale. */
+  .text-hero {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  .text-page-title {
+    font-size: clamp(1.625rem, 3vw, 2rem);
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .text-section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .text-card-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .text-body {
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+
+  .text-nav,
+  .text-button {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .text-meta {
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
 }
 
 @layer base {

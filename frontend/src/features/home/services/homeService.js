@@ -30,3 +30,8 @@ export const getLatestNews = async () => {
   const response = await apiClient.get("/news", { params: { limit: 3 } });
   return response.data?.data || [];
 };
+
+export const getHomeStatistics = async () => {
+  const response = await apiClient.get("/home/statistics");
+  return response.data?.data || null;
+};

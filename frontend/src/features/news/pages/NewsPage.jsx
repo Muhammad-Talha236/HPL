@@ -69,16 +69,16 @@ const NewsPage = () => {
   return (
     <main className="min-h-screen bg-[#f6f9f8] pb-12 pt-[76px] text-[#13223a]">
       <section className="mx-auto max-w-[1200px] px-5 pb-8 pt-3 sm:px-7 lg:px-8">
-        <nav aria-label="Breadcrumb" className="text-[10px] font-semibold text-[#526275]">
+        <nav aria-label="Breadcrumb" className="text-meta font-semibold text-[#526275]">
           <Link to="/" className="transition hover:text-[#087d50]">Home</Link>
           <span className="mx-1.5 text-[#a2adba]">›</span>
           <span>News</span>
         </nav>
 
-        <h1 className="mt-2 text-[22px] font-extrabold tracking-[-.035em] text-[#10203b] sm:text-[24px]">
+        <h1 className="text-page-title mt-2 tracking-[-.035em] text-[#10203b]">
           Latest News
         </h1>
-        <p className="mt-0.5 text-[9px] font-medium text-[#6a798d] sm:text-[10px]">
+        <p className="mt-0.5 text-sm text-[#6a798d]">
           Stay updated with the latest news, announcements and stories from Hunza Premier League.
         </p>
 
@@ -90,18 +90,18 @@ const NewsPage = () => {
 
         {state.status === "error" && (
           <section role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-4 text-[#9c2830]">
-            <p className="text-[11px] font-medium">Unable to load news right now.</p>
-            <button type="button" onClick={retry} className="mt-2 rounded border border-current/25 px-3 py-1.5 text-[9px] font-bold transition hover:bg-black/[.03]">Try again</button>
+            <p className="text-sm font-medium">Unable to load news right now.</p>
+            <button type="button" onClick={retry} className="text-button mt-2 rounded border border-current/25 px-3 py-1.5 transition hover:bg-black/[.03]">Try again</button>
           </section>
         )}
 
         {state.status === "success" && !state.articles.length && (
           <section className="mt-3 rounded-lg border border-[#e0e8e6] bg-white p-5 text-center">
-            <h2 className="text-[13px] font-extrabold text-[#21314a]">No news available</h2>
-            <p className="mt-1 text-[10px] text-[#6d7b8e]">
+            <h2 className="text-card-title text-[#21314a]">No news available</h2>
+            <p className="mt-1 text-sm text-[#6d7b8e]">
               {category ? "There are no published articles in this category yet." : "Published league updates will appear here."}
             </p>
-            {category && <button type="button" onClick={() => updateCategory("")} className="mt-3 text-[10px] font-extrabold text-[#087d50] hover:text-[#055f3d]">View all news</button>}
+            {category && <button type="button" onClick={() => updateCategory("")} className="text-button mt-3 text-[#087d50] hover:text-[#055f3d]">View all news</button>}
           </section>
         )}
 

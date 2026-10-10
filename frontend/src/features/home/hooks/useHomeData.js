@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   getCompetitions,
   getLatestNews,
+  getHomeStatistics,
   getLiveMatches,
   getRecentResults,
   getStandings,
@@ -18,6 +19,7 @@ const getInitialState = () => ({
   competition: { data: null, status: "loading" },
   standings: loadingSection,
   news: loadingSection,
+  statistics: { data: null, status: "loading" },
 });
 
 const toSection = (result, transform = (data) => data) =>
@@ -37,13 +39,14 @@ const useHomeData = () => {
     let isCurrent = true;
 
     const loadHomeData = async () => {
-      const [live, results, upcoming, competitions, news] =
+      const [live, results, upcoming, competitions, news, statistics] =
         await Promise.allSettled([
           getLiveMatches(),
           getRecentResults(),
           getUpcomingMatches(),
           getCompetitions(),
           getLatestNews(),
+          getHomeStatistics(),
         ]);
 
       if (!isCurrent) {
@@ -70,6 +73,9 @@ const useHomeData = () => {
             ? { data: featuredCompetition, status: "success" }
             : { data: null, status: "error" },
         news: toSection(news),
+        statistics: statistics.status === "fulfilled"
+          ? { data: statistics.value, status: "success" }
+          : { data: null, status: "error" },
       }));
 
       if (!featuredCompetition) {

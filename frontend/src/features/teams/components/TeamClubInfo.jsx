@@ -157,7 +157,7 @@ const TeamClubInfo = ({ team }) => {
           text-[#07182d]
         "
       >
-        Club Info
+        Team Information
       </h2>
 
       {/* =========================

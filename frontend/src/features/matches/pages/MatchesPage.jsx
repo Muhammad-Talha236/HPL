@@ -16,14 +16,12 @@ import {
   getTeamsForMatches,
 } from "../services/matchService";
 
-const filterKeys = ["competition", "season", "team", "dateFrom", "dateTo"];
+const filterKeys = ["competition", "season", "team"];
 
 const readFilters = (params) => ({
   competition: params.get("competition") || "",
   season: params.get("season") || "",
   team: params.get("team") || "",
-  dateFrom: params.get("from") || "",
-  dateTo: params.get("to") || "",
 });
 
 const MatchSection = ({ title, count, live = false, action, children }) => (
@@ -31,8 +29,8 @@ const MatchSection = ({ title, count, live = false, action, children }) => (
     <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-2">
         {live ? <Radio size={15} className="text-[#e6424e]" /> : <Trophy size={15} className="text-[#13223a]" />}
-        <h2 className="text-[14px] font-extrabold text-[#15243b]">{title}</h2>
-        <span className={`rounded px-1.5 py-0.5 text-[8px] font-bold ${live ? "bg-red-50 text-[#d63240]" : "bg-[#edf2f1] text-[#657489]"}`}>{count}</span>
+        <h2 className="text-section-title text-[#15243b]">{title}</h2>
+        <span className={`rounded px-1.5 py-0.5 text-meta font-semibold ${live ? "bg-red-50 text-[#d63240]" : "bg-[#edf2f1] text-[#657489]"}`}>{count}</span>
       </div>
       {action}
     </div>
@@ -40,7 +38,7 @@ const MatchSection = ({ title, count, live = false, action, children }) => (
   </section>
 );
 
-const SectionEmpty = ({ children }) => <div className="rounded-lg border border-dashed border-[#dce6e2] bg-white px-4 py-5 text-center text-[10px] text-[#718095]">{children}</div>;
+const SectionEmpty = ({ children }) => <div className="rounded-lg border border-dashed border-[#dce6e2] bg-white px-4 py-5 text-center text-sm text-[#718095]">{children}</div>;
 
 const MatchesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -54,8 +52,6 @@ const MatchesPage = () => {
     ...(filters.competition ? { competition_id: filters.competition } : {}),
     ...(filters.season ? { season_id: filters.season } : {}),
     ...(filters.team ? { team_id: filters.team } : {}),
-    ...(filters.dateFrom ? { date_from: filters.dateFrom } : {}),
-    ...(filters.dateTo ? { date_to: filters.dateTo } : {}),
   }), [filters]);
 
   useEffect(() => {
@@ -109,14 +105,11 @@ const MatchesPage = () => {
     if (nextFilters.competition) next.competition = nextFilters.competition;
     if (nextFilters.season) next.season = nextFilters.season;
     if (nextFilters.team) next.team = nextFilters.team;
-    if (nextFilters.dateFrom) next.from = nextFilters.dateFrom;
-    if (nextFilters.dateTo) next.to = nextFilters.dateTo;
     setSearchParams(next);
   };
 
   const changeFilter = (key, value) => {
     const nextFilters = { ...filters, [key]: value };
-    if (key === "dateFrom" && nextFilters.dateTo && value > nextFilters.dateTo) nextFilters.dateTo = "";
     setMatchesState((current) => ({ ...current, status: "loading" }));
     setFilters(nextFilters);
     updateUrl(nextFilters);
@@ -138,8 +131,8 @@ const MatchesPage = () => {
       <section className="relative h-[132px] overflow-hidden border-b border-[#e4ece9] bg-[#e8f0ef]" style={{ backgroundImage: `linear-gradient(90deg,rgba(247,251,250,.97),rgba(247,251,250,.83) 42%,rgba(232,240,239,.18)),url(${matchesBanner})`, backgroundPosition: "center 31%", backgroundSize: "cover" }}>
         <div className="mx-auto h-full max-w-[1200px] px-5 py-4 sm:px-7 lg:px-8">
           <nav aria-label="Breadcrumb" className="text-[10px] font-semibold text-[#526275]"><Link to="/" className="transition hover:text-[#087d50]">Home</Link><span className="mx-1.5 text-[#a2adba]">›</span><span>Matches</span></nav>
-          <h1 className="mt-2 text-[26px] font-extrabold tracking-[-.04em] text-[#10203b]">Matches</h1>
-          <p className="mt-1 text-[10px] font-medium text-[#5f7085]">Browse live matches, upcoming fixtures and recent results from Hunza Premier League.</p>
+          <h1 className="text-page-title mt-2 tracking-[-.04em] text-[#10203b]">Matches</h1>
+          <p className="mt-1 text-sm text-[#5f7085]">Browse live matches, upcoming fixtures and recent results from Hunza Premier League.</p>
         </div>
       </section>
 

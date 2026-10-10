@@ -11,7 +11,6 @@ import {
   formatTeamGender,
   getTeamLocation,
 } from "../../../utils/teamFormatters";
-import { FEATURES } from "../../../../../constants/features";
 
 /* =========================================================
    HELPERS
@@ -87,8 +86,6 @@ const TeamColors = () => {
 ========================================================= */
 
 const ClubInformation = ({ team }) => {
-  if (!FEATURES.CLUBS_ENABLED) return null;
-
   const location =
     getTeamLocation(team) ||
     team?.city ||
@@ -166,7 +163,7 @@ const ClubInformation = ({ team }) => {
       ================================================= */}
 
       <h2 className="text-[16px] font-extrabold tracking-[-0.02em] text-[#07182d]">
-        Club Information
+        Team Information
       </h2>
 
       <span className="mt-2 block h-[2px] w-7 bg-[#e4a42b]" />

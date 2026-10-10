@@ -10,6 +10,7 @@ import ResultCard from "../components/ResultCard";
 import UpcomingMatches from "../components/UpcomingMatches";
 import HPLMoments from "../components/HPLMoments";
 import FeaturedCompetition from "../components/FeaturedCompetition";
+import AboutHPLSection from "../components/AboutHPLSection";
 const HomePage = () => {
   const { isAuthenticated } = useAuth();
   const sections = useHomeData();
@@ -54,7 +55,12 @@ sections.liveMatch.data ? (
   </section>
 ) : null}
       <main className="bg-white text-[#101828]">
-      
+        <AboutHPLSection
+          statistics={sections.statistics}
+          hasLiveMatch={sections.liveMatch.status === "loading" || Boolean(sections.liveMatch.data)}
+        />
+
+        <HPLMoments />
 
         <section
   id="upcoming-matches"
@@ -63,11 +69,11 @@ sections.liveMatch.data ? (
   bg-[#F8FAF9]
   px-5
   pb-10
-  pt-[125px]
+  pt-10
   text-[#101828]
   sm:px-6
   sm:pb-12
-  sm:pt-[135px]
+  sm:pt-12
   lg:px-8
 "
 >
@@ -203,7 +209,6 @@ sections.liveMatch.data ? (
   </div>
 </section>
 
-<HPLMoments />
        <section
   id="latest-news"
   className="

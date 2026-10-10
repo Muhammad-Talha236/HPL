@@ -4,7 +4,6 @@ import TeamKit from "./overview/TeamKit";
 import KeyPlayers from "./overview/KeyPlayers";
 import MatchListCard from "./overview/MatchListCard";
 import Achievements from "./overview/Achievements";
-import { FEATURES } from "../../../../constants/features";
 
 const TeamOverview = ({
   team,
@@ -15,8 +14,6 @@ const TeamOverview = ({
   onOpenSquad,
   onOpenMatches,
 }) => {
-  const showClubInfo = FEATURES.CLUBS_ENABLED;
-
   return (
     <section
       className="
@@ -42,12 +39,12 @@ const TeamOverview = ({
           grid
           items-start
           gap-4
-          ${showClubInfo ? "xl:grid-cols-[290px_minmax(0,1fr)_260px]" : "xl:grid-cols-[minmax(0,1fr)_260px]"}
+          xl:grid-cols-[290px_minmax(0,1fr)_260px]
         `}
       >
         {/* LEFT COLUMN */}
 
-        {showClubInfo && <div className="min-w-0"><ClubInformation team={team} /></div>}
+        <div className="min-w-0"><ClubInformation team={team} /></div>
 
         {/* CENTER COLUMN */}
 

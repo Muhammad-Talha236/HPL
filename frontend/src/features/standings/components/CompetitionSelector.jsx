@@ -1,8 +1,8 @@
 import { CalendarDays, Trophy, UsersRound } from "lucide-react";
 
 const genderLabel = (value) => value === "MEN" ? "Men" : value === "WOMEN" ? "Women" : value;
-const Field = ({ icon: Icon, label, children }) => <label className="flex min-w-0 items-center gap-2.5"><span className="grid h-7 w-7 shrink-0 place-items-center text-[#0f2039]"><Icon size={16} strokeWidth={2} /></span><span className="min-w-0 flex-1"><span className="mb-1 block text-[9px] font-bold text-[#26364c]">{label}</span>{children}</span></label>;
-const selectClass = "h-8 w-full rounded-md border border-[#d9e4e0] bg-white px-2 text-[9px] font-semibold text-[#182840] outline-none transition focus:border-[#0b6d4b] focus:ring-2 focus:ring-[#0b6d4b]/15 disabled:cursor-not-allowed disabled:bg-[#f7f9f8]";
+const Field = ({ icon: Icon, label, children }) => <label className="flex min-w-0 items-center gap-2.5"><span className="grid h-9 w-9 shrink-0 place-items-center text-[#0f2039]"><Icon size={16} strokeWidth={2} /></span><span className="min-w-0 flex-1"><span className="mb-1 block text-sm font-semibold text-[#26364c]">{label}</span>{children}</span></label>;
+const selectClass = "h-9 w-full rounded-md border border-[#d9e4e0] bg-white px-2.5 text-sm font-medium text-[#182840] outline-none transition focus:border-[#0b6d4b] focus:ring-2 focus:ring-[#0b6d4b]/15 disabled:cursor-not-allowed disabled:bg-[#f7f9f8]";
 
 const CompetitionSelector = ({ competitions, selectedId, seasonId, gender, onChange, onSeasonChange, onGenderChange, loading }) => {
   const seasons = [...new Map(competitions.filter((competition) => competition.season?.name).map((competition) => [competition.season_id, competition.season.name])).entries()];

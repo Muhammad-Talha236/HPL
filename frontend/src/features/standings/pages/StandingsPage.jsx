@@ -38,11 +38,11 @@ const shortDate = (value) => {
 };
 
 const InfoRow = ({ icon: Icon, label, value }) => (
-  <div className="flex items-start gap-2 text-[10px]">
-    <Icon size={13} className="mt-0.5 shrink-0 text-[#0b6548]" />
+  <div className="flex items-start gap-2 text-sm">
+    <Icon size={15} className="mt-0.5 shrink-0 text-[#0b6548]" />
     <div>
-      <span className="block text-[#7d899a]">{label}</span>
-      <strong className="mt-0.5 block text-[#27364c]">{value || "-"}</strong>
+      <span className="block text-meta text-[#7d899a]">{label}</span>
+      <strong className="mt-0.5 block font-semibold text-[#27364c]">{value || "-"}</strong>
     </div>
   </div>
 );
@@ -212,16 +212,16 @@ const StandingsPage = () => {
         }}
       >
         <div className="mx-auto h-full max-w-[1200px] px-5 py-4 sm:px-7 lg:px-8">
-          <nav aria-label="Breadcrumb" className="text-[10px] font-semibold text-[#4e5d70]">
+          <nav aria-label="Breadcrumb" className="text-meta font-semibold text-[#4e5d70]">
             <Link to="/" className="transition hover:text-[#0b6d4b]">Home</Link>
             <span className="mx-1.5 text-[#9ba7b4]">›</span>
             <span>Standings</span>
           </nav>
           <div className="mt-2">
-            <h1 className="text-[27px] font-extrabold tracking-[-.04em] text-[#101d36] sm:text-[31px]">
+            <h1 className="text-page-title tracking-[-.04em] text-[#101d36]">
               Team Standings
             </h1>
-            <p className="mt-1 text-[11px] font-medium text-[#53647b]">
+            <p className="mt-1 text-sm text-[#53647b]">
               View the latest standings of all teams across seasons and competitions.
             </p>
           </div>
@@ -273,16 +273,16 @@ const StandingsPage = () => {
                 <div className="flex flex-wrap items-center justify-between gap-2 px-0.5 pb-3">
                   <div className="flex items-center gap-2">
                     <Trophy size={15} className="text-[#12213a]" />
-                    <h2 className="text-[14px] font-extrabold tracking-[-.02em] text-[#14223a]">
+                    <h2 className="text-card-title tracking-[-.02em] text-[#14223a]">
                       {selectedCompetition.name}
                     </h2>
-                    <span className="rounded bg-[#e9edf0] px-2 py-0.5 text-[8px] font-bold text-[#4f5e70]">
+                    <span className="rounded bg-[#e9edf0] px-2 py-0.5 text-meta font-semibold text-[#4f5e70]">
                       {genderLabel(selectedCompetition.gender)}
                     </span>
                   </div>
                   {updatedAt && (
-                    <span className="inline-flex items-center gap-1 text-[8px] font-medium text-[#7b889a]">
-                      <Clock3 size={10} /> Last Updated: {updatedAt}
+                    <span className="inline-flex items-center gap-1 text-meta font-medium text-[#7b889a]">
+                      <Clock3 size={12} /> Last Updated: {updatedAt}
                     </span>
                   )}
                 </div>
@@ -310,7 +310,7 @@ const StandingsPage = () => {
               <section className="rounded-lg border border-[#e4ebe8] bg-white p-4 shadow-[0_4px_16px_rgba(15,23,42,.025)]">
                 <div className="flex items-center gap-2">
                   <Trophy size={14} className="text-[#16243c]" />
-                  <h2 className="text-[12px] font-extrabold text-[#17243b]">Competition Info</h2>
+                  <h2 className="text-card-title text-[#17243b]">Competition Info</h2>
                 </div>
                 <div
                   role="img"
@@ -319,19 +319,19 @@ const StandingsPage = () => {
                 >
                   <Trophy size={34} strokeWidth={1.6} />
                 </div>
-                <h3 className="mt-1 text-center text-[13px] font-extrabold text-[#16243c]">
+                <h3 className="mt-1 text-center text-lg font-bold text-[#16243c]">
                   {selectedCompetition.name}
                 </h3>
                 <div className="mt-1 flex justify-center gap-1">
-                  <span className="rounded bg-[#edf1f3] px-1.5 py-0.5 text-[8px] font-bold text-[#5c697a]">
+                  <span className="rounded bg-[#edf1f3] px-1.5 py-0.5 text-meta font-semibold text-[#5c697a]">
                     {selectedCompetition.season?.name || "-"}
                   </span>
-                  <span className="rounded bg-[#edf1f3] px-1.5 py-0.5 text-[8px] font-bold text-[#5c697a]">
+                  <span className="rounded bg-[#edf1f3] px-1.5 py-0.5 text-meta font-semibold text-[#5c697a]">
                     {genderLabel(selectedCompetition.gender)}
                   </span>
                 </div>
                 {selectedCompetition.description && (
-                  <p className="mt-3 text-center text-[9px] leading-[14px] text-[#637287]">
+                  <p className="mt-3 text-center text-sm leading-5 text-[#637287]">
                     {selectedCompetition.description}
                   </p>
                 )}

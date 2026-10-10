@@ -7,6 +7,7 @@ import PublicLayout from "./layouts/PublicLayout";
 import GuestRoute from "./routes/GuestRoute";
 
 import HomePage from "./features/home/pages/HomePage";
+import AboutHPLPage from "./features/home/pages/AboutHPLPage";
 
 import SeasonDetailsPage from "./features/seasons/pages/SeasonDetailsPage";
 
@@ -414,6 +415,8 @@ function App() {
 
         <Route element={<PublicLayout />}>
           <Route path="/" element={<HomePage />} />
+
+          <Route path="/about" element={<AboutHPLPage />} />
 
           <Route path="/seasons" element={<SeasonsPage />} />
 

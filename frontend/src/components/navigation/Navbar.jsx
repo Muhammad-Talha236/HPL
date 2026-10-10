@@ -10,7 +10,7 @@ const navItems = [
   { label: "Home", path: "/" },
   { label: "Seasons", path: "/seasons" },
   ...(FEATURES.CLUBS_ENABLED ? [{ label: "Clubs", path: "/clubs" }] : []),
-  { label: "Teams", path: "/teams4" },
+  { label: "Teams", path: "/teams" },
   { label: "Matches", path: "/matches" },
   { label: "Standings", path: "/standings" },
   { label: "News", path: "/news" },
@@ -207,7 +207,7 @@ const Navbar = () => {
     [
       "relative flex h-full items-center",
       "whitespace-nowrap px-1",
-      "text-[15px] font-semibold",
+      "text-nav",
       "transition-colors duration-200",
 
       "after:absolute",
