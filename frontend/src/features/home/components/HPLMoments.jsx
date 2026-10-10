@@ -27,6 +27,7 @@ const ArrowRight = () => (
 
 const HPLMoments = () => {
   const [galleryMoments, setGalleryMoments] = useState(fallbackMoments);
+  const [repeatCount, setRepeatCount] = useState(9);
   const viewportRef = useRef(null);
   const trackRef = useRef(null);
   const progressTrackRef = useRef(null);
@@ -43,7 +44,15 @@ const HPLMoments = () => {
   const isVisibleRef = useRef(false);
   const reducedMotionRef = useRef(false);
   const dragRef = useRef(null);
-  const repeatedMoments = useMemo(() => [...galleryMoments, ...galleryMoments, ...galleryMoments], [galleryMoments]);
+  const repeatCountRef = useRef(repeatCount);
+  const repeatedMoments = useMemo(
+    () => Array.from({ length: repeatCount }, () => galleryMoments).flat(),
+    [galleryMoments, repeatCount],
+  );
+
+  useEffect(() => {
+    repeatCountRef.current = repeatCount;
+  }, [repeatCount]);
 
   useEffect(() => {
     let mounted = true;
@@ -80,11 +89,30 @@ const HPLMoments = () => {
     };
   }, [galleryMoments.length]);
 
+  const ensureTrackCoverage = useCallback((metrics) => {
+    if (!metrics?.loopWidth) return repeatCountRef.current;
+
+    // Keep at least one complete sequence on both sides of the visible
+    // sequence. This is essential when a gallery contains only one or two
+    // images, where a fixed three-copy track is narrower than the viewport.
+    const desiredCount = Math.max(7, Math.ceil(metrics.viewportWidth / metrics.loopWidth) * 2 + 5);
+    if (desiredCount !== repeatCountRef.current) {
+      repeatCountRef.current = desiredCount;
+      setRepeatCount(desiredCount);
+    }
+    return desiredCount;
+  }, []);
+
   const normaliseOffset = useCallback((loopWidth) => {
     if (!loopWidth) return;
 
-    while (offsetRef.current >= 0) offsetRef.current -= loopWidth;
-    while (offsetRef.current < -loopWidth * 2) offsetRef.current += loopWidth;
+    // The viewport always follows the middle copy. Crossing either sequence
+    // boundary swaps it for an identical neighbour, making the reset invisible.
+    const anchorCopy = Math.floor(repeatCountRef.current / 2);
+    const upperBoundary = -anchorCopy * loopWidth;
+    const lowerBoundary = -(anchorCopy + 1) * loopWidth;
+    while (offsetRef.current >= upperBoundary) offsetRef.current -= loopWidth;
+    while (offsetRef.current < lowerBoundary) offsetRef.current += loopWidth;
   }, []);
 
   const applyLayout = useCallback(() => {
@@ -126,10 +154,13 @@ const HPLMoments = () => {
     if (!metrics) return;
 
     loopWidthRef.current = metrics.loopWidth;
-    offsetRef.current = -metrics.loopWidth + metrics.viewportWidth * 0.1;
+    const copies = ensureTrackCoverage(metrics);
+    const anchorCopy = Math.floor(copies / 2);
+    // Preserve the existing partial-card framing without starting at a seam.
+    offsetRef.current = -anchorCopy * metrics.loopWidth - Math.min(metrics.viewportWidth * 0.1, metrics.loopWidth * 0.5);
     normaliseOffset(metrics.loopWidth);
     applyLayout();
-  }, [applyLayout, getMetrics, normaliseOffset]);
+  }, [applyLayout, ensureTrackCoverage, getMetrics, normaliseOffset]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -291,7 +322,7 @@ const HPLMoments = () => {
                 ref={(element) => {
                   cardRefs.current[index] = element;
                 }}
-                aria-hidden={index < galleryMoments.length || index >= galleryMoments.length * 2}
+                aria-hidden={Math.floor(index / galleryMoments.length) !== Math.floor(repeatCount / 2)}
                 className="group h-[170px] w-[220px] flex-none overflow-hidden rounded-xl bg-[#E7EFEB] shadow-[0_13px_27px_rgba(9,39,29,0.13)] will-change-transform sm:h-[195px] sm:w-[260px] lg:h-[220px] lg:w-[290px]"
               >
                 <img

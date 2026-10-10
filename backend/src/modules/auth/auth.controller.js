@@ -211,6 +211,8 @@ export const getMe = async (req, res) => {
         name: true,
         email: true,
         phone: true,
+        location: true,
+        date_of_birth: true,
         role: true,
         status: true,
         profile_image: true,
@@ -246,6 +248,8 @@ const accountSelect = {
   name: true,
   email: true,
   phone: true,
+  location: true,
+  date_of_birth: true,
   role: true,
   status: true,
   profile_image: true,
@@ -257,16 +261,12 @@ const accountSelect = {
 
 export const updateMyProfile = async (req, res) => {
   try {
-    const { name, phone, profile_image } = req.body;
+    const { name, phone, location, date_of_birth } = req.body;
     const updateData = {
       name: name.trim(),
       phone: phone === undefined ? undefined : phone === null ? null : phone.trim(),
-      profile_image:
-        profile_image === undefined
-          ? undefined
-          : profile_image === null
-            ? null
-            : profile_image.trim(),
+      location: location === undefined ? undefined : location === null ? null : location.trim(),
+      date_of_birth: date_of_birth === undefined ? undefined : date_of_birth === null ? null : new Date(`${date_of_birth}T00:00:00.000Z`),
     };
 
     const user = await prisma.user.update({

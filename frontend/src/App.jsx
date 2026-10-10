@@ -383,10 +383,6 @@ const AccountPage = lazy(() =>
   import("./features/account/pages/AccountPage")
 );
 
-const ProfileEditPage = lazy(() =>
-  import("./features/account/pages/ProfileEditPage")
-);
-
 const PasswordChangePage = lazy(() =>
   import("./features/account/pages/PasswordChangePage")
 );
@@ -546,10 +542,7 @@ function App() {
               element={<AccountPage />}
             />
 
-            <Route
-              path="/account/profile"
-              element={<ProfileEditPage />}
-            />
+            <Route path="/account/profile" element={<Navigate to="/account" replace />} />
 
             <Route
               path="/account/password"

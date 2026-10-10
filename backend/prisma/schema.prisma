@@ -13,6 +13,8 @@ model User {
   email                   String                        @unique
   password_hash           String
   phone                   String?
+  location                String?
+  date_of_birth           DateTime?                      @db.Date
   role                    String
   status                  String
   profile_image           String?

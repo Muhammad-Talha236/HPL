@@ -101,15 +101,9 @@ export const updateMyProfileValidation = [
       "Phone number must be an 11-digit mobile number starting with 03",
     ),
 
-  body("profile_image")
-    .optional({ nullable: true })
-    .isString()
-    .withMessage("Profile image must be a URL")
-    .trim()
-    .isLength({ max: 2048 })
-    .withMessage("Profile image URL must be 2048 characters or fewer")
-    .isURL({ protocols: ["http", "https"], require_protocol: true })
-    .withMessage("Profile image must be a valid HTTP or HTTPS URL"),
+  body("location").optional({ nullable: true }).isString().withMessage("Location must be a string").trim().isLength({ max: 120 }).withMessage("Location must be 120 characters or fewer"),
+
+  body("date_of_birth").optional({ nullable: true }).isISO8601({ strict: true }).withMessage("Date of birth must be a valid date"),
 
   checkExact([], {
     message: "Unexpected fields are not allowed",

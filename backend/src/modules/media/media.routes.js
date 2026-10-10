@@ -4,8 +4,8 @@ import { authorize } from "../../middleware/auth/role.middleware.js";
 import { mediaUploadRateLimiter } from "../../middleware/auth/rateLimit.middleware.js";
 import { ROLES } from "../../constants/roles.js";
 import {
-  addHomeGalleryItem, attachMedia, createSignature, deleteMedia, detachMedia, getMedia, getPublicHomeGallery,
-  getPublicEntityMedia, listEntityMedia, reorderEntityMedia, updateAttachment, listHomeGallery, listMedia, registerMedia, removeHomeGalleryItem, updateHomeGalleryItem, updateMedia,
+  addHomeGalleryItem, attachMedia, createOwnProfileSignature, createSignature, deleteMedia, detachMedia, getMedia, getPublicHomeGallery,
+  getPublicEntityMedia, listEntityMedia, reorderEntityMedia, updateAttachment, listHomeGallery, listMedia, registerMedia, registerOwnProfileMedia, removeHomeGalleryItem, updateHomeGalleryItem, updateMedia,
 } from "./media.controller.js";
 
 const router = express.Router();
@@ -14,7 +14,11 @@ const router = express.Router();
 router.get("/gallery/home", getPublicHomeGallery);
 router.get("/entity/:entity_type/:entity_id", getPublicEntityMedia);
 
-router.use(authenticate, authorize(ROLES.SUPER_ADMIN));
+router.use(authenticate);
+router.post("/profile/upload-signature", authorize(ROLES.USER), mediaUploadRateLimiter, createOwnProfileSignature);
+router.post("/profile", authorize(ROLES.USER), mediaUploadRateLimiter, registerOwnProfileMedia);
+
+router.use(authorize(ROLES.SUPER_ADMIN));
 router.get("/entity/:entity_type/:entity_id/manage", listEntityMedia);
 router.patch("/attachments/:attachment_id", updateAttachment);
 router.put("/entity/:entity_type/:entity_id/order", reorderEntityMedia);

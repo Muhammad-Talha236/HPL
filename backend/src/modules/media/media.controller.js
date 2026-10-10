@@ -40,8 +40,16 @@ export const createSignature = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// This route deliberately does not accept a client-selected category.  A
+// normal user can create an upload intent only for their own profile image.
+export const createOwnProfileSignature = async (req, res, next) => {
+  req.body = { category: "profiles", resource_type: "image" };
+  return createSignature(req, res, next);
+};
+
 export const registerMedia = async (req, res, next) => {
   try {
+    const isOwnProfileMedia = req.isOwnProfileMedia === true;
     const intentId = String(req.body?.upload_intent_id || "");
     const publicId = String(req.body?.public_id || "");
     const assetId = String(req.body?.asset_id || "");
@@ -54,6 +62,9 @@ export const registerMedia = async (req, res, next) => {
     if (!intent || intent.user_id !== req.user.user_id || intent.consumed_at || intent.expires_at <= new Date()) {
       return res.status(400).json({ success: false, message: "This upload authorization is invalid or has expired" });
     }
+    if (isOwnProfileMedia && (intent.category !== "profiles" || intent.resource_type !== "image")) {
+      return res.status(400).json({ success: false, message: "This upload authorization cannot be used for a profile image" });
+    }
 
     const existing = await prisma.media.findUnique({ where: { cloudinary_public_id: publicId }, select: { media_id: true } });
     if (existing) return res.status(409).json({ success: false, message: "This Cloudinary asset is already registered" });
@@ -65,7 +76,15 @@ export const registerMedia = async (req, res, next) => {
     const media = await prisma.$transaction(async (tx) => {
       const consumed = await tx.mediaUploadIntent.updateMany({ where: { upload_intent_id: intentId, consumed_at: null }, data: { consumed_at: new Date() } });
       if (consumed.count !== 1) throw new Error("This upload authorization has already been used");
-      return tx.media.create({ data: toMediaRecord({ asset: verified.asset, format: verified.format, intent, metadata: req.body || {}, userId: req.user.user_id }), select: mediaSelect });
+      const media = await tx.media.create({ data: toMediaRecord({ asset: verified.asset, format: verified.format, intent, metadata: req.body || {}, userId: req.user.user_id }), select: mediaSelect });
+      if (isOwnProfileMedia) {
+        // Replacing a profile image only removes the old attachment.  The old
+        // Cloudinary asset remains managed and is never deleted implicitly.
+        await tx.mediaAttachment.deleteMany({ where: { entity_type: "USER", entity_id: req.user.user_id, role: "PROFILE" } });
+        await tx.mediaAttachment.create({ data: { media_id: media.media_id, entity_type: "USER", entity_id: req.user.user_id, role: "PROFILE" } });
+        await tx.user.update({ where: { user_id: req.user.user_id }, data: { profile_image: media.secure_url } });
+      }
+      return media;
     });
 
     await createAuditLog({ actor_user_id: req.user.user_id, action: "MEDIA_REGISTERED", entity_type: "MEDIA", entity_id: media.media_id, details: { resource_type: media.resource_type, folder: media.folder } });
@@ -74,6 +93,11 @@ export const registerMedia = async (req, res, next) => {
     if (error.message === "This upload authorization has already been used") return res.status(409).json({ success: false, message: error.message });
     next(error);
   }
+};
+
+export const registerOwnProfileMedia = async (req, res, next) => {
+  req.isOwnProfileMedia = true;
+  return registerMedia(req, res, next);
 };
 
 export const listMedia = async (req, res, next) => {

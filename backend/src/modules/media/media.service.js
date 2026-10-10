@@ -201,6 +201,7 @@ export const attachDirectMediaUrl = async (transaction, { entityType, entityId, 
   if (entityType === "PLAYER") await transaction.player.update({ where: { player_id: entityId }, data: { profile_photo: secureUrl } });
   if (entityType === "TEAM") await transaction.team.update({ where: { team_id: entityId }, data: { logo: secureUrl } });
   if (entityType === "NEWS") await transaction.news.update({ where: { news_id: entityId }, data: { featured_image: secureUrl } });
+  if (entityType === "USER") await transaction.user.update({ where: { user_id: entityId }, data: { profile_image: secureUrl } });
 };
 
 export const clearDirectMediaUrl = async (transaction, { entityType, entityId, role, secureUrl }) => {
@@ -208,4 +209,5 @@ export const clearDirectMediaUrl = async (transaction, { entityType, entityId, r
   if (entityType === "PLAYER") await transaction.player.updateMany({ where: { player_id: entityId, profile_photo: secureUrl }, data: { profile_photo: null } });
   if (entityType === "TEAM") await transaction.team.updateMany({ where: { team_id: entityId, logo: secureUrl }, data: { logo: null } });
   if (entityType === "NEWS") await transaction.news.updateMany({ where: { news_id: entityId, featured_image: secureUrl }, data: { featured_image: null } });
+  if (entityType === "USER") await transaction.user.updateMany({ where: { user_id: entityId, profile_image: secureUrl }, data: { profile_image: null } });
 };

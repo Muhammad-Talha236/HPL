@@ -17,11 +17,122 @@ const userSelect = {
   name: true,
   email: true,
   phone: true,
+  location: true,
+  date_of_birth: true,
   role: true,
   status: true,
   profile_image: true,
   created_at: true,
   updated_at: true,
+};
+
+const selfProfileSelect = {
+  ...userSelect,
+  player: { select: { player_id: true } },
+};
+
+export const getMyProfile = async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { user_id: req.user.user_id },
+      select: selfProfileSelect,
+    });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    return res.json({ success: true, data: user });
+  } catch (error) { next(error); }
+};
+
+export const updateMyProfile = async (req, res, next) => {
+  try {
+    const updateData = {
+      name: req.body.name.trim(),
+      phone: req.body.phone === null ? null : req.body.phone?.trim(),
+      location: req.body.location === null ? null : req.body.location?.trim(),
+      date_of_birth: req.body.date_of_birth === undefined ? undefined : req.body.date_of_birth === null ? null : new Date(`${req.body.date_of_birth}T00:00:00.000Z`),
+    };
+    const user = await prisma.user.update({
+      where: { user_id: req.user.user_id },
+      data: updateData,
+      select: selfProfileSelect,
+    });
+    await createAuditLog({
+      actor_user_id: req.user.user_id,
+      action: AUDIT_ACTIONS.USER_PROFILE_UPDATED,
+      entity_type: "USER",
+      entity_id: req.user.user_id,
+      details: { fields: Object.keys(updateData).filter((field) => updateData[field] !== undefined) },
+    });
+    return res.json({ success: true, message: "Profile updated successfully", data: user });
+  } catch (error) { next(error); }
+};
+
+export const getMyCompetitions = async (req, res, next) => {
+  try {
+    const [registrations, player] = await Promise.all([
+      prisma.competitionRegistration.findMany({
+        where: { registered_by: req.user.user_id },
+        select: {
+          registration_id: true, registration_status: true,
+          team: { select: { team_id: true, name: true } },
+          competition: { select: { competition_id: true, name: true, status: true, season: { select: { season_id: true, name: true } } } },
+        },
+        orderBy: { created_at: "desc" },
+      }),
+      prisma.player.findUnique({
+        where: { user_id: req.user.user_id },
+        select: {
+          competition_players: {
+            select: {
+              status: true,
+              registration: { select: { team: { select: { team_id: true, name: true } } } },
+              competition: { select: { competition_id: true, name: true, status: true, season: { select: { season_id: true, name: true } } } },
+            },
+            orderBy: { created_at: "desc" },
+          },
+        },
+      }),
+    ]);
+    const items = new Map();
+    registrations.forEach((registration) => items.set(registration.competition.competition_id, {
+      ...registration.competition, team: registration.team, participation_role: "Registration owner", participation_status: registration.registration_status,
+    }));
+    player?.competition_players.forEach((entry) => {
+      if (!items.has(entry.competition.competition_id)) items.set(entry.competition.competition_id, {
+        ...entry.competition, team: entry.registration.team, participation_role: "Registered player", participation_status: entry.status,
+      });
+    });
+    return res.json({ success: true, data: [...items.values()] });
+  } catch (error) { next(error); }
+};
+
+export const getMyMatches = async (req, res, next) => {
+  try {
+    const [registrations, player] = await Promise.all([
+      prisma.competitionRegistration.findMany({ where: { registered_by: req.user.user_id }, select: { team_id: true } }),
+      prisma.player.findUnique({
+        where: { user_id: req.user.user_id },
+        select: { player_id: true, team_players: { where: { status: "ACTIVE" }, select: { team_id: true } } },
+      }),
+    ]);
+    const teamIds = [...new Set([...registrations.map((item) => item.team_id), ...(player?.team_players.map((item) => item.team_id) || [])])];
+    const related = [];
+    if (teamIds.length) related.push({ home_team_id: { in: teamIds } }, { away_team_id: { in: teamIds } });
+    if (player) related.push({ players: { some: { player_id: player.player_id } } });
+    if (!related.length) return res.json({ success: true, data: [] });
+    const data = await prisma.match.findMany({
+      where: { OR: related },
+      select: {
+        match_id: true, match_date: true, start_time: true, status: true, home_score: true, away_score: true,
+        home_team: { select: { team_id: true, name: true, logo: true } },
+        away_team: { select: { team_id: true, name: true, logo: true } },
+        competition: { select: { competition_id: true, name: true } },
+        venue: { select: { venue_id: true, name: true } },
+      },
+      orderBy: [{ match_date: "desc" }, { start_time: "desc" }],
+      take: 60,
+    });
+    return res.json({ success: true, data });
+  } catch (error) { next(error); }
 };
 
 // This projection is intentionally separate from authentication projections.

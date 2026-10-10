@@ -7,6 +7,7 @@ export const MEDIA_CATEGORIES = {
   "match-highlights": { folder: "hpl/matches/highlights", resourceTypes: ["video"] },
   seasons: { folder: "hpl/seasons", resourceTypes: ["image", "video"] },
   competitions: { folder: "hpl/competitions", resourceTypes: ["image"] },
+  profiles: { folder: "hpl/profiles", resourceTypes: ["image"] },
   gallery: { folder: "hpl/gallery", resourceTypes: ["image"] },
   videos: { folder: "hpl/videos", resourceTypes: ["video"] },
   temporary: { folder: "hpl/temporary", resourceTypes: ["image", "video"] },
@@ -26,10 +27,12 @@ export const ENTITY_TYPES = new Set([
   "MATCH",
   "SEASON",
   "COMPETITION",
+  "USER",
 ]);
 
 export const DIRECT_MEDIA_ROLES = {
   PLAYER: "PROFILE",
   TEAM: "LOGO",
   NEWS: "COVER",
+  USER: "PROFILE",
 };

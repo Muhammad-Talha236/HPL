@@ -2,9 +2,13 @@ import express from "express";
 
 import {
   getUsers,
+  getMyCompetitions,
+  getMyMatches,
+  getMyProfile,
   getUserById,
   updateUser,
   updateUserRole,
+  updateMyProfile,
   deactivateUser,
   activateUser,
   blockUser,
@@ -25,6 +29,7 @@ import {
 import {
   userIdValidation,
   updateUserValidation,
+  updateMyProfileValidation,
   updateUserRoleValidation,
   userStatusValidation,
 } from "./user.validation.js";
@@ -34,6 +39,11 @@ import {
 } from "../../middleware/auth/validation.middleware.js";
 
 const router = express.Router();
+
+router.get("/me", authenticate, authorize(ROLES.USER), getMyProfile);
+router.patch("/me", authenticate, authorize(ROLES.USER), updateMyProfileValidation, handleValidationErrors, updateMyProfile);
+router.get("/me/competitions", authenticate, authorize(ROLES.USER), getMyCompetitions);
+router.get("/me/matches", authenticate, authorize(ROLES.USER), getMyMatches);
 
 /*
   GET ALL USERS

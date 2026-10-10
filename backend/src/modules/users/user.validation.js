@@ -134,6 +134,14 @@ export const updateUserValidation = [
   }),
 ];
 
+export const updateMyProfileValidation = [
+  body("name").isString().withMessage("Name must be a string").bail().trim().isLength({ min: 2, max: 100 }).withMessage("Name must be between 2 and 100 characters").matches(/^[A-Za-z][A-Za-z\s'-]*$/).withMessage("Name must contain only letters, spaces, apostrophes, or hyphens"),
+  body("phone").optional({ nullable: true }).isString().withMessage("Phone number must be a string").bail().trim().matches(/^\+?[0-9][0-9\s-]{6,24}$/).withMessage("Enter a valid phone number"),
+  body("location").optional({ nullable: true }).isString().withMessage("Location must be a string").bail().trim().isLength({ max: 120 }).withMessage("Location must be 120 characters or fewer"),
+  body("date_of_birth").optional({ nullable: true }).isISO8601({ strict: true }).withMessage("Date of birth must be a valid date").bail().custom((value) => new Date(`${value}T00:00:00.000Z`) < new Date()).withMessage("Date of birth must be in the past"),
+  checkExact([], { message: "Unexpected fields are not allowed" }),
+];
+
 /*
   UPDATE USER ROLE
 
