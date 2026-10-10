@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 // Protect login from brute-force attacks
 export const loginRateLimiter = rateLimit({
@@ -32,6 +32,18 @@ export const apiRateLimiter = rateLimit({
     message:
       "Too many requests. Please try again later.",
   },
+});
+
+// Signed uploads are intentionally much tighter than ordinary API traffic.
+// A signature is short-lived, but limiting their issuance also protects the
+// Cloudinary account from automated upload abuse.
+export const mediaUploadRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: (req) => String(req.user?.user_id ?? ipKeyGenerator(req.ip)),
+  message: { success: false, message: "Too many media upload attempts. Please try again later." },
 });
 
 export const playerInvitationAcceptanceRateLimiter = rateLimit({

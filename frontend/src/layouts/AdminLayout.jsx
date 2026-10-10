@@ -14,6 +14,7 @@ const navigation = [
   { group: "OFFICIALS", label: "Referees", to: "/admin/referees" },
   { group: "OPERATIONS", label: "Registrations", to: "/admin/registrations" },
   { label: "News", to: "/admin/news" },
+  { label: "Media Library", to: "/admin/media" },
   { group: "SYSTEM", label: "Audit Logs", to: "/admin/audit-logs" },
 ];
 

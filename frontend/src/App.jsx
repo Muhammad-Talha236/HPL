@@ -213,6 +213,10 @@ const AdminNewsDetailsPage = lazy(() =>
   import("./features/admin/pages/AdminNewsDetailsPage")
 );
 
+const AdminMediaLibraryPage = lazy(() =>
+  import("./features/admin/pages/AdminMediaLibraryPage")
+);
+
 const AdminAuditLogsPage = lazy(() =>
   import("./features/admin/pages/AdminAuditLogsPage")
 );
@@ -752,6 +756,11 @@ function App() {
               <Route
                 path="/admin/news/:newsId/edit"
                 element={<AdminNewsFormPage />}
+              />
+
+              <Route
+                path="/admin/media"
+                element={<AdminMediaLibraryPage />}
               />
 
               <Route

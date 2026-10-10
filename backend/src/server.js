@@ -29,6 +29,7 @@ import clubOwnerRoutes from "./modules/clubOwner/clubOwner.routes.js";
 import teamOwnerRoutes from "./modules/teamOwner/teamOwner.routes.js";
 import playerInvitationRoutes from "./modules/playerInvitations/playerInvitation.routes.js";
 import homeRoutes from "./modules/home/home.routes.js";
+import mediaRoutes from "./modules/media/media.routes.js";
 
 import { errorHandler } from "./middleware/auth/error.middleware.js";
 import { ENV } from "./config/env.js";
@@ -63,6 +64,7 @@ app.use(
 );
 
 app.use("/api/home", homeRoutes);
+app.use("/api/media", mediaRoutes);
 
 app.use(
   "/api/team-players",

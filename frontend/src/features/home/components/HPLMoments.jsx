@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getHomeGallery } from "../../media/services/mediaService";
 
-const moments = [
+const fallbackMoments = [
   { id: 1, title: "Match day in Hunza", image: "/images/moments/moment-1.jpg" },
   { id: 2, title: "The beautiful game", image: "/images/moments/moment-2.jpg" },
   { id: 3, title: "Football across the valley", image: "/images/moments/moment-3.jpg" },
@@ -9,7 +10,6 @@ const moments = [
   { id: 6, title: "Game day", image: "/images/moments/moment-6.jpg" },
 ];
 
-const repeatedMoments = [...moments, ...moments, ...moments];
 const AUTO_SCROLL_SPEED = 26;
 const CONTROL_PAUSE_MS = 1100;
 
@@ -26,6 +26,7 @@ const ArrowRight = () => (
 );
 
 const HPLMoments = () => {
+  const [galleryMoments, setGalleryMoments] = useState(fallbackMoments);
   const viewportRef = useRef(null);
   const trackRef = useRef(null);
   const progressTrackRef = useRef(null);
@@ -42,6 +43,24 @@ const HPLMoments = () => {
   const isVisibleRef = useRef(false);
   const reducedMotionRef = useRef(false);
   const dragRef = useRef(null);
+  const repeatedMoments = useMemo(() => [...galleryMoments, ...galleryMoments, ...galleryMoments], [galleryMoments]);
+
+  useEffect(() => {
+    let mounted = true;
+    getHomeGallery()
+      .then((response) => {
+        const managedMoments = (response.data || []).map((item) => ({
+          id: item.gallery_item_id,
+          title: item.media.title || item.media.alt_text || "Hunza Premier League moment",
+          image: item.media.secure_url,
+        }));
+        if (mounted && managedMoments.length) setGalleryMoments(managedMoments);
+      })
+      .catch(() => {
+        // Existing local gallery images remain a backwards-compatible fallback.
+      });
+    return () => { mounted = false; };
+  }, []);
 
   const getMetrics = useCallback(() => {
     const viewport = viewportRef.current;
@@ -57,9 +76,9 @@ const HPLMoments = () => {
       cardWidth,
       viewportWidth: viewport.clientWidth,
       step: cardWidth + gap,
-      loopWidth: moments.length * (cardWidth + gap),
+      loopWidth: galleryMoments.length * (cardWidth + gap),
     };
-  }, []);
+  }, [galleryMoments.length]);
 
   const normaliseOffset = useCallback((loopWidth) => {
     if (!loopWidth) return;
@@ -272,12 +291,12 @@ const HPLMoments = () => {
                 ref={(element) => {
                   cardRefs.current[index] = element;
                 }}
-                aria-hidden={index < moments.length || index >= moments.length * 2}
+                aria-hidden={index < galleryMoments.length || index >= galleryMoments.length * 2}
                 className="group h-[170px] w-[220px] flex-none overflow-hidden rounded-xl bg-[#E7EFEB] shadow-[0_13px_27px_rgba(9,39,29,0.13)] will-change-transform sm:h-[195px] sm:w-[260px] lg:h-[220px] lg:w-[290px]"
               >
                 <img
                   src={moment.image}
-                  alt={index >= moments.length && index < moments.length * 2 ? moment.title : ""}
+                  alt={index >= galleryMoments.length && index < galleryMoments.length * 2 ? moment.title : ""}
                   width="580"
                   height="440"
                   loading="lazy"

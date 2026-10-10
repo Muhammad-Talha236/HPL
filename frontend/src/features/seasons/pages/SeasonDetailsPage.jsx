@@ -17,6 +17,7 @@ import {
   SeasonVenues,
 } from "../components/details/SeasonOverview";
 import { getSeasonById, getSeasonCompetitions } from "../services/seasonService";
+import MediaGallery from "../../media/components/MediaGallery";
 
 const matchMoment = (match) => `${match.match_date || ""}T${String(match.start_time || "00:00").slice(11, 19)}`;
 
@@ -95,7 +96,7 @@ const SeasonDetailsPage = () => {
     : null;
 
   if (isCompletedSeason) {
-    return <CompletedSeasonDetails season={season} metrics={dashboard.metrics} champion={champion} closingMatch={closingMatch} standings={state.standings} competition={dashboard.primaryCompetition} scorers={topScorers} appearances={topAppearances} teams={dashboard.teams} venues={dashboard.venues} fixtures={dashboard.fixtures.filter((match) => match.status === "COMPLETED")} activeSection={activeSection} onChangeSection={setActiveSection} />;
+    return <><CompletedSeasonDetails season={season} metrics={dashboard.metrics} champion={champion} closingMatch={closingMatch} standings={state.standings} competition={dashboard.primaryCompetition} scorers={topScorers} appearances={topAppearances} teams={dashboard.teams} venues={dashboard.venues} fixtures={dashboard.fixtures.filter((match) => match.status === "COMPLETED")} activeSection={activeSection} onChangeSection={setActiveSection} /><div className="mx-auto max-w-[1200px] px-5 pb-12 sm:px-7 lg:px-8"><MediaGallery entityType="SEASON" entityId={season.season_id} title="Season gallery and highlights" /></div></>;
   }
 
   const overview = <>
@@ -112,7 +113,7 @@ const SeasonDetailsPage = () => {
     venues: <SeasonVenues venues={dashboard.venues} />,
   }[activeSection];
 
-  return <main className="min-h-screen bg-[#f5f9f8] pb-12 pt-[76px] text-[#13223a]"><SeasonDetailsHero season={season} metrics={dashboard.metrics} /><div className="relative z-10 mx-auto -mt-3 w-full max-w-[1200px] px-5 sm:px-7 lg:px-8"><SeasonDetailsNavigation activeSection={activeSection} onChange={setActiveSection} /><div className="mt-4">{selectedContent}</div></div></main>;
+  return <main className="min-h-screen bg-[#f5f9f8] pb-12 pt-[76px] text-[#13223a]"><SeasonDetailsHero season={season} metrics={dashboard.metrics} /><div className="relative z-10 mx-auto -mt-3 w-full max-w-[1200px] px-5 sm:px-7 lg:px-8"><SeasonDetailsNavigation activeSection={activeSection} onChange={setActiveSection} /><div className="mt-4">{selectedContent}<MediaGallery entityType="SEASON" entityId={season.season_id} title="Season gallery and highlights" /></div></div></main>;
 };
 
 export default SeasonDetailsPage;

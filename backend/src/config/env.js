@@ -1,6 +1,9 @@
 const requiredEnvVariables = [
   "DATABASE_URL",
   "JWT_SECRET",
+  "CLOUDINARY_CLOUD_NAME",
+  "CLOUDINARY_API_KEY",
+  "CLOUDINARY_API_SECRET",
 ];
 
 
@@ -114,4 +117,8 @@ export const ENV = {
 
   JWT_EXPIRES_IN:
     process.env.JWT_EXPIRES_IN || "7d",
+
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
 };

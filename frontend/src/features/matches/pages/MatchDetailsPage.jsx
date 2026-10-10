@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import LiveMatchDetails from "../components/LiveMatchDetails";
 import StandardMatchDetails from "../components/StandardMatchDetails";
 import { getMatchById } from "../services/matchService";
+import MediaGallery from "../../media/components/MediaGallery";
 
 const DetailsSkeleton = () => (
   <div className="animate-pulse"><div className="h-52 rounded-lg bg-[#19313c]" /><div className="mt-3 grid gap-3 xl:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-72 rounded-lg bg-white" />)}</div></div>
@@ -74,6 +75,7 @@ const MatchDetailsPage = () => {
       <div className="mx-auto max-w-[1400px] px-4 pt-2 sm:px-6 lg:px-7">
         <nav aria-label="Breadcrumb" className="text-[9px] font-semibold text-[#526275]"><Link to="/" className="hover:text-[#087d50]">Home</Link><span className="mx-1.5 text-[#a2adba]">›</span><Link to="/matches" className="hover:text-[#087d50]">Matches</Link><span className="mx-1.5 text-[#a2adba]">›</span><span>{title}</span></nav>
         <div className="mt-1">{detail.match.status === "LIVE" ? <LiveMatchDetails detail={detail} /> : <StandardMatchDetails detail={detail} />}</div>
+        <MediaGallery entityType="MATCH" entityId={detail.match.match_id} title="Match gallery and highlights" />
       </div>
     </main>
   );
