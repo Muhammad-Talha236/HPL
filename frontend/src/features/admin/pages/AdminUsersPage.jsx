@@ -1,213 +1,53 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Eye, MoreHorizontal, Pencil, Plus, Search, ShieldCheck, UserRound, UsersRound, UserX } from "lucide-react";
 import useAuth from "../../../hooks/useAuth";
 import { ROLES } from "../../../constants/roles";
 import { USER_STATUS } from "../../../constants/statuses";
 import apiClient from "../../../services/apiClient";
 
-const AdminUsersPage = () => {
+const fmt = new Intl.DateTimeFormat("en-PK", { day: "numeric", month: "short", year: "numeric" });
+const roleLabel = (role) => ({ USER: "Normal User", TEAM_OWNER: "Team Owner", CLUB_OWNER: "Club Owner", SUPER_ADMIN: "Super Admin", REFEREE: "Referee" }[role] || role);
+const statusLabel = (status) => ({ ACTIVE: "Active", INACTIVE: "Inactive", BLOCKED: "Blocked" }[status] || status);
+const initials = (name = "") => name.split(/\s+/).filter(Boolean).slice(0, 2).map((value) => value[0]).join("").toUpperCase() || "U";
+const date = (value) => value ? fmt.format(new Date(value)) : "—";
+const badge = (status) => status === "ACTIVE" ? "bg-emerald-50 text-emerald-700" : status === "BLOCKED" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700";
+
+const Stat = ({ icon: Icon, label, value, color }) => <article className="flex min-h-[104px] items-center gap-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_5px_16px_rgba(15,35,72,.04)]"><span className={`grid size-10 place-items-center rounded-lg ${color}`}><Icon size={20} /></span><div><p className="text-xs font-medium text-slate-500">{label}</p><p className="mt-1 text-2xl font-extrabold leading-none text-[#14213c]">{value.toLocaleString()}</p></div></article>;
+
+export default function AdminUsersPage() {
   const { user: actingUser } = useAuth();
-  const [filters, setFilters] = useState({ q: "", role: "", status: "" });
+  const [filters, setFilters] = useState({ q: "", role: "", status: "", sort: "newest" });
   const [page, setPage] = useState(1);
-  const [state, setState] = useState({
-    status: "loading",
-    data: [],
-    pagination: null,
-  });
+  const [state, setState] = useState({ status: "loading", data: [], pagination: null, stats: null });
   const [message, setMessage] = useState("");
-  const load = useCallback(async () => {
+  const [addOpen, setAddOpen] = useState(false);
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
+  const [saving, setSaving] = useState(false);
+  const load = useCallback(async (signal) => {
     setState((current) => ({ ...current, status: "loading" }));
     try {
-      const response = await apiClient.get("/users", {
-        params: { ...filters, page, limit: 20 },
-      });
-      setState({
-        status: "success",
-        data: response.data.data || [],
-        pagination: response.data.pagination || null,
-      });
-    } catch {
-      setState({ status: "error", data: [], pagination: null });
-    }
+      const [users, stats] = await Promise.all([apiClient.get("/users", { params: { ...filters, page, limit: 10 }, signal }), apiClient.get("/admin/users/stats", { signal })]);
+      setState({ status: "success", data: users.data.data || [], pagination: users.data.pagination || null, stats: stats.data.data });
+    } catch (error) { if (error.code !== "ERR_CANCELED") setState((current) => ({ ...current, status: "error", data: [] })); }
   }, [filters, page]);
-  useEffect(() => {
-    const timer = window.setTimeout(load, 220);
-    return () => window.clearTimeout(timer);
-  }, [load]);
-  const changeFilter = (key, value) => {
-    setPage(1);
-    setFilters((current) => ({ ...current, [key]: value }));
-  };
-  const changeStatus = async (target, action) => {
-    if (!window.confirm(`${action} ${target.name}'s account?`)) return;
-    setMessage("");
-    try {
-      await apiClient.patch(`/users/${target.user_id}/${action}`);
-      setMessage(`User ${action}d successfully.`);
-      await load();
-    } catch (error) {
-      setMessage(
-        error.response?.data?.message || "Action failed. Please try again.",
-      );
-    }
-  };
-  return (
-    <div className="p-5 sm:p-8">
-      <p className="text-xs font-bold tracking-[.15em] text-[#EEC058]">
-        MANAGEMENT
-      </p>
-      <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-extrabold text-[#ffad9f]">USERS</h1>
-          <p className="mt-1 text-sm text-white/55">
-            Manage account access and account status.
-          </p>
-        </div>
-        {state.pagination && (
-          <p className="text-xs text-white/50">
-            {state.pagination.total} total accounts
-          </p>
-        )}
-      </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <input
-          value={filters.q}
-          onChange={(event) => changeFilter("q", event.target.value)}
-          placeholder="Search name or email"
-          className="rounded-lg border border-white/10 bg-[#0B1D2F] p-3 text-sm outline-none focus:border-[#EEC058]"
-        />
-        <select
-          value={filters.role}
-          onChange={(event) => changeFilter("role", event.target.value)}
-          className="rounded-lg border border-white/10 bg-[#0B1D2F] p-3 text-sm outline-none focus:border-[#EEC058]"
-        >
-          <option value="">All roles</option>
-          {Object.values(ROLES).map((role) => (
-            <option key={role} value={role}>
-              {role}
-            </option>
-          ))}
-        </select>
-        <select
-          value={filters.status}
-          onChange={(event) => changeFilter("status", event.target.value)}
-          className="rounded-lg border border-white/10 bg-[#0B1D2F] p-3 text-sm outline-none focus:border-[#EEC058]"
-        >
-          <option value="">All statuses</option>
-          {Object.values(USER_STATUS).map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-      </div>
-      {message && (
-        <p className="mt-4 rounded border border-[#EEC058]/30 bg-[#EEC058]/10 p-3 text-sm text-[#f4d383]">
-          {message}
-        </p>
-      )}
-      {state.status === "loading" && (
-        <p className="mt-6 text-white/55">Loading users…</p>
-      )}
-      {state.status === "error" && (
-        <p className="mt-6 text-red-200">
-          Users could not be loaded.{" "}
-          <button type="button" onClick={load} className="font-bold underline">
-            TRY AGAIN
-          </button>
-        </p>
-      )}
-      {state.status === "success" && (
-        <div className="mt-6 overflow-hidden rounded-xl border border-white/10">
-          {state.data.length === 0 && (
-            <p className="p-5 text-sm text-white/55">
-              No user accounts match these filters.
-            </p>
-          )}
-          {state.data.map((account) => {
-            const isSelf = Number(actingUser?.user_id) === account.user_id;
-            return (
-              <article
-                key={account.user_id}
-                className="grid gap-3 border-b border-white/10 bg-[#0B1D2F] p-4 last:border-0 lg:grid-cols-[1.1fr_1.3fr_.8fr_.7fr_auto] lg:items-center"
-              >
-                <Link
-                  to={`/admin/users/${account.user_id}`}
-                  className="font-bold hover:text-[#ffad9f]"
-                >
-                  {account.name}
-                </Link>
-                <span className="truncate text-sm text-white/60">
-                  {account.email}
-                </span>
-                <span className="text-xs font-bold text-[#EEC058]">
-                  {account.role}
-                </span>
-                <span className="text-xs text-white/60">{account.status}</span>
-                <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold">
-                  {account.status === USER_STATUS.ACTIVE && !isSelf && (
-                    <button
-                      type="button"
-                      onClick={() => changeStatus(account, "deactivate")}
-                      className="text-red-200 hover:text-white"
-                    >
-                      DEACTIVATE
-                    </button>
-                  )}
-                  {account.status === USER_STATUS.INACTIVE && (
-                    <button
-                      type="button"
-                      onClick={() => changeStatus(account, "activate")}
-                      className="text-[#EEC058] hover:text-white"
-                    >
-                      ACTIVATE
-                    </button>
-                  )}
-                  {account.status !== USER_STATUS.BLOCKED && !isSelf && (
-                    <button
-                      type="button"
-                      onClick={() => changeStatus(account, "block")}
-                      className="text-red-200 hover:text-white"
-                    >
-                      BLOCK
-                    </button>
-                  )}
-                  <Link
-                    to={`/admin/users/${account.user_id}`}
-                    className="text-white/60 hover:text-white"
-                  >
-                    DETAILS
-                  </Link>
-                </span>
-              </article>
-            );
-          })}
-        </div>
-      )}
-      {state.pagination?.total_pages > 1 && (
-        <div className="mt-5 flex items-center justify-end gap-3 text-sm">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((current) => current - 1)}
-            className="rounded border border-white/15 px-3 py-2 disabled:opacity-40"
-          >
-            PREVIOUS
-          </button>
-          <span className="text-white/55">
-            Page {page} of {state.pagination.total_pages}
-          </span>
-          <button
-            type="button"
-            disabled={page >= state.pagination.total_pages}
-            onClick={() => setPage((current) => current + 1)}
-            className="rounded border border-white/15 px-3 py-2 disabled:opacity-40"
-          >
-            NEXT
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-export default AdminUsersPage;
+  useEffect(() => { const controller = new AbortController(); const timer = window.setTimeout(() => load(controller.signal), 350); return () => { window.clearTimeout(timer); controller.abort(); }; }, [load]);
+  const setFilter = (key, value) => { setPage(1); setFilters((current) => ({ ...current, [key]: value })); };
+  const changeStatus = async (account, action) => { if (!window.confirm(`${action} ${account.name}'s account?`)) return; try { await apiClient.patch(`/users/${account.user_id}/${action}`); setMessage(`User ${action}d successfully.`); load(); } catch (error) { setMessage(error.response?.data?.message || "Action failed. Please try again."); } };
+  const createUser = async (event) => { event.preventDefault(); setSaving(true); setMessage(""); try { await apiClient.post("/auth/register", form); setAddOpen(false); setForm({ name: "", email: "", phone: "", password: "" }); setMessage("Normal user account created successfully."); setPage(1); load(); } catch (error) { setMessage(error.response?.data?.message || "User could not be created."); } finally { setSaving(false); } };
+  const pageNumbers = useMemo(() => { const total = state.pagination?.total_pages || 0; return Array.from({ length: Math.min(total, 5) }, (_, index) => Math.max(1, Math.min(total - 4, page - 2) + index)); }, [page, state.pagination]);
+  const total = state.pagination?.total || 0;
+  const from = total ? (page - 1) * 10 + 1 : 0;
+  const to = Math.min(page * 10, total);
+  return <main className="min-w-0 p-5 sm:p-7 xl:p-8">
+    <nav className="text-xs text-slate-500"><Link to="/admin" className="hover:text-[#078052]">Dashboard</Link><span className="mx-2">›</span>Users</nav>
+    <header className="mt-3 flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-[30px] font-extrabold leading-none tracking-tight text-[#14213c]">Users</h1><p className="mt-1.5 text-sm text-slate-500">Manage all registered users of Hunza Premier League.</p></div><button type="button" onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-[#078052] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#05643f]"><Plus size={16} />Add User</button></header>
+    <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{state.stats ? <><Stat icon={UsersRound} label="Total Users" value={state.stats.total_users} color="bg-emerald-50 text-emerald-600" /><Stat icon={UserRound} label="Normal Users" value={state.stats.normal_users} color="bg-blue-50 text-blue-600" /><Stat icon={ShieldCheck} label="Team Owners" value={state.stats.team_owners} color="bg-violet-50 text-violet-600" /><Stat icon={UserX} label="Inactive Users" value={state.stats.inactive_users} color="bg-rose-50 text-rose-600" /></> : Array.from({ length: 4 }, (_, index) => <div key={index} className="h-[104px] animate-pulse rounded-xl bg-slate-200" />)}</section>
+    {message && <p className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</p>}
+    <section className="mt-4 min-w-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-[0_5px_18px_rgba(15,35,72,.04)]"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5"><div className="flex items-center gap-2"><UsersRound size={18} className="text-[#14213c]" /><h2 className="text-base font-bold text-[#14213c]">All Users</h2></div><div className="flex w-full flex-wrap gap-2 xl:w-auto"><label className="relative min-w-[190px] flex-1 xl:w-48 xl:flex-none"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={filters.q} onChange={(event) => setFilter("q", event.target.value)} placeholder="Search users..." className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-[#14213c] outline-none focus:border-emerald-500" /></label><select value={filters.role} onChange={(event) => setFilter("role", event.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs"><option value="">All Roles</option>{Object.values(ROLES).map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select><select value={filters.status} onChange={(event) => setFilter("status", event.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs"><option value="">All Statuses</option>{Object.values(USER_STATUS).map((status) => <option key={status} value={status}>{roleLabel(status)}</option>)}</select><select value={filters.sort} onChange={(event) => setFilter("sort", event.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs"><option value="newest">Newest First</option><option value="oldest">Oldest First</option><option value="name_asc">Name A–Z</option><option value="name_desc">Name Z–A</option></select></div></div>
+      {state.status === "error" ? <div className="p-6 text-sm text-rose-700">Users could not be loaded. <button type="button" onClick={() => load()} className="font-bold underline">Retry</button></div> : <div className="min-w-0 overflow-x-auto"><table className="w-full min-w-[900px] text-left"><thead className="bg-slate-50 text-[11px] font-semibold text-slate-500"><tr><th className="px-4 py-3">#</th><th>User</th><th>Email</th><th>Phone</th><th>Role</th><th>Joined On</th><th>Status</th><th className="px-4">Actions</th></tr></thead><tbody>{state.data.map((account, index) => { const self = Number(actingUser?.user_id) === account.user_id; return <tr key={account.user_id} className="border-t border-slate-100 text-[12px] text-slate-600 hover:bg-slate-50"><td className="px-4 py-3">{from + index}</td><td className="py-3"><Link to={`/admin/users/${account.user_id}`} className="flex items-center gap-2 font-semibold text-[#14213c]"><span className="grid size-7 place-items-center overflow-hidden rounded-full bg-emerald-100 text-[10px] text-emerald-700">{account.profile_image ? <img src={account.profile_image} alt="" className="size-full object-cover" /> : initials(account.name)}</span>{account.name}</Link></td><td className="max-w-44 truncate py-3 text-slate-500" title={account.email}>{account.email}</td><td className="py-3">{account.phone || "Not provided"}</td><td className="py-3"><span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600">{roleLabel(account.role)}</span></td><td className="py-3 whitespace-nowrap">{date(account.created_at)}</td><td className="py-3"><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${badge(account.status)}`}>{statusLabel(account.status)}</span></td><td className="px-4 py-3"><div className="flex gap-1"><Link to={`/admin/users/${account.user_id}`} aria-label={`View ${account.name}`} className="grid size-7 place-items-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100"><Eye size={14} /></Link><Link to={`/admin/users/${account.user_id}`} aria-label={`Edit ${account.name}`} className="grid size-7 place-items-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100"><Pencil size={13} /></Link>{!self && account.status !== USER_STATUS.BLOCKED && <button type="button" aria-label={`Manage ${account.name}`} onClick={() => changeStatus(account, account.status === USER_STATUS.ACTIVE ? "deactivate" : "activate")} className="grid size-7 place-items-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100"><MoreHorizontal size={15} /></button>}</div></td></tr>; })}</tbody></table>{state.status === "success" && !state.data.length && <p className="p-6 text-sm text-slate-500">No user accounts match these filters.</p>}</div>}
+      {state.pagination && <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-xs text-slate-500"><span>Showing {from}–{to} of {total.toLocaleString()} users</span><div className="flex items-center gap-1"><button type="button" disabled={page === 1} onClick={() => setPage((value) => value - 1)} className="rounded border border-slate-200 px-2 py-1.5 disabled:opacity-40">‹</button>{pageNumbers.map((value) => <button type="button" key={value} onClick={() => setPage(value)} className={`size-7 rounded text-xs ${value === page ? "bg-[#078052] font-bold text-white" : "border border-slate-200 text-slate-600"}`}>{value}</button>)}<button type="button" disabled={page >= state.pagination.total_pages} onClick={() => setPage((value) => value + 1)} className="rounded border border-slate-200 px-2 py-1.5 disabled:opacity-40">›</button></div></footer>}
+    </section>
+    {addOpen && <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4"><form onSubmit={createUser} className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl"><h2 className="text-lg font-extrabold text-[#14213c]">Add Normal User</h2><p className="mt-1 text-sm text-slate-500">Set a strong password and share it only through a secure channel. Owner and referee accounts are created through their respective workflows.</p><div className="mt-5 grid gap-3">{[["name", "Full name", "text"], ["email", "Email", "email"], ["phone", "Phone (optional)", "tel"], ["password", "Strong password", "password"]].map(([key, label, type]) => <label key={key} className="text-xs font-semibold text-slate-600">{label}<input required={key !== "phone"} type={type} value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-500" /></label>)}</div><div className="mt-5 flex justify-end gap-3"><button type="button" disabled={saving} onClick={() => setAddOpen(false)} className="px-3 py-2 text-sm font-semibold text-slate-500">Cancel</button><button disabled={saving} className="rounded-lg bg-[#078052] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? "Creating..." : "Create User"}</button></div></form></div>}
+  </main>;
+}

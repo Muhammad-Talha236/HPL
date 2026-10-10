@@ -217,15 +217,18 @@ export const getUsers = async (
     }
 
     const page = Number(req.query.page || 1);
-    const limit = Number(req.query.limit || 20);
+    const limit = Number(req.query.limit || 10);
     const role = req.query.role;
     const status = req.query.status;
+    const sort = req.query.sort || "newest";
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
     if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 50 || q.length > 100) return res.status(400).json({ success: false, message: "Invalid user query" });
     if (role && !Object.values(ROLES).includes(role)) return res.status(400).json({ success: false, message: "Invalid role filter" });
     if (status && !Object.values(USER_STATUS).includes(status)) return res.status(400).json({ success: false, message: "Invalid status filter" });
-    const where = { ...(role ? { role } : {}), ...(status ? { status } : {}), ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } }] } : {}) };
-    const [users, total] = await Promise.all([prisma.user.findMany({ where, select: userSelect, orderBy: [{ created_at: "desc" }, { user_id: "desc" }], skip: (page - 1) * limit, take: limit }), prisma.user.count({ where })]);
+    if (!new Set(["newest", "oldest", "name_asc", "name_desc"]).has(sort)) return res.status(400).json({ success: false, message: "Invalid user sort" });
+    const where = { ...(role ? { role } : {}), ...(status ? { status } : {}), ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } }, { phone: { contains: q, mode: "insensitive" } }] } : {}) };
+    const orderBy = sort === "oldest" ? [{ created_at: "asc" }, { user_id: "asc" }] : sort === "name_asc" ? [{ name: "asc" }, { user_id: "asc" }] : sort === "name_desc" ? [{ name: "desc" }, { user_id: "desc" }] : [{ created_at: "desc" }, { user_id: "desc" }];
+    const [users, total] = await Promise.all([prisma.user.findMany({ where, select: userSelect, orderBy, skip: (page - 1) * limit, take: limit }), prisma.user.count({ where })]);
 
     return res.status(200).json({
       success: true,
@@ -240,6 +243,18 @@ export const getUsers = async (
 
     next(error);
   }
+};
+
+export const getAdminUserStats = async (req, res, next) => {
+  try {
+    const [total_users, normal_users, team_owners, inactive_users] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { role: ROLES.USER } }),
+      prisma.user.count({ where: { role: ROLES.TEAM_OWNER } }),
+      prisma.user.count({ where: { status: USER_STATUS.INACTIVE } }),
+    ]);
+    return res.json({ success: true, data: { total_users, normal_users, team_owners, inactive_users } });
+  } catch (error) { next(error); }
 };
 
 /*

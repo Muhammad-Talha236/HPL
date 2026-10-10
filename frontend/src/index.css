@@ -84,6 +84,20 @@
 }
 
 @layer components {
+  /* The overview has two half-width registration cards and one full-width match card. */
+  .dashboard-records > article {
+    min-width: 0;
+  }
+
+  .dashboard-records > article:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard-records table {
+    min-width: 0;
+    width: 100%;
+  }
+
   .hpl-portal {
     min-height: 100vh;
     background: #f4f7f5;
