@@ -3,6 +3,7 @@ import prisma from "../../database/prisma.js";
 import { createAuditLog } from "../../utils/auditLog.util.js";
 import { AUDIT_ACTIONS } from "../../constants/auditActions.js";
 import { ROLES } from "../../constants/roles.js";
+import { USER_STATUS } from "../../constants/statuses.js";
 
 const TEAM_PLAYER_STATUS = {
   ACTIVE: "ACTIVE",
@@ -13,6 +14,9 @@ const TEAM_STATUS = {
   ACTIVE: "ACTIVE",
   INACTIVE: "INACTIVE",
 };
+
+const isTeamRosterOperable = (team) =>
+  team.status === TEAM_STATUS.ACTIVE && team.verification_status !== "SUSPENDED";
 
 const CLUB_STATUS = {
   ACTIVE: "ACTIVE",
@@ -88,6 +92,18 @@ const canManageTeam = ({
   req,
   team,
 }) => {
+  // Route authentication supplies the current database user. Keep this
+  // defensive guard so direct controller use cannot bypass active-account
+  // and team-specific ownership checks.
+  if (
+    !req.user ||
+    !team ||
+    (req.user.status !== undefined &&
+      req.user.status !== USER_STATUS.ACTIVE)
+  ) {
+    return false;
+  }
+
   if (
     req.user.role ===
     ROLES.SUPER_ADMIN
@@ -115,6 +131,12 @@ const canManageTeam = ({
 
   return false;
 };
+
+// Independent teams have no club. Club-based teams retain the existing
+// requirement that their club must be active before roster changes.
+const hasActiveClubWhenRequired = (team) =>
+  team.club_id === null ||
+  (team.club && team.club.status === CLUB_STATUS.ACTIVE);
 
 /*
   Team gender must match player gender.
@@ -149,6 +171,7 @@ export const getTeamPlayers = async (
   try {
     const teamPlayers =
       await prisma.teamPlayer.findMany({
+        where: { team: { status: TEAM_STATUS.ACTIVE, verification_status: "VERIFIED" } },
         select: publicTeamPlayerSelect,
         orderBy: {
           created_at: "desc",
@@ -188,10 +211,8 @@ export const getTeamSquad = async (
       Number(req.params.team_id);
 
     const team =
-      await prisma.team.findUnique({
-        where: {
-          team_id: teamId,
-        },
+      await prisma.team.findFirst({
+        where: { team_id: teamId, status: TEAM_STATUS.ACTIVE, verification_status: "VERIFIED" },
         select: {
           team_id: true,
           name: true,
@@ -392,6 +413,7 @@ export const createTeamPlayer =
                   name: true,
                   gender: true,
                   status: true,
+                  verification_status: true,
                   club_id: true,
                   owner_id: true,
                   club: {
@@ -422,21 +444,14 @@ export const createTeamPlayer =
               };
             }
 
-            if (
-              team.status !==
-              TEAM_STATUS.ACTIVE
-            ) {
+            if (!isTeamRosterOperable(team)) {
               return {
                 error:
                   "TEAM_INACTIVE",
               };
             }
 
-            if (
-              !team.club ||
-              team.club.status !==
-                CLUB_STATUS.ACTIVE
-            ) {
+            if (!hasActiveClubWhenRequired(team)) {
               return {
                 error:
                   "CLUB_INACTIVE",
@@ -785,6 +800,7 @@ export const updateTeamPlayer =
                         owner_id: true,
                         club_id: true,
                         status: true,
+                        verification_status: true,
                         club: {
                           select: {
                             owner_id:
@@ -818,21 +834,14 @@ export const updateTeamPlayer =
               };
             }
 
-            if (
-              existing.team.status !==
-              TEAM_STATUS.ACTIVE
-            ) {
+            if (!isTeamRosterOperable(existing.team)) {
               return {
                 error:
                   "TEAM_INACTIVE",
               };
             }
 
-            if (
-              !existing.team.club ||
-              existing.team.club.status !==
-                CLUB_STATUS.ACTIVE
-            ) {
+            if (!hasActiveClubWhenRequired(existing.team)) {
               return {
                 error:
                   "CLUB_INACTIVE",
@@ -1263,6 +1272,7 @@ export const removeTeamPlayer =
                         owner_id: true,
                         club_id: true,
                         status: true,
+                        verification_status: true,
                         club: {
                           select: {
                             owner_id:
@@ -1570,21 +1580,14 @@ export const activateTeamPlayer =
               };
             }
 
-            if (
-              existing.team.status !==
-              TEAM_STATUS.ACTIVE
-            ) {
+            if (!isTeamRosterOperable(existing.team)) {
               return {
                 error:
                   "TEAM_INACTIVE",
               };
             }
 
-            if (
-              !existing.team.club ||
-              existing.team.club.status !==
-                CLUB_STATUS.ACTIVE
-            ) {
+            if (!hasActiveClubWhenRequired(existing.team)) {
               return {
                 error:
                   "CLUB_INACTIVE",

@@ -27,7 +27,7 @@ const LocationIcon = () => (
     viewBox="0 0 24 24"
     fill="none"
     aria-hidden="true"
-    className="h-[18px] w-[18px] shrink-0 text-[#11805F]"
+    className="h-[40px] w-[18px] shrink-0 text-[#11805F]"
   >
     <path
       d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z"

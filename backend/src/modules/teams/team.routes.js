@@ -11,6 +11,21 @@ import {
 } from "./team.controller.js";
 
 import {
+  createTeamDocument,
+  createTeamKit,
+  createTeamStaff,
+  deleteTeamDocument,
+  deleteTeamKit,
+  deleteTeamStaff,
+  listTeamDocuments,
+  listTeamKits,
+  listTeamStaff,
+  updateTeamDocument,
+  updateTeamKit,
+  updateTeamStaff,
+} from "./team.detail.controller.js";
+
+import {
   authenticate,
 } from "../../middleware/auth/auth.middleware.js";
 
@@ -30,10 +45,52 @@ import {
 } from "./team.validation.js";
 
 import {
+  getMyIndependentTeamApplications,
+  resubmitIndependentTeamApplication,
+  submitIndependentTeamApplication,
+} from "./teamRegistration.controller.js";
+
+import {
+  independentTeamApplicationIdValidation,
+  independentTeamApplicationResubmitValidation,
+  independentTeamApplicationValidation,
+} from "./teamRegistration.validation.js";
+
+import {
   handleValidationErrors,
 } from "../../middleware/auth/validation.middleware.js";
 
 const router = express.Router();
+
+// ======================================================
+// INDEPENDENT TEAM REGISTRATION
+// ======================================================
+// Submission creates a reviewable application only. An administrator performs
+// the guarded provisional approval and any USER -> TEAM_OWNER promotion later.
+router.post(
+  "/independent",
+  authenticate,
+  authorize(ROLES.USER, ROLES.TEAM_OWNER),
+  independentTeamApplicationValidation,
+  handleValidationErrors,
+  submitIndependentTeamApplication
+);
+
+router.get(
+  "/independent/my",
+  authenticate,
+  authorize(ROLES.USER, ROLES.TEAM_OWNER),
+  getMyIndependentTeamApplications
+);
+
+router.patch(
+  "/independent/:request_id",
+  authenticate,
+  authorize(ROLES.USER, ROLES.TEAM_OWNER),
+  independentTeamApplicationResubmitValidation,
+  handleValidationErrors,
+  resubmitIndependentTeamApplication
+);
 
 // ======================================================
 // PUBLIC ROUTES
@@ -57,6 +114,138 @@ router.get(
   teamIdValidation,
   handleValidationErrors,
   getTeamById
+);
+
+router.get(
+  "/:team_id/staff",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN,
+    ROLES.CLUB_OWNER,
+    ROLES.TEAM_OWNER
+  ),
+  listTeamStaff
+);
+
+router.post(
+  "/:team_id/staff",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN,
+    ROLES.CLUB_OWNER,
+    ROLES.TEAM_OWNER
+  ),
+  createTeamStaff
+);
+
+router.patch(
+  "/:team_id/staff/:staff_id",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN,
+    ROLES.CLUB_OWNER,
+    ROLES.TEAM_OWNER
+  ),
+  updateTeamStaff
+);
+
+router.delete(
+  "/:team_id/staff/:staff_id",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN,
+    ROLES.CLUB_OWNER,
+    ROLES.TEAM_OWNER
+  ),
+  deleteTeamStaff
+);
+
+router.get(
+  "/:team_id/kits",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN,
+    ROLES.CLUB_OWNER,
+    ROLES.TEAM_OWNER
+  ),
+  listTeamKits
+);
+
+router.post(
+  "/:team_id/kits",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN,
+    ROLES.CLUB_OWNER,
+    ROLES.TEAM_OWNER
+  ),
+  createTeamKit
+);
+
+router.patch(
+  "/:team_id/kits/:kit_id",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN,
+    ROLES.CLUB_OWNER,
+    ROLES.TEAM_OWNER
+  ),
+  updateTeamKit
+);
+
+router.delete(
+  "/:team_id/kits/:kit_id",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN,
+    ROLES.CLUB_OWNER,
+    ROLES.TEAM_OWNER
+  ),
+  deleteTeamKit
+);
+
+router.get(
+  "/:team_id/documents",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN,
+    ROLES.CLUB_OWNER,
+    ROLES.TEAM_OWNER
+  ),
+  listTeamDocuments
+);
+
+router.post(
+  "/:team_id/documents",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN,
+    ROLES.CLUB_OWNER,
+    ROLES.TEAM_OWNER
+  ),
+  createTeamDocument
+);
+
+router.patch(
+  "/:team_id/documents/:document_id",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN,
+    ROLES.CLUB_OWNER,
+    ROLES.TEAM_OWNER
+  ),
+  updateTeamDocument
+);
+
+router.delete(
+  "/:team_id/documents/:document_id",
+  authenticate,
+  authorize(
+    ROLES.SUPER_ADMIN,
+    ROLES.CLUB_OWNER,
+    ROLES.TEAM_OWNER
+  ),
+  deleteTeamDocument
 );
 
 // ======================================================

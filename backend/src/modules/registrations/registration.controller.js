@@ -18,6 +18,24 @@ const PAYMENT_STATUS = {
   UNPAID: "UNPAID",
 };
 
+const hasActiveClubWhenRequired = (team) =>
+  team.club_id === null ||
+  Boolean(
+    team.club &&
+    (team.club.status === undefined || team.club.status === "ACTIVE")
+  );
+
+const canManageRegistrationTeam = (user, team) => {
+  if (!user || !team) return false;
+  if (user.status !== undefined && user.status !== "ACTIVE") return false;
+  if (user.role === ROLES.SUPER_ADMIN) return true;
+  if (user.role === ROLES.TEAM_OWNER) return team.owner_id === user.user_id;
+
+  return user.role === ROLES.CLUB_OWNER &&
+    team.club_id !== null &&
+    team.club?.owner_id === user.user_id;
+};
+
 // ======================================================
 // DATE-ONLY HELPER
 // ======================================================
@@ -180,12 +198,15 @@ export const createRegistration = async (
                 name: true,
                 gender: true,
                 status: true,
+                verification_status: true,
                 owner_id: true,
+                club_id: true,
                 club: {
                   select: {
                     club_id: true,
                     name: true,
                     owner_id: true,
+                    status: true,
                   },
                 },
               },
@@ -210,30 +231,24 @@ export const createRegistration = async (
             );
           }
 
+          // Club teams keep their established eligibility path. A team without a
+          // club must pass the independent-team verification workflow first.
+          if (team.club_id === null && team.verification_status !== "VERIFIED") {
+            throw new Error("TEAM_NOT_VERIFIED");
+          }
+
           // ------------------------------------------------
           // OWNERSHIP CHECK
           // ------------------------------------------------
 
-          const isSuperAdmin =
-            req.user.role ===
-            ROLES.SUPER_ADMIN;
-
-          const isTeamOwner =
-            team.owner_id ===
-            req.user.user_id;
-
-          const isClubOwner =
-            team.club.owner_id ===
-            req.user.user_id;
-
-          if (
-            !isSuperAdmin &&
-            !isTeamOwner &&
-            !isClubOwner
-          ) {
+          if (!canManageRegistrationTeam(req.user, team)) {
             throw new Error(
               "REGISTRATION_FORBIDDEN"
             );
+          }
+
+          if (!hasActiveClubWhenRequired(team)) {
+            throw new Error("CLUB_INACTIVE");
           }
 
           // ------------------------------------------------
@@ -485,6 +500,20 @@ export const createRegistration = async (
       });
     }
 
+    if (error.message === "TEAM_NOT_VERIFIED") {
+      return res.status(409).json({
+        success: false,
+        message: "Independent teams must be HPL-verified before competition registration",
+      });
+    }
+
+    if (error.message === "CLUB_INACTIVE") {
+      return res.status(400).json({
+        success: false,
+        message: "Teams belonging to an inactive club cannot register",
+      });
+    }
+
     if (
       error.message ===
       "REGISTRATION_FORBIDDEN"
@@ -724,6 +753,7 @@ export const getRegistrationById = async (
                 name: true,
                 gender: true,
                 owner_id: true,
+                club_id: true,
 
                 club: {
                   select: {
@@ -774,19 +804,10 @@ export const getRegistrationById = async (
       registration.registered_by ===
       req.user.user_id;
 
-    const isTeamOwner =
-      registration.team.owner_id ===
-      req.user.user_id;
-
-    const isClubOwner =
-      registration.team.club.owner_id ===
-      req.user.user_id;
-
     if (
       !isSuperAdmin &&
       !isRegisteredUser &&
-      !isTeamOwner &&
-      !isClubOwner
+      !canManageRegistrationTeam(req.user, registration.team)
     ) {
       return res.status(403).json({
         success: false,

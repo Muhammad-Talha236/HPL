@@ -243,7 +243,7 @@ export const createMatchEvent = async (req, res) => {
     const isClubOwner =
       req.user.role ===
         ROLES.CLUB_OWNER &&
-      team.club.owner_id ===
+      team.club?.owner_id ===
         req.user.user_id;
 
     const isAssignedReferee = req.user.role === ROLES.REFEREE && match.referee_id === req.assigned_referee_id;
@@ -1888,7 +1888,7 @@ export const updateMatchEvent = async (req, res) => {
 
     const isClubOwner =
       req.user.role === ROLES.CLUB_OWNER &&
-      event.team.club.owner_id === req.user.user_id;
+      event.team.club?.owner_id === req.user.user_id;
 
     const referee = req.user.role === ROLES.REFEREE
       ? await prisma.referee.findFirst({ where: { user_id: req.user.user_id, status: "ACTIVE" }, select: { referee_id: true } })

@@ -538,6 +538,15 @@ const Navbar = () => {
                                   })`
                                 : ""}
                             </NavLink>
+
+                            <NavLink
+                              to="/teams/register-independent"
+                              onClick={closeMenus}
+                              role="menuitem"
+                              className="flex rounded-xl px-3 py-2.5 text-sm font-semibold text-[#0B5D46] hover:bg-[#F5F8F7]"
+                            >
+                              Register Independent Team
+                            </NavLink>
                           </>
                         )}
 
@@ -908,6 +917,14 @@ const Navbar = () => {
                                 : unreadCount}
                             </span>
                           )}
+                        </NavLink>
+
+                        <NavLink
+                          onClick={closeMobileMenu}
+                          to="/teams/register-independent"
+                          className="rounded-xl border border-[#DDE5E1] bg-white p-2.5 text-center text-xs font-bold text-[#0B5D46]"
+                        >
+                          Register Team
                         </NavLink>
                       </div>
                     )}

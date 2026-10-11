@@ -56,7 +56,7 @@ const canManageRegistration = (
 
   // Club owner
   if (
-    registration.team.club.owner_id ===
+    registration.team.club?.owner_id ===
     user.user_id
   ) {
     return true;

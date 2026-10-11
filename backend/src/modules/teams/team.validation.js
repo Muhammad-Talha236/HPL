@@ -29,24 +29,10 @@ export const teamIdValidation = [
 ];
 
 // ======================================================
-// CREATE TEAM VALIDATION
+// SHARED TEAM DETAILS VALIDATION
 // ======================================================
 
-export const createTeamValidation = [
-  body("owner_id").optional().isInt({ min: 1 }).withMessage("Owner ID must be a valid positive integer"),
-  body("club_id")
-    .exists()
-    .withMessage(
-      "Club ID is required"
-    )
-    .bail()
-    .isInt({
-      min: 1,
-    })
-    .withMessage(
-      "Club ID must be a valid positive integer"
-    ),
-
+const teamDetailsValidation = () => [
   body("home_venue_id")
     .exists()
     .withMessage(
@@ -251,6 +237,45 @@ export const createTeamValidation = [
     .withMessage(
       "Contact phone must not exceed 30 characters"
     ),
+];
+
+// ======================================================
+// CREATE TEAM VALIDATION
+// ======================================================
+
+export const createTeamValidation = [
+  body("owner_id").optional().isInt({ min: 1 }).withMessage("Owner ID must be a valid positive integer"),
+
+  body("club_id")
+    .exists()
+    .withMessage(
+      "Club ID is required"
+    )
+    .bail()
+    .isInt({
+      min: 1,
+    })
+    .withMessage(
+      "Club ID must be a valid positive integer"
+    ),
+
+  ...teamDetailsValidation(),
+
+  checkExact([], {
+    message:
+      "Unexpected fields are not allowed",
+  }),
+];
+
+// ======================================================
+// CREATE INDEPENDENT TEAM VALIDATION
+// ======================================================
+
+// The allow-list deliberately excludes ownership, role, and status fields.
+// checkExact turns owner_id, club_id, role, status, and any other unknown
+// field into the standard validation error response.
+export const createIndependentTeamValidation = [
+  ...teamDetailsValidation(),
 
   checkExact([], {
     message:

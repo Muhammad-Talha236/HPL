@@ -33,8 +33,8 @@ const SeasonsHero = () => (
         <div className="mt-5 grid max-w-[520px] gap-3 sm:grid-cols-3">
           {highlights.map(({ icon: Icon, title, text }) => (
             <div key={title} className="flex items-start gap-2">
-              <Icon size={16} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#e9bd4d]" />
-              <p className="text-[10px] leading-4 text-white/75"><strong className="block text-[10px] text-white">{title}</strong>{text}</p>
+              <Icon size={24} strokeWidth={1.2} className="mt-0.5 shrink-0 text-[#e9bd4d]" />
+              <p className="text-[10px] leading-4 text-white/75"><strong className="block text-[15px] text-white">{title}</strong>{text}</p>
             </div>
           ))}
         </div>

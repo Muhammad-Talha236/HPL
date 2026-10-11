@@ -117,7 +117,7 @@ export const createMatchPlayer = async (req, res) => {
 
     const isClubOwner =
       req.user.role === ROLES.CLUB_OWNER &&
-      team.club.owner_id === req.user.user_id;
+      team.club?.owner_id === req.user.user_id;
 
     if (
       !isSuperAdmin &&
@@ -1062,7 +1062,7 @@ export const updateMatchPlayer = async (req, res) => {
     const isClubOwner =
       req.user.role ===
         ROLES.CLUB_OWNER &&
-      matchPlayer.team.club.owner_id ===
+      matchPlayer.team.club?.owner_id ===
         req.user.user_id;
 
     if (
@@ -1626,7 +1626,7 @@ export const removeMatchPlayer = async (
       req.user.role ===
         ROLES.CLUB_OWNER &&
       existingMatchPlayer.team
-        .club.owner_id ===
+        .club?.owner_id ===
         req.user.user_id;
 
     if (

@@ -47,6 +47,14 @@ export const createOwnProfileSignature = async (req, res, next) => {
   return createSignature(req, res, next);
 };
 
+// A normal USER needs to choose a logo before their first independent-team
+// registration promotes them. This intent is restricted to their own image
+// assets in the team folder and cannot attach media to an arbitrary entity.
+export const createOwnTeamLogoSignature = async (req, res, next) => {
+  req.body = { category: "teams", resource_type: "image" };
+  return createSignature(req, res, next);
+};
+
 export const registerMedia = async (req, res, next) => {
   try {
     const isOwnProfileMedia = req.isOwnProfileMedia === true;
@@ -64,6 +72,9 @@ export const registerMedia = async (req, res, next) => {
     }
     if (isOwnProfileMedia && (intent.category !== "profiles" || intent.resource_type !== "image")) {
       return res.status(400).json({ success: false, message: "This upload authorization cannot be used for a profile image" });
+    }
+    if (req.isOwnTeamLogoMedia === true && (intent.category !== "teams" || intent.resource_type !== "image")) {
+      return res.status(400).json({ success: false, message: "This upload authorization cannot be used for a team logo" });
     }
 
     const existing = await prisma.media.findUnique({ where: { cloudinary_public_id: publicId }, select: { media_id: true } });
@@ -98,6 +109,30 @@ export const registerMedia = async (req, res, next) => {
 export const registerOwnProfileMedia = async (req, res, next) => {
   req.isOwnProfileMedia = true;
   return registerMedia(req, res, next);
+};
+
+export const registerOwnTeamLogoMedia = async (req, res, next) => {
+  req.isOwnTeamLogoMedia = true;
+  return registerMedia(req, res, next);
+};
+
+export const listOwnTeamLogoMedia = async (req, res, next) => {
+  try {
+    const data = await prisma.media.findMany({
+      where: {
+        status: "ACTIVE",
+        uploaded_by_user_id: req.user.user_id,
+        folder: "hpl/teams",
+        resource_type: "image",
+      },
+      select: mediaSelect,
+      orderBy: { created_at: "desc" },
+      take: 30,
+    });
+    return res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const listMedia = async (req, res, next) => {

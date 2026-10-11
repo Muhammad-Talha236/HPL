@@ -112,6 +112,16 @@ export const ENV = {
       ? "http://localhost:5173"
       : ""),
 
+  FRONTEND_URLS: [
+    ...(process.env.FRONTEND_URLS || process.env.FRONTEND_URL || "http://localhost:5173")
+      .split(",")
+      .map((origin) => origin.trim().replace(/\/$/, ""))
+      .filter(Boolean),
+    ...(NODE_ENV === "development"
+      ? ["http://localhost:5173", "http://127.0.0.1:5173"]
+      : []),
+  ].filter((origin, index, origins) => origins.indexOf(origin) === index),
+
   JWT_SECRET:
     process.env.JWT_SECRET,
 

@@ -31,8 +31,17 @@ app.use(apiRateLimiter);
 // CORS
 app.use(
   cors({
-    origin: ENV.FRONTEND_URL,
-    methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
+    origin(origin, callback) {
+      // Requests without an Origin header are non-browser/server-to-server
+      // requests and remain valid. Browser origins must be explicitly allowed.
+      if (!origin || ENV.FRONTEND_URLS.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("CORS origin is not allowed"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );

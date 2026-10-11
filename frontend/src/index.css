@@ -84,6 +84,22 @@
 }
 
 @layer components {
+  .form-input {
+    width: 100%;
+    margin-top: 0.4rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    padding: 0.7rem 0.75rem;
+    color: #10213f;
+    outline: none;
+  }
+
+  .form-input:focus {
+    border-color: #0b5d46;
+    box-shadow: 0 0 0 3px rgb(11 93 70 / 12%);
+  }
+
   /* The overview has two half-width registration cards and one full-width match card. */
   .dashboard-records > article {
     min-width: 0;
@@ -96,6 +112,51 @@
   .dashboard-records table {
     min-width: 0;
     width: 100%;
+  }
+
+  /* Keep the admin team profile banner balanced: identity has room to breathe,
+     while the operational metadata remains a compact, aligned group. */
+  main:has(> section[class*="bg-[#061b31]"]) {
+    width: min(100%, 1600px);
+    margin-inline: auto;
+  }
+
+  section[class*="bg-[#061b31]"] > div.relative.flex > div:last-child {
+    min-width: 0;
+  }
+
+  section[class*="bg-[#061b31]"] > div.relative.flex > div:last-child > div {
+    min-width: 0;
+    border: 1px solid rgb(255 255 255 / 10%);
+    border-radius: 0.5rem;
+    background: rgb(255 255 255 / 6%);
+    padding: 0.625rem 0.75rem;
+  }
+
+  @media (min-width: 1280px) {
+    section[class*="bg-[#061b31]"] > div.relative.flex {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(24rem, 0.85fr);
+      align-items: center;
+      gap: 1rem;
+    }
+
+    section[class*="bg-[#061b31]"] > div.relative.flex > div:first-child {
+      display: grid;
+      grid-template-columns: 4.5rem minmax(0, 1fr);
+      align-items: center;
+    }
+
+    section[class*="bg-[#061b31]"] > div.relative.flex > div:last-child {
+      width: 100%;
+      min-width: 0;
+    }
+  }
+
+  @media (max-width: 639px) {
+    section[class*="bg-[#061b31]"] > div.relative.flex > div:last-child {
+      gap: 0.5rem;
+    }
   }
 
   .hpl-portal {

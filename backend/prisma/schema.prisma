@@ -8,31 +8,38 @@ datasource db {
 }
 
 model User {
-  user_id                 Int                           @id @default(autoincrement())
-  name                    String
-  email                   String                        @unique
-  password_hash           String
-  phone                   String?
-  location                String?
-  date_of_birth           DateTime?                      @db.Date
-  role                    String
-  status                  String
-  profile_image           String?
-  created_at              DateTime                      @default(now())
-  updated_at              DateTime                      @updatedAt
-  audit_logs              AuditLog[]
-  owned_clubs             Club[]                        @relation("ClubOwner")
-  registrations           CompetitionRegistration[]     @relation("RegistrationUser")
-  news                    News[]                        @relation("NewsAuthor")
-  notifications           Notification[]
-  player                  Player?                       @relation("PlayerUser")
-  sent_player_invitations PlayerInvitation[]            @relation("PlayerInvitationInviter")
-  referee_profile         Referee?
-  referee_evaluations     RefereeEvaluation[]
-  approval_reviews        RegistrationApprovalHistory[] @relation("ApprovalReviewer")
-  owned_teams             Team[]                        @relation("TeamOwner")
-  uploaded_media          Media[]                       @relation("MediaUploader")
-  media_upload_intents    MediaUploadIntent[]
+  user_id                             Int                           @id @default(autoincrement())
+  name                                String
+  email                               String                        @unique
+  email_verified                      Boolean                       @default(false)
+  email_verified_at                   DateTime?
+  password_hash                       String
+  phone                               String?
+  location                            String?
+  date_of_birth                       DateTime?                     @db.Date
+  role                                String
+  status                              String
+  profile_image                       String?
+  created_at                          DateTime                      @default(now())
+  updated_at                          DateTime                      @updatedAt
+  audit_logs                          AuditLog[]
+  owned_clubs                         Club[]                        @relation("ClubOwner")
+  registrations                       CompetitionRegistration[]     @relation("RegistrationUser")
+  news                                News[]                        @relation("NewsAuthor")
+  notifications                       Notification[]
+  player                              Player?                       @relation("PlayerUser")
+  sent_player_invitations             PlayerInvitation[]            @relation("PlayerInvitationInviter")
+  referee_profile                     Referee?
+  referee_evaluations                 RefereeEvaluation[]
+  approval_reviews                    RegistrationApprovalHistory[] @relation("ApprovalReviewer")
+  owned_teams                         Team[]                        @relation("TeamOwner")
+  team_registration_requests          TeamRegistrationRequest[]     @relation("TeamRegistrationApplicant")
+  reviewed_team_registration_requests TeamRegistrationRequest[]     @relation("TeamRegistrationReviewer")
+  team_registration_reviews           TeamRegistrationReview[]      @relation("TeamRegistrationReviewReviewer")
+  uploaded_media                      Media[]                       @relation("MediaUploader")
+  uploaded_team_documents             TeamDocument[]                @relation("TeamDocumentUploader")
+  media_upload_intents                MediaUploadIntent[]
+  email_verification_tokens           EmailVerificationToken[]
 }
 
 model Club {
@@ -55,43 +62,112 @@ model Club {
 }
 
 model Team {
-  team_id            Int                       @id @default(autoincrement())
-  club_id            Int
-  owner_id           Int
-  home_venue_id      Int
-  name               String
-  logo               String?
-  gender             String
-  region             String?
-  district           String?
-  city               String?
-  description        String?
-  contact_email      String?
-  contact_phone      String?
-  team_type          String
-  status             String
-  created_at         DateTime                  @default(now())
-  updated_at         DateTime                  @updatedAt
-  registrations      CompetitionRegistration[]
-  away_matches       Match[]                   @relation("AwayTeam")
-  home_matches       Match[]                   @relation("HomeTeam")
-  match_events       MatchEvent[]
-  match_players      MatchPlayer[]
-  player_invitations PlayerInvitation[]
-  club               Club                      @relation(fields: [club_id], references: [club_id])
-  home_venue         Venue                     @relation("TeamHomeVenue", fields: [home_venue_id], references: [venue_id])
-  owner              User                      @relation("TeamOwner", fields: [owner_id], references: [user_id])
-  team_players       TeamPlayer[]
-  player_achievements PlayerAchievement[]
-  rankings           TeamRanking[]
-  standings          TeamStanding[]
+  team_id              Int                       @id @default(autoincrement())
+  club_id              Int?
+  owner_id             Int
+  home_venue_id        Int
+  name                 String
+  logo                 String?
+  gender               String
+  region               String?
+  district             String?
+  city                 String?
+  description          String?
+  contact_email        String?
+  contact_phone        String?
+  team_type            String
+  status               String
+  verification_status  String                    @default("VERIFIED")
+  created_at           DateTime                  @default(now())
+  updated_at           DateTime                  @updatedAt
+  registrations        CompetitionRegistration[]
+  away_matches         Match[]                   @relation("AwayTeam")
+  home_matches         Match[]                   @relation("HomeTeam")
+  match_events         MatchEvent[]
+  match_players        MatchPlayer[]
+  player_invitations   PlayerInvitation[]
+  club                 Club?                     @relation(fields: [club_id], references: [club_id])
+  home_venue           Venue                     @relation("TeamHomeVenue", fields: [home_venue_id], references: [venue_id])
+  owner                User                      @relation("TeamOwner", fields: [owner_id], references: [user_id])
+  team_players         TeamPlayer[]
+  team_staff           TeamStaff[]
+  team_kits            TeamKit[]
+  team_documents       TeamDocument[]
+  player_achievements  PlayerAchievement[]
+  rankings             TeamRanking[]
+  standings            TeamStanding[]
+  registration_request TeamRegistrationRequest?
+
+  @@index([club_id])
+}
+
+model TeamRegistrationRequest {
+  team_registration_request_id Int                      @id @default(autoincrement())
+  applicant_user_id            Int
+  linked_team_id               Int?                     @unique
+  name                         String
+  logo                         String?
+  gender                       String
+  team_type                    String
+  home_venue_id                Int
+  region                       String?
+  district                     String?
+  city                         String?
+  description                  String?
+  contact_email                String
+  contact_phone                String
+  declaration_accepted         Boolean
+  status                       String                   @default("PENDING")
+  reviewed_by_user_id          Int?
+  reviewed_at                  DateTime?
+  review_reason                String?
+  squad_deadline               DateTime?
+  first_reminder_sent_at       DateTime?
+  second_reminder_sent_at      DateTime?
+  created_at                   DateTime                 @default(now())
+  updated_at                   DateTime                 @updatedAt
+  applicant                    User                     @relation("TeamRegistrationApplicant", fields: [applicant_user_id], references: [user_id])
+  reviewer                     User?                    @relation("TeamRegistrationReviewer", fields: [reviewed_by_user_id], references: [user_id])
+  linked_team                  Team?                    @relation(fields: [linked_team_id], references: [team_id])
+  home_venue                   Venue                    @relation("TeamRegistrationRequestHomeVenue", fields: [home_venue_id], references: [venue_id])
+  reviews                      TeamRegistrationReview[]
+
+  @@index([applicant_user_id, status])
+  @@index([status, created_at])
+  @@index([squad_deadline, status])
+}
+
+model TeamRegistrationReview {
+  team_registration_review_id  Int                     @id @default(autoincrement())
+  team_registration_request_id Int
+  reviewer_user_id             Int
+  action                       String
+  reason                       String?
+  created_at                   DateTime                @default(now())
+  request                      TeamRegistrationRequest @relation(fields: [team_registration_request_id], references: [team_registration_request_id])
+  reviewer                     User                    @relation("TeamRegistrationReviewReviewer", fields: [reviewer_user_id], references: [user_id])
+
+  @@index([team_registration_request_id, created_at])
+}
+
+model EmailVerificationToken {
+  email_verification_token_id Int       @id @default(autoincrement())
+  user_id                     Int
+  token_hash                  String    @unique
+  email_snapshot              String
+  expires_at                  DateTime
+  used_at                     DateTime?
+  created_at                  DateTime  @default(now())
+  user                        User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id, expires_at])
 }
 
 model Player {
-  player_id             Int                 @id @default(autoincrement())
+  player_id             Int                  @id @default(autoincrement())
   name                  String
   profile_photo         String?
-  date_of_birth         DateTime            @db.Date
+  date_of_birth         DateTime             @db.Date
   gender                String
   position              String?
   phone                 String?
@@ -100,16 +176,16 @@ model Player {
   weight_kg             Int?
   preferred_foot        String?
   bio                   String?
-  registration_number   String              @unique
+  registration_number   String               @unique
   status                String
-  created_at            DateTime            @default(now())
-  updated_at            DateTime            @updatedAt
-  user_id               Int?                @unique
+  created_at            DateTime             @default(now())
+  updated_at            DateTime             @updatedAt
+  user_id               Int?                 @unique
   competition_players   CompetitionPlayer[]
-  event_players         MatchEvent[]        @relation("EventPlayer")
-  related_event_players MatchEvent[]        @relation("RelatedEventPlayer")
+  event_players         MatchEvent[]         @relation("EventPlayer")
+  related_event_players MatchEvent[]         @relation("RelatedEventPlayer")
   match_players         MatchPlayer[]
-  user                  User?               @relation("PlayerUser", fields: [user_id], references: [user_id])
+  user                  User?                @relation("PlayerUser", fields: [user_id], references: [user_id])
   invitations           PlayerInvitation?
   team_players          TeamPlayer[]
   achievements          PlayerAchievement[]
@@ -138,12 +214,12 @@ model PlayerAchievement {
 }
 
 model PlayerGalleryPhoto {
-  photo_id     Int      @id @default(autoincrement())
-  player_id    Int
-  image_url    String
-  caption      String?
-  created_at   DateTime @default(now())
-  player       Player   @relation(fields: [player_id], references: [player_id], onDelete: Cascade)
+  photo_id   Int      @id @default(autoincrement())
+  player_id  Int
+  image_url  String
+  caption    String?
+  created_at DateTime @default(now())
+  player     Player   @relation(fields: [player_id], references: [player_id], onDelete: Cascade)
 
   @@index([player_id, created_at])
 }
@@ -168,17 +244,70 @@ model TeamPlayer {
   @@index([team_id, jersey_number, status])
 }
 
+model TeamStaff {
+  staff_id   Int      @id @default(autoincrement())
+  team_id    Int
+  name       String
+  role       String
+  phone      String?
+  email      String?
+  status     String   @default("ACTIVE")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  team       Team     @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+
+  @@index([team_id, status])
+  @@index([team_id, role])
+}
+
+model TeamKit {
+  kit_id          Int      @id @default(autoincrement())
+  team_id         Int
+  kit_type        String
+  name            String?
+  primary_color   String?
+  secondary_color String?
+  image_url       String?
+  status          String   @default("ACTIVE")
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  team            Team     @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+
+  @@unique([team_id, kit_type])
+  @@index([team_id, status])
+}
+
+model TeamDocument {
+  document_id Int      @id @default(autoincrement())
+  team_id     Int
+  title       String
+  category    String?
+  file_url    String
+  file_name   String
+  mime_type   String
+  size_bytes  Int?
+  uploaded_by Int
+  status      String   @default("ACTIVE")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  team        Team     @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+  uploader    User     @relation("TeamDocumentUploader", fields: [uploaded_by], references: [user_id], onDelete: Restrict)
+
+  @@index([team_id, status, created_at])
+  @@index([uploaded_by, created_at])
+}
+
 model Season {
-  season_id    Int           @id @default(autoincrement())
-  name         String
-  start_date   DateTime      @db.Date
-  end_date     DateTime      @db.Date
-  status       String
-  description  String?
-  created_at   DateTime      @default(now())
-  updated_at   DateTime      @updatedAt
-  competitions Competition[]
-  matches      Match[]
+  season_id           Int                 @id @default(autoincrement())
+  name                String
+  start_date          DateTime            @db.Date
+  end_date            DateTime            @db.Date
+  status              String
+  description         String?
+  created_at          DateTime            @default(now())
+  updated_at          DateTime            @updatedAt
+  competitions        Competition[]
+  matches             Match[]
   player_achievements PlayerAchievement[]
 }
 
@@ -263,20 +392,21 @@ model Payment {
 }
 
 model Venue {
-  venue_id      Int      @id @default(autoincrement())
-  name          String
-  region        String?
-  district      String?
-  city          String?
-  address       String?
-  capacity      Int?
-  surface_type  String?
-  contact_phone String?
-  status        String
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-  matches       Match[]
-  home_teams    Team[]   @relation("TeamHomeVenue")
+  venue_id                   Int                       @id @default(autoincrement())
+  name                       String
+  region                     String?
+  district                   String?
+  city                       String?
+  address                    String?
+  capacity                   Int?
+  surface_type               String?
+  contact_phone              String?
+  status                     String
+  created_at                 DateTime                  @default(now())
+  updated_at                 DateTime                  @updatedAt
+  matches                    Match[]
+  home_teams                 Team[]                    @relation("TeamHomeVenue")
+  team_registration_requests TeamRegistrationRequest[] @relation("TeamRegistrationRequestHomeVenue")
 }
 
 model Referee {
@@ -518,8 +648,8 @@ model AuditLog {
 }
 
 model Media {
-  media_id             Int                   @id @default(autoincrement())
-  cloudinary_public_id String                @unique
+  media_id             Int               @id @default(autoincrement())
+  cloudinary_public_id String            @unique
   secure_url           String
   resource_type        String
   mime_type            String
@@ -532,11 +662,11 @@ model Media {
   title                String?
   description          String?
   alt_text             String?
-  status               String                @default("ACTIVE")
+  status               String            @default("ACTIVE")
   uploaded_by_user_id  Int
-  created_at           DateTime              @default(now())
-  updated_at           DateTime              @updatedAt
-  uploaded_by          User                  @relation("MediaUploader", fields: [uploaded_by_user_id], references: [user_id])
+  created_at           DateTime          @default(now())
+  updated_at           DateTime          @updatedAt
+  uploaded_by          User              @relation("MediaUploader", fields: [uploaded_by_user_id], references: [user_id])
   attachments          MediaAttachment[]
   home_gallery_items   HomeGalleryItem[]
 
@@ -545,16 +675,16 @@ model Media {
 }
 
 model MediaUploadIntent {
-  upload_intent_id String   @id @default(uuid())
-  public_id        String   @unique
+  upload_intent_id String    @id @default(uuid())
+  public_id        String    @unique
   resource_type    String
   category         String
   folder           String
   expires_at       DateTime
   consumed_at      DateTime?
   user_id          Int
-  created_at       DateTime @default(now())
-  user             User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  created_at       DateTime  @default(now())
+  user             User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@index([user_id, expires_at])
 }

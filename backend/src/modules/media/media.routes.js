@@ -5,7 +5,7 @@ import { mediaUploadRateLimiter } from "../../middleware/auth/rateLimit.middlewa
 import { ROLES } from "../../constants/roles.js";
 import {
   addHomeGalleryItem, attachMedia, createOwnProfileSignature, createSignature, deleteMedia, detachMedia, getMedia, getPublicHomeGallery,
-  getPublicEntityMedia, listEntityMedia, reorderEntityMedia, updateAttachment, listHomeGallery, listMedia, registerMedia, registerOwnProfileMedia, removeHomeGalleryItem, updateHomeGalleryItem, updateMedia,
+  createOwnTeamLogoSignature, getPublicEntityMedia, listEntityMedia, listOwnTeamLogoMedia, reorderEntityMedia, updateAttachment, listHomeGallery, listMedia, registerMedia, registerOwnProfileMedia, registerOwnTeamLogoMedia, removeHomeGalleryItem, updateHomeGalleryItem, updateMedia,
 } from "./media.controller.js";
 
 const router = express.Router();
@@ -17,6 +17,9 @@ router.get("/entity/:entity_type/:entity_id", getPublicEntityMedia);
 router.use(authenticate);
 router.post("/profile/upload-signature", authorize(ROLES.USER), mediaUploadRateLimiter, createOwnProfileSignature);
 router.post("/profile", authorize(ROLES.USER), mediaUploadRateLimiter, registerOwnProfileMedia);
+router.get("/team-logo", authorize(ROLES.USER, ROLES.TEAM_OWNER), listOwnTeamLogoMedia);
+router.post("/team-logo/upload-signature", authorize(ROLES.USER, ROLES.TEAM_OWNER), mediaUploadRateLimiter, createOwnTeamLogoSignature);
+router.post("/team-logo", authorize(ROLES.USER, ROLES.TEAM_OWNER), mediaUploadRateLimiter, registerOwnTeamLogoMedia);
 
 router.use(authorize(ROLES.SUPER_ADMIN));
 router.get("/entity/:entity_type/:entity_id/manage", listEntityMedia);

@@ -1,128 +1,640 @@
+
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronRight, CircleUserRound, Edit3, KeyRound, Pencil, Settings2, ShieldCheck, Trash2, UserRoundCheck } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  Ban,
+  CalendarDays,
+  CheckCircle2,
+  Edit3,
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  RefreshCw,
+  Shield,
+  ShieldCheck,
+  UserRound,
+  UsersRound,
+  X,
+} from "lucide-react";
+
 import useAuth from "../../../hooks/useAuth";
-import { ROLES } from "../../../constants/roles";
 import { USER_STATUS } from "../../../constants/statuses";
-import apiClient from "../../../services/apiClient";
-import mountainScene from "../../../assets/hunza-football-hero-alt.png";
+import AdminEditUserModal from "../components/AdminEditUserModal";
+import AdminChangeRoleModal from "../components/AdminChangeRoleModal";
+import {
+  adminUsersService,
+  getAdminUsersError,
+} from "../services/adminUsersService";
 
-const dateTime = new Intl.DateTimeFormat("en-PK", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
-const dateOnly = new Intl.DateTimeFormat("en-PK", { day: "numeric", month: "short", year: "numeric" });
-const roleNames = { USER: "Normal User", TEAM_OWNER: "Team Owner", CLUB_OWNER: "Club Owner", REFEREE: "Referee", SUPER_ADMIN: "Super Admin" };
-const statusNames = { ACTIVE: "Active", INACTIVE: "Inactive", BLOCKED: "Blocked" };
-const initials = (name = "") => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "U";
-const show = (value) => value || "Not provided";
-const DateValue = ({ value, time = false }) => value ? (time ? dateTime : dateOnly).format(new Date(value)) : "Not provided";
-const roleLabel = (role) => roleNames[role] || role;
-const statusLabel = (status) => statusNames[status] || status;
+const roleLabels = {
+  USER: "Normal User",
+  TEAM_OWNER: "Team Owner",
+  CLUB_OWNER: "Club Owner",
+  REFEREE: "Referee",
+  SUPER_ADMIN: "Super Admin",
+};
 
-function Pill({ value, tone = "neutral" }) {
-  const colors = { active: "bg-emerald-100 text-emerald-700", inactive: "bg-rose-100 text-rose-700", blocked: "bg-red-100 text-red-700", neutral: "bg-slate-100 text-slate-600", role: "bg-white/10 text-white ring-1 ring-white/15" };
-  return <span className={`inline-flex rounded-md px-2 py-1 text-[11px] font-bold ${colors[tone] || colors.neutral}`}>{value}</span>;
+const statusStyles = {
+  ACTIVE: "bg-emerald-50 text-emerald-700",
+  INACTIVE: "bg-amber-50 text-amber-700",
+  BLOCKED: "bg-rose-50 text-rose-700",
+};
+
+function formatDate(value) {
+  if (!value) return "Not provided";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not provided";
+
+  return date.toLocaleDateString("en-PK", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-function Avatar({ account, large = false }) {
-  return <span className={`grid shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white/80 bg-emerald-100 font-extrabold text-emerald-700 shadow-sm ${large ? "size-20 text-xl" : "size-9 text-xs"}`}>{account.profile_image ? <img src={account.profile_image} alt="" className="size-full object-cover" /> : initials(account.name)}</span>;
+function initials(name) {
+  return String(name || "User")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 }
 
-function DetailCard({ icon: Icon, title, action, children }) {
-  return <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_5px_18px_rgba(15,35,72,.04)] sm:p-5"><header className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-[#14213c]"><Icon size={18} /><h2 className="text-base font-extrabold">{title}</h2></div>{action}</header><dl className="mt-3 divide-y divide-slate-100">{children}</dl></section>;
+function InfoItem({ label, value, icon: Icon }) {
+  return (
+    <div className="flex min-w-0 items-start gap-3">
+      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-50 text-slate-500">
+        <Icon size={17} />
+      </div>
+      <div className="min-w-0">
+        <dt className="text-[11px] text-slate-500">
+          {label}
+        </dt>
+        <dd className="mt-1 break-words text-[13px] font-semibold text-[#10213F]">
+          {value || "Not provided"}
+        </dd>
+      </div>
+    </div>
+  );
 }
 
-function Row({ label, children }) {
-  return <div className="grid grid-cols-[42%_58%] gap-3 py-2 text-[12px] sm:text-[13px]"><dt className="text-slate-500">{label}</dt><dd className="min-w-0 break-words font-semibold text-[#14213c]">{children}</dd></div>;
-}
-
-function Skeleton() {
-  return <main className="p-5 sm:p-7 xl:p-8"><div className="h-4 w-44 animate-pulse rounded bg-slate-200" /><div className="mt-4 h-10 w-52 animate-pulse rounded bg-slate-200" /><div className="mt-5 h-28 animate-pulse rounded-xl bg-slate-200" /><div className="mt-4 grid gap-4 lg:grid-cols-2"><div className="h-72 animate-pulse rounded-xl bg-slate-200" /><div className="h-72 animate-pulse rounded-xl bg-slate-200" /></div></main>;
+function Section({ title, description, children }) {
+  return (
+    <section className="min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-5 py-4">
+        <h2 className="text-sm font-bold text-[#10213F]">
+          {title}
+        </h2>
+        {description && (
+          <p className="mt-1 text-xs text-slate-500">
+            {description}
+          </p>
+        )}
+      </div>
+      <div className="p-5">{children}</div>
+    </section>
+  );
 }
 
 export default function AdminUserDetailsPage() {
   const { userId } = useParams();
-  const navigate = useNavigate();
-  const { user: actingUser } = useAuth();
-  const [state, setState] = useState({ status: "loading", data: null });
-  const [dialog, setDialog] = useState(null);
-  const [pending, setPending] = useState(false);
-  const [feedback, setFeedback] = useState(null);
-  const [editForm, setEditForm] = useState({ name: "", phone: "", profile_image: "" });
-  const [nextRole, setNextRole] = useState("");
+  const { user: currentUser } = useAuth();
 
-  const load = useCallback(async (signal) => {
-    setState((current) => ({ ...current, status: "loading" }));
+  const [account, setAccount] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [feedbackType, setFeedbackType] = useState("success");
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [roleOpen, setRoleOpen] = useState(false);
+  const [busyAction, setBusyAction] = useState("");
+
+  const loadUser = useCallback(async (signal) => {
     try {
-      const response = await apiClient.get(`/admin/users/${userId}`, { signal });
-      setState({ status: "success", data: response.data.data });
-    } catch (error) {
-      if (error.code !== "ERR_CANCELED") setState({ status: error.response?.status === 404 ? "not-found" : "error", data: null });
+      const result = await adminUsersService.getById(
+        userId,
+        signal
+      );
+
+      if (!signal?.aborted) {
+        setAccount(result);
+        setError("");
+      }
+    } catch (err) {
+      if (
+        err.code === "ERR_CANCELED" ||
+        signal?.aborted
+      ) {
+        return;
+      }
+
+      setError(getAdminUsersError(err));
+    } finally {
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [userId]);
 
-  useEffect(() => { const controller = new AbortController(); const timer = window.setTimeout(() => load(controller.signal), 0); return () => { window.clearTimeout(timer); controller.abort(); }; }, [load]);
+  useEffect(() => {
+    const controller = new AbortController();
 
-  const account = state.data;
-  const isSelf = account && Number(actingUser?.user_id) === account.user_id;
-  const ownedTeams = account?.owned_teams || [];
-  const ownedClubs = account?.owned_clubs || [];
-  const beginEdit = () => { setEditForm({ name: account.name || "", phone: account.phone || "", profile_image: account.profile_image || "" }); setDialog("edit"); };
-  const beginRoleChange = () => { setNextRole(account.role); setDialog("role"); };
-  const closeDialog = () => { if (!pending) setDialog(null); };
-  const refresh = async () => load();
+    setLoading(true);
+    setAccount(null);
+    setError("");
+    setFeedback("");
 
-  const statusAction = async () => {
-    const action = account.status === USER_STATUS.ACTIVE ? "deactivate" : "activate";
-    setPending(true); setFeedback(null);
-    try { await apiClient.patch(`/users/${account.user_id}/${action}`); setFeedback({ type: "success", text: `User account ${action}d successfully.` }); setDialog(null); await refresh(); }
-    catch (error) { setFeedback({ type: "error", text: error.response?.data?.message || "Account status could not be updated." }); }
-    finally { setPending(false); }
+    loadUser(controller.signal);
+
+    return () => controller.abort();
+  }, [loadUser]);
+
+  const reloadAfterSave = async (message) => {
+    await loadUser();
+    setFeedback(message);
+    setFeedbackType("success");
   };
 
-  const saveEdit = async (event) => {
-    event.preventDefault();
-    if (editForm.name.trim().length < 2) return setFeedback({ type: "error", text: "Name must contain at least two characters." });
-    setPending(true); setFeedback(null);
-    try { await apiClient.patch(`/users/${account.user_id}`, { name: editForm.name.trim(), phone: editForm.phone.trim() || null, profile_image: editForm.profile_image.trim() || null }); setFeedback({ type: "success", text: "User profile updated successfully." }); setDialog(null); await refresh(); }
-    catch (error) { setFeedback({ type: "error", text: error.response?.data?.message || "User profile could not be updated." }); }
-    finally { setPending(false); }
+  const isSelf =
+    account &&
+    Number(currentUser?.user_id) ===
+      Number(account.user_id);
+
+  const changeStatus = async (action) => {
+    if (!account || busyAction || isSelf) return;
+
+    const actionLabels = {
+      activate: "activate",
+      deactivate: "deactivate",
+      block: "block",
+    };
+
+    if (
+      !window.confirm(
+        `Are you sure you want to ${actionLabels[action]} ${account.name}'s account?`
+      )
+    ) {
+      return;
+    }
+
+    setBusyAction(action);
+    setFeedback("");
+
+    try {
+      await adminUsersService.changeStatus(
+        account.user_id,
+        action
+      );
+
+      await loadUser();
+
+      setFeedback(
+        `Account ${action} action completed successfully.`
+      );
+      setFeedbackType("success");
+    } catch (err) {
+      setFeedback(getAdminUsersError(err));
+      setFeedbackType("error");
+    } finally {
+      setBusyAction("");
+    }
   };
 
-  const saveRole = async (event) => {
-    event.preventDefault();
-    if (!nextRole || nextRole === account.role) return;
-    setPending(true); setFeedback(null);
-    try { await apiClient.patch(`/users/${account.user_id}/role`, { role: nextRole }); setFeedback({ type: "success", text: "User role updated successfully." }); setDialog(null); await refresh(); }
-    catch (error) { setFeedback({ type: "error", text: error.response?.data?.message || "Role could not be updated." }); }
-    finally { setPending(false); }
-  };
+  if (loading) {
+    return (
+      <div className="flex min-h-[65vh] items-center justify-center gap-3 text-sm text-slate-500">
+        <Loader2
+          size={22}
+          className="animate-spin text-[#078052]"
+        />
+        Loading user details...
+      </div>
+    );
+  }
 
-  if (state.status === "loading") return <Skeleton />;
-  if (state.status === "not-found") return <main className="p-5 sm:p-7 xl:p-8"><p className="rounded-lg bg-amber-50 p-4 text-sm text-amber-800">User account was not found.</p><Link to="/admin/users" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#078052]"><ArrowLeft size={16} />Back to Users</Link></main>;
-  if (state.status === "error") return <main className="p-5 sm:p-7 xl:p-8"><p className="rounded-lg bg-rose-50 p-4 text-sm text-rose-700">User details could not be loaded.</p><button type="button" onClick={() => load()} className="mt-4 text-sm font-bold text-[#078052] underline">Retry</button></main>;
+  if (!account) {
+    return (
+      <div className="p-6">
+        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+          <UserRound
+            size={34}
+            className="mx-auto text-slate-400"
+          />
+          <h2 className="mt-3 text-lg font-bold text-[#10213F]">
+            User unavailable
+          </h2>
+          <p className="mt-2 text-sm text-slate-500">
+            {error || "This user account was not found."}
+          </p>
+          <div className="mt-5 flex justify-center gap-3">
+            <Link
+              to="/admin/users"
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm"
+            >
+              Back to Users
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                loadUser();
+              }}
+              className="rounded-lg bg-[#078052] px-4 py-2 text-sm font-semibold text-white"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const statusTone = account.status === USER_STATUS.ACTIVE ? "active" : account.status === USER_STATUS.BLOCKED ? "blocked" : "inactive";
-  const teamDescription = ownedTeams.length ? ownedTeams.map((team) => team.name).join(", ") : "No registered team";
-  const canChangeRole = !isSelf;
-  const canChangeStatus = !isSelf && account.status !== USER_STATUS.BLOCKED;
+  const relationships = [
+    ...(account.owned_clubs || []).map((club) => ({
+      key: `club-${club.club_id}`,
+      type: "Club Owner",
+      name: club.name,
+      id: club.club_id,
+      status: club.status,
+      href: `/admin/clubs/${club.club_id}`,
+    })),
+    ...(account.owned_teams || []).map((team) => ({
+      key: `team-${team.team_id}`,
+      type: "Team Owner",
+      name: team.name,
+      id: team.team_id,
+      status: team.status,
+      href: `/admin/teams/${team.team_id}`,
+    })),
+  ];
 
-  return <main className="min-w-0 p-5 sm:p-7 xl:p-8">
-    <nav className="flex flex-wrap items-center gap-1 text-xs text-slate-500"><Link to="/admin" className="hover:text-[#078052]">Dashboard</Link><ChevronRight size={13} /><Link to="/admin/users" className="hover:text-[#078052]">Users</Link><ChevronRight size={13} /><span className="max-w-48 truncate">{account.name}</span></nav>
-    <header className="mt-3 flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-[30px] font-extrabold leading-none tracking-tight text-[#14213c]">User Details</h1><p className="mt-1.5 text-sm text-slate-500">View and manage user information, roles, and account status.</p></div><button type="button" onClick={() => navigate("/admin/users")} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-[#14213c] shadow-sm hover:border-emerald-400"><ArrowLeft size={15} />Back to Users</button></header>
-    {feedback && <p role="alert" className={`mt-4 rounded-lg px-4 py-3 text-sm ${feedback.type === "error" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{feedback.text}</p>}
+  return (
+    <div className="min-w-0 space-y-5 bg-[#F4F7FB] p-4 sm:p-6">
+      {/* Breadcrumb */}
+      <nav className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <Link to="/admin" className="hover:text-[#078052]">
+          Dashboard
+        </Link>
+        <span>/</span>
+        <Link
+          to="/admin/users"
+          className="hover:text-[#078052]"
+        >
+          Users
+        </Link>
+        <span>/</span>
+        <span className="font-medium text-slate-700">
+          User Details
+        </span>
+      </nav>
 
-    <section className="relative mt-5 overflow-hidden rounded-xl bg-gradient-to-r from-[#071a2d] via-[#0b2945] to-[#153653] p-4 text-white shadow-[0_10px_25px_rgba(6,27,47,.18)] sm:p-5"><img src={mountainScene} alt="" className="pointer-events-none absolute inset-y-0 right-0 w-2/3 object-cover object-right opacity-[.16] mix-blend-screen" /><div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex min-w-0 items-center gap-4"><Avatar account={account} large /><div className="min-w-0"><h2 className="truncate text-2xl font-extrabold">{account.name}</h2><p className="mt-1 truncate text-sm text-slate-200">{account.email}</p><div className="mt-3 flex flex-wrap gap-2"><Pill tone="role" value={roleLabel(account.role)} /><Pill tone={statusTone} value={statusLabel(account.status)} /></div></div></div><button type="button" onClick={beginEdit} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-white/35 bg-white/5 px-3.5 py-2 text-sm font-bold text-white hover:bg-white/15"><Pencil size={15} />Edit User</button></div></section>
+      {/* Heading */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <Link
+            to="/admin/users"
+            className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[#078052]"
+          >
+            <ArrowLeft size={14} />
+            Back to Users
+          </Link>
 
-    <div className="mt-4 grid gap-4 lg:grid-cols-2">
-      <DetailCard icon={CircleUserRound} title="Account Information">
-        <Row label="User ID">#{account.user_id}</Row><Row label="Full Name">{account.name}</Row><Row label="Email">{account.email}</Row><Row label="Phone Number">{show(account.phone)}</Row><Row label="Location">{show(account.location)}</Row><Row label="Date of Birth"><DateValue value={account.date_of_birth} /></Row><Row label="Joined On"><DateValue value={account.created_at} time /></Row><Row label="Last Updated"><DateValue value={account.updated_at} time /></Row>
-      </DetailCard>
-      <DetailCard icon={ShieldCheck} title="Access & Status" action={canChangeRole ? <button type="button" onClick={beginRoleChange} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-[#14213c] hover:border-emerald-400"><Edit3 size={13} />Edit Access</button> : null}>
-        <Row label="Role"><Pill value={roleLabel(account.role)} /></Row><Row label="Account Status"><Pill tone={statusTone} value={statusLabel(account.status)} /></Row><Row label="Email Verified"><Pill value="Not configured" /></Row><Row label="Phone Verified"><Pill value="Not configured" /></Row><Row label="Two Factor Auth"><Pill value="Not supported" /></Row><Row label="Can Register Team"><Pill tone={account.role === ROLES.TEAM_OWNER ? "active" : "neutral"} value={account.role === ROLES.TEAM_OWNER ? "Yes" : "No"} /></Row><Row label="Registered Teams">{teamDescription}</Row>{ownedClubs.length > 0 && <Row label="Owned Clubs">{ownedClubs.map((club) => club.name).join(", ")}</Row>}{account.referee_profile && <Row label="Referee Profile">{account.referee_profile.name}</Row>}
-      </DetailCard>
+          <h1 className="text-[27px] font-extrabold tracking-tight text-[#10213F]">
+            User Details
+          </h1>
+          <p className="mt-1 text-xs text-slate-500">
+            View and manage account information and permissions.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => loadUser()}
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+        >
+          <RefreshCw size={15} />
+          Refresh
+        </button>
+      </div>
+
+      {/* Feedback */}
+      {(feedback || error) && (
+        <div
+          role="status"
+          className={`flex items-start justify-between gap-3 rounded-lg px-4 py-3 text-sm ${
+            error || feedbackType === "error"
+              ? "bg-rose-50 text-rose-700"
+              : "bg-emerald-50 text-emerald-700"
+          }`}
+        >
+          <span>{error || feedback}</span>
+          <button
+            type="button"
+            aria-label="Dismiss message"
+            onClick={() => {
+              setError("");
+              setFeedback("");
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Profile summary */}
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-5">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-emerald-50 text-xl font-extrabold text-[#078052]">
+              {account.profile_image ? (
+                <img
+                  src={account.profile_image}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                initials(account.name)
+              )}
+            </div>
+
+            <div className="min-w-0">
+              <h2 className="break-words text-xl font-extrabold text-[#10213F]">
+                {account.name}
+              </h2>
+              <p className="mt-1 break-all text-xs text-slate-500">
+                {account.email}
+              </p>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-md bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+                  {roleLabels[account.role] || account.role}
+                </span>
+
+                <span
+                  className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${
+                    statusStyles[account.status] ||
+                    "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {account.status}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setEditOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg bg-[#078052] px-3.5 py-2.5 text-xs font-semibold text-white hover:bg-[#066A44]"
+            >
+              <Edit3 size={15} />
+              Edit Profile
+            </button>
+
+            {!isSelf && (
+              <button
+                type="button"
+                onClick={() => setRoleOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <Shield size={15} />
+                Change Role
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Information grid */}
+      <div className="grid min-w-0 gap-5 xl:grid-cols-2">
+        <Section
+          title="Personal Information"
+          description="Basic user profile details"
+        >
+          <dl className="grid gap-5 sm:grid-cols-2">
+            <InfoItem
+              label="Full Name"
+              value={account.name}
+              icon={UserRound}
+            />
+            <InfoItem
+              label="Email Address"
+              value={account.email}
+              icon={Mail}
+            />
+            <InfoItem
+              label="Phone Number"
+              value={account.phone}
+              icon={Phone}
+            />
+            <InfoItem
+              label="Location"
+              value={account.location}
+              icon={MapPin}
+            />
+            <InfoItem
+              label="Date of Birth"
+              value={
+                account.date_of_birth
+                  ? formatDate(account.date_of_birth)
+                  : null
+              }
+              icon={CalendarDays}
+            />
+            <InfoItem
+              label="User ID"
+              value={`#${account.user_id}`}
+              icon={UsersRound}
+            />
+          </dl>
+        </Section>
+
+        <Section
+          title="Account & Access"
+          description="Role, status and account history"
+        >
+          <dl className="grid gap-5 sm:grid-cols-2">
+            <InfoItem
+              label="Account Role"
+              value={roleLabels[account.role] || account.role}
+              icon={ShieldCheck}
+            />
+            <InfoItem
+              label="Account Status"
+              value={account.status}
+              icon={Shield}
+            />
+            <InfoItem
+              label="Registered On"
+              value={formatDate(account.created_at)}
+              icon={CalendarDays}
+            />
+            <InfoItem
+              label="Last Updated"
+              value={formatDate(account.updated_at)}
+              icon={RefreshCw}
+            />
+          </dl>
+
+          <div className="mt-6 border-t border-slate-100 pt-5">
+            <h3 className="text-xs font-bold text-[#10213F]">
+              Account Actions
+            </h3>
+
+            {isSelf ? (
+              <p className="mt-3 rounded-lg bg-blue-50 p-3 text-xs text-blue-700">
+                You cannot deactivate, block or change your own
+                administrative role from this page.
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {account.status === USER_STATUS.INACTIVE && (
+                  <button
+                    type="button"
+                    disabled={Boolean(busyAction)}
+                    onClick={() => changeStatus("activate")}
+                    className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-700 disabled:opacity-50"
+                  >
+                    <CheckCircle2 size={15} />
+                    Activate
+                  </button>
+                )}
+
+                {account.status === USER_STATUS.ACTIVE && (
+                  <button
+                    type="button"
+                    disabled={Boolean(busyAction)}
+                    onClick={() => changeStatus("deactivate")}
+                    className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-semibold text-amber-700 disabled:opacity-50"
+                  >
+                    <Ban size={15} />
+                    Deactivate
+                  </button>
+                )}
+
+                {account.status !== USER_STATUS.BLOCKED && (
+                  <button
+                    type="button"
+                    disabled={Boolean(busyAction)}
+                    onClick={() => changeStatus("block")}
+                    className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700 disabled:opacity-50"
+                  >
+                    <Ban size={15} />
+                    Block Account
+                  </button>
+                )}
+
+                {account.status === USER_STATUS.BLOCKED && (
+                  <p className="text-xs text-slate-500">
+                    This account is blocked. No unblocking
+                    endpoint is currently available.
+                  </p>
+                )}
+
+                {busyAction && (
+                  <span className="inline-flex items-center gap-2 text-xs text-slate-500">
+                    <Loader2
+                      size={15}
+                      className="animate-spin"
+                    />
+                    Processing...
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </Section>
+      </div>
+
+      {/* Linked profiles */}
+      <Section
+        title="Linked Profiles & Ownership"
+        description="Teams, clubs and referee identities associated with this account"
+      >
+        {!relationships.length && !account.referee_profile ? (
+          <div className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center">
+            <UsersRound
+              size={25}
+              className="mx-auto text-slate-400"
+            />
+            <p className="mt-2 text-xs text-slate-500">
+              No linked team ownership, club ownership or
+              referee profile.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {relationships.map((item) => (
+              <Link
+                key={item.key}
+                to={item.href}
+                className="rounded-lg border border-slate-200 p-4 transition hover:border-emerald-300 hover:bg-emerald-50/30"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold text-[#078052]">
+                    {item.type}
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    #{item.id}
+                  </span>
+                </div>
+                <h3 className="mt-2 truncate text-sm font-bold text-[#10213F]">
+                  {item.name}
+                </h3>
+                <p className="mt-2 text-xs text-slate-500">
+                  {item.status}
+                </p>
+              </Link>
+            ))}
+
+            {account.referee_profile && (
+              <Link
+                to={`/admin/referees/${account.referee_profile.referee_id}`}
+                className="rounded-lg border border-slate-200 p-4 transition hover:border-emerald-300 hover:bg-emerald-50/30"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold text-[#078052]">
+                    Referee Profile
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    #{account.referee_profile.referee_id}
+                  </span>
+                </div>
+                <h3 className="mt-2 truncate text-sm font-bold text-[#10213F]">
+                  {account.referee_profile.name}
+                </h3>
+                <p className="mt-2 text-xs text-slate-500">
+                  {account.referee_profile.status}
+                </p>
+              </Link>
+            )}
+          </div>
+        )}
+      </Section>
+
+      {/* Modals */}
+      {editOpen && (
+        <AdminEditUserModal
+          user={account}
+          onClose={() => setEditOpen(false)}
+          onSaved={reloadAfterSave}
+        />
+      )}
+
+      {roleOpen && (
+        <AdminChangeRoleModal
+          user={account}
+          onClose={() => setRoleOpen(false)}
+          onSaved={reloadAfterSave}
+        />
+      )}
     </div>
-
-    <section className="mt-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_5px_18px_rgba(15,35,72,.04)] sm:p-5"><header className="flex items-start gap-2"><Settings2 size={19} className="mt-0.5 text-[#14213c]" /><div><h2 className="text-base font-extrabold text-[#14213c]">Account Actions</h2><p className="mt-0.5 text-xs text-slate-500">Manage user account and perform administrative actions.</p></div></header><div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-5"><button type="button" onClick={beginEdit} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-bold text-[#14213c] hover:border-emerald-400"><Pencil size={15} />Edit User</button><button type="button" disabled={!canChangeRole} onClick={beginRoleChange} title={!canChangeRole ? "You cannot change your own Super Admin role." : undefined} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-bold text-[#14213c] hover:border-blue-400 disabled:cursor-not-allowed disabled:opacity-45"><ShieldCheck size={15} />Change Role</button><button type="button" disabled={!canChangeStatus} onClick={() => setDialog("status")} title={!canChangeStatus ? "This status cannot be changed here." : undefined} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-rose-50 px-3 text-sm font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-45"><UserRoundCheck size={15} />{account.status === USER_STATUS.ACTIVE ? "Deactivate" : "Activate"}</button><button type="button" disabled title="A secure password-reset workflow has not been configured." className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-bold text-slate-400"><KeyRound size={15} />Reset Password</button><button type="button" disabled title="User deletion is intentionally unsupported to protect league records and audit history." className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-rose-50 px-3 text-sm font-bold text-rose-300"><Trash2 size={15} />Delete User</button></div>{isSelf && <p className="mt-3 text-xs text-slate-500">Your own role and account status are protected to prevent Super Admin lockout.</p>}</section>
-
-    {dialog && <div role="presentation" className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/45 p-4"><div role="dialog" aria-modal="true" aria-labelledby="user-dialog-title" className="mx-auto my-8 w-full max-w-md rounded-xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><h2 id="user-dialog-title" className="text-lg font-extrabold text-[#14213c]">{dialog === "edit" ? "Edit User" : dialog === "role" ? "Change Role" : `${account.status === USER_STATUS.ACTIVE ? "Deactivate" : "Activate"} User`}</h2><p className="mt-1 text-xs text-slate-500">{dialog === "edit" ? "Email, role, and status are protected account fields." : dialog === "role" ? "Permissions change immediately. Ownership and referee safeguards are enforced by the server." : "This action changes the account’s ability to sign in."}</p></div><button type="button" disabled={pending} onClick={closeDialog} className="text-sm font-bold text-slate-500 hover:text-slate-800">Close</button></div>{dialog === "edit" && <form onSubmit={saveEdit} className="mt-5 space-y-4"><label className="block text-xs font-semibold text-slate-600">Full Name<input required value={editForm.name} onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))} className="mt-1.5 h-10 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500" /></label><label className="block text-xs font-semibold text-slate-600">Phone Number<input value={editForm.phone} onChange={(event) => setEditForm((current) => ({ ...current, phone: event.target.value }))} className="mt-1.5 h-10 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500" /></label><label className="block text-xs font-semibold text-slate-600">Profile Image URL <span className="font-normal text-slate-400">(optional)</span><input type="url" value={editForm.profile_image} onChange={(event) => setEditForm((current) => ({ ...current, profile_image: event.target.value }))} className="mt-1.5 h-10 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500" /></label><div className="flex justify-end gap-3 pt-2"><button type="button" disabled={pending} onClick={closeDialog} className="rounded-md px-4 py-2 text-xs font-bold text-slate-500">Cancel</button><button disabled={pending} className="rounded-md bg-[#078052] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{pending ? "Saving…" : "Save Changes"}</button></div></form>}{dialog === "role" && <form onSubmit={saveRole} className="mt-5"><label className="block text-xs font-semibold text-slate-600">New Role<select value={nextRole} onChange={(event) => setNextRole(event.target.value)} className="mt-1.5 h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-emerald-500">{Object.values(ROLES).map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select></label><div className="mt-5 flex justify-end gap-3"><button type="button" disabled={pending} onClick={closeDialog} className="rounded-md px-4 py-2 text-xs font-bold text-slate-500">Cancel</button><button disabled={pending || nextRole === account.role} className="rounded-md bg-[#078052] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{pending ? "Saving…" : "Confirm Change"}</button></div></form>}{dialog === "status" && <div className="mt-5"><p className="text-sm text-slate-600">Are you sure you want to {account.status === USER_STATUS.ACTIVE ? "deactivate" : "activate"} <b>{account.name}</b>?</p><div className="mt-5 flex justify-end gap-3"><button type="button" disabled={pending} onClick={closeDialog} className="rounded-md px-4 py-2 text-xs font-bold text-slate-500">Cancel</button><button type="button" disabled={pending} onClick={statusAction} className="rounded-md bg-rose-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{pending ? "Updating…" : "Confirm"}</button></div></div>}</div></div>}
-  </main>;
+  );
 }

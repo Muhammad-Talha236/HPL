@@ -42,3 +42,8 @@ export const changeCurrentUserPassword = async (passwords) => {
   const response = await apiClient.patch(AUTH_ENDPOINTS.PASSWORD, passwords);
   return response.data;
 };
+
+export const resendEmailVerification = async () => {
+  const response = await apiClient.post("/auth/me/email-verification/resend");
+  return response.data;
+};

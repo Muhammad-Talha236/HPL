@@ -12,6 +12,7 @@ import { ENV } from "../../config/env.js";
 
 import { createAuditLog } from "../../utils/auditLog.util.js";
 import { AUDIT_ACTIONS } from "../../constants/auditActions.js";
+import { createVerificationToken, getVerificationTokenHash, sendVerificationEmail } from "../../services/emailVerification.service.js";
 
 // ============================================================
 // REGISTER
@@ -75,6 +76,16 @@ export const register = async (req, res) => {
         status: USER_STATUS.ACTIVE,
       },
     });
+    const verification = createVerificationToken();
+    await prisma.emailVerificationToken.create({
+      data: { user_id: user.user_id, token_hash: verification.tokenHash, email_snapshot: user.email, expires_at: verification.expiresAt },
+    });
+    let verificationMessage = "Check your account email to verify it before submitting an independent team application.";
+    try {
+      await sendVerificationEmail({ email: user.email, name: user.name, rawToken: verification.rawToken });
+    } catch {
+      verificationMessage = "Your account was created, but the verification email could not be sent. Sign in and request a new verification email.";
+    }
 
     // 6. Never send password_hash to client
     const {
@@ -85,7 +96,7 @@ export const register = async (req, res) => {
     // 7. Send response
     return res.status(201).json({
       success: true,
-      message: "User registered successfully",
+      message: `User registered successfully. ${verificationMessage}`,
       data: userWithoutPassword,
     });
 
@@ -216,6 +227,8 @@ export const getMe = async (req, res) => {
         role: true,
         status: true,
         profile_image: true,
+        email_verified: true,
+        email_verified_at: true,
       },
     });
 
@@ -253,6 +266,36 @@ const accountSelect = {
   role: true,
   status: true,
   profile_image: true,
+  email_verified: true,
+  email_verified_at: true,
+};
+
+export const verifyEmail = async (req, res) => {
+  const tokenHash = getVerificationTokenHash(req.query.token);
+  if (!tokenHash) return res.status(400).json({ success: false, message: "This verification link is invalid or expired." });
+  const token = await prisma.emailVerificationToken.findUnique({ where: { token_hash: tokenHash }, include: { user: { select: { user_id: true, email: true } } } });
+  if (!token || token.used_at || token.expires_at <= new Date() || token.email_snapshot !== token.user.email) {
+    return res.status(400).json({ success: false, message: "This verification link is invalid or expired." });
+  }
+  await prisma.$transaction(async (tx) => {
+    const updated = await tx.user.updateMany({ where: { user_id: token.user_id, email: token.email_snapshot, email_verified: false }, data: { email_verified: true, email_verified_at: new Date() } });
+    if (updated.count !== 1) throw new Error("EMAIL_VERIFICATION_CONFLICT");
+    await tx.emailVerificationToken.updateMany({ where: { user_id: token.user_id, used_at: null }, data: { used_at: new Date() } });
+  });
+  return res.json({ success: true, message: "Email verified successfully. You can now submit an independent team application." });
+};
+
+export const resendEmailVerification = async (req, res) => {
+  const user = await prisma.user.findUnique({ where: { user_id: req.user.user_id }, select: { user_id: true, name: true, email: true, email_verified: true } });
+  if (!user) return res.status(404).json({ success: false, message: "User not found" });
+  if (user.email_verified) return res.json({ success: true, message: "Your account email is already verified." });
+  const recent = await prisma.emailVerificationToken.findFirst({ where: { user_id: user.user_id, created_at: { gt: new Date(Date.now() - 15 * 60 * 1000) } }, select: { email_verification_token_id: true } });
+  if (recent) return res.status(429).json({ success: false, message: "A verification email was sent recently. Please wait before requesting another." });
+  const verification = createVerificationToken();
+  await prisma.emailVerificationToken.updateMany({ where: { user_id: user.user_id, used_at: null }, data: { used_at: new Date() } });
+  await prisma.emailVerificationToken.create({ data: { user_id: user.user_id, token_hash: verification.tokenHash, email_snapshot: user.email, expires_at: verification.expiresAt } });
+  await sendVerificationEmail({ email: user.email, name: user.name, rawToken: verification.rawToken });
+  return res.json({ success: true, message: "A new verification email has been sent." });
 };
 
 // ============================================================

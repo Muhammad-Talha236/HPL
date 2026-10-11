@@ -1,10 +1,10 @@
 import express from "express";
-import { register, login, getMe, updateMyProfile, changeMyPassword, updateUserRole } from "./auth.controller.js";
+import { register, login, getMe, updateMyProfile, changeMyPassword, updateUserRole, verifyEmail, resendEmailVerification } from "./auth.controller.js";
 import { authenticate } from "../../middleware/auth/auth.middleware.js";
 
 import { authorize } from "../../middleware/auth/role.middleware.js";
 import { ROLES } from "../../constants/roles.js";
-import { loginRateLimiter } from "../../middleware/auth/rateLimit.middleware.js";
+import { loginRateLimiter, playerInvitationResendActorRateLimiter } from "../../middleware/auth/rateLimit.middleware.js";
 import {
   registerValidation,
   loginValidation,
@@ -27,6 +27,8 @@ router.post(
 );
 
 router.get("/me", authenticate, getMe);
+router.get("/verify-email", verifyEmail);
+router.post("/me/email-verification/resend", authenticate, playerInvitationResendActorRateLimiter, resendEmailVerification);
 
 router.patch(
   "/me",

@@ -32,7 +32,7 @@ const acceptanceSelect = {
   status: true,
   expires_at: true,
   player: { select: { player_id: true, name: true, profile_photo: true, status: true, user_id: true } },
-  team: { select: { team_id: true, name: true, status: true, club: { select: { name: true, status: true } } } },
+  team: { select: { team_id: true, name: true, status: true, verification_status: true, club_id: true, club: { select: { name: true, status: true } } } },
 };
 
 const invitationSelect = {
@@ -62,20 +62,37 @@ const resendSelect = {
   expires_at: true,
   updated_at: true,
   player: { select: { player_id: true, name: true, status: true, user_id: true } },
-  team: { select: { team_id: true, name: true, status: true, club: { select: { name: true, status: true } } } },
+  team: { select: { team_id: true, name: true, status: true, verification_status: true, club_id: true, club: { select: { name: true, status: true } } } },
 };
 
+const isActiveAuthenticatedUser = (user) =>
+  Boolean(user) &&
+  (user.status === undefined || user.status === USER_STATUS.ACTIVE);
+
 const teamScopeFor = (user) => {
+  if (!isActiveAuthenticatedUser(user)) return { team_id: -1 };
   if (user.role === ROLES.SUPER_ADMIN) return {};
   if (user.role === ROLES.TEAM_OWNER) return { owner_id: user.user_id };
-  return { club: { owner_id: user.user_id } };
+  if (user.role === ROLES.CLUB_OWNER) return { club: { owner_id: user.user_id } };
+  return { team_id: -1 };
 };
 
 const canInviteForTeam = (user, team) => {
+  if (!isActiveAuthenticatedUser(user) || !team) return false;
   if (user.role === ROLES.SUPER_ADMIN) return true;
   if (user.role === ROLES.TEAM_OWNER) return team.owner_id === user.user_id;
-  return team.club?.owner_id === user.user_id;
+  return user.role === ROLES.CLUB_OWNER && team.club_id !== null && team.club?.owner_id === user.user_id;
 };
+
+const hasActiveClubWhenRequired = (team) =>
+  team.club_id === null ||
+  Boolean(team.club && team.club.status === "ACTIVE");
+
+const isEligibleInvitationTeam = (team) =>
+  Boolean(team) &&
+  team.status === "ACTIVE" &&
+  team.verification_status !== "SUSPENDED" &&
+  hasActiveClubWhenRequired(team);
 
 const expirePendingInvitations = (tx, playerId, now) => tx.playerInvitation.updateMany({
   where: { player_id: playerId, status: INVITATION_STATUS.PENDING, expires_at: { lte: now } },
@@ -96,7 +113,7 @@ const checkResendEligibility = async (tx, invitationId, user, now) => {
     });
     return { error: "EXPIRED" };
   }
-  if (!invitation.team || invitation.team.status !== "ACTIVE" || invitation.team.club?.status !== "ACTIVE") return { error: "TEAM_INACTIVE" };
+  if (!isEligibleInvitationTeam(invitation.team)) return { error: "TEAM_INACTIVE" };
   if (!invitation.player || invitation.player.status !== "ACTIVE") return { error: "PLAYER_INACTIVE" };
   if (invitation.player.user_id !== null) return { error: "PLAYER_LINKED" };
   const membership = await tx.teamPlayer.findFirst({
@@ -132,10 +149,10 @@ export const createPlayerInvitation = async (req, res, next) => {
     const result = await prisma.$transaction(async (tx) => {
       const team = await tx.team.findUnique({
         where: { team_id },
-        select: { team_id: true, name: true, owner_id: true, status: true, club: { select: { club_id: true, name: true, owner_id: true, status: true } } },
+        select: { team_id: true, name: true, owner_id: true, status: true, verification_status: true, club_id: true, club: { select: { club_id: true, name: true, owner_id: true, status: true } } },
       });
       if (!team || !canInviteForTeam(req.user, team)) return { error: "NOT_FOUND" };
-      if (team.status !== "ACTIVE" || team.club?.status !== "ACTIVE") return { error: "TEAM_INACTIVE" };
+      if (!isEligibleInvitationTeam(team)) return { error: "TEAM_INACTIVE" };
 
       const membership = await tx.teamPlayer.findFirst({
         where: { team_id, player_id, status: "ACTIVE" },
@@ -163,7 +180,7 @@ export const createPlayerInvitation = async (req, res, next) => {
           invited_email,
           player_name: membership.player.name,
           team_name: team.name,
-          club_name: team.club.name,
+          club_name: team.club?.name || "Independent Team",
           expires_at: expiresAt,
           rawToken,
         },
@@ -226,7 +243,7 @@ export const resendPlayerInvitation = async (req, res, next) => {
       invited_email: prepared.invitation.invited_email,
       player_name: prepared.invitation.player.name,
       team_name: prepared.invitation.team.name,
-      club_name: prepared.invitation.team.club.name,
+      club_name: prepared.invitation.team.club?.name || "Independent Team",
       expires_at: expiresAt,
       rawToken,
     };
@@ -353,7 +370,7 @@ export const acceptPlayerInvitation = async (req, res, next) => {
         await tx.playerInvitation.updateMany({ where: { invitation_id: invitation.invitation_id, status: INVITATION_STATUS.PENDING, expires_at: { lte: now } }, data: { status: INVITATION_STATUS.EXPIRED } });
         return { error: "EXPIRED" };
       }
-      if (!invitation.team || invitation.team.status !== "ACTIVE" || invitation.team.club?.status !== "ACTIVE" || invitation.player.status !== "ACTIVE" || invitation.player.user_id !== null) return { error: "UNAVAILABLE" };
+      if (!isEligibleInvitationTeam(invitation.team) || invitation.player.status !== "ACTIVE" || invitation.player.user_id !== null) return { error: "UNAVAILABLE" };
       const user = await tx.user.findUnique({ where: { user_id: req.user.user_id }, select: { user_id: true, email: true, role: true, status: true, player: { select: { player_id: true } } } });
       if (!user || user.role !== ROLES.USER || user.status !== "ACTIVE") return { error: "ROLE" };
       if (user.player) return { error: "USER_LINKED" };
@@ -397,7 +414,7 @@ export const registerPlayerInvitationAccount = async (req, res, next) => {
         await tx.playerInvitation.updateMany({ where: { invitation_id: invitation.invitation_id, status: INVITATION_STATUS.PENDING, expires_at: { lte: now } }, data: { status: INVITATION_STATUS.EXPIRED } });
         return { error: "EXPIRED" };
       }
-      if (!invitation.team || invitation.team.status !== "ACTIVE" || invitation.team.club?.status !== "ACTIVE" || invitation.player.status !== "ACTIVE" || invitation.player.user_id !== null) return { error: "UNAVAILABLE" };
+      if (!isEligibleInvitationTeam(invitation.team) || invitation.player.status !== "ACTIVE" || invitation.player.user_id !== null) return { error: "UNAVAILABLE" };
       const invitedEmail = normalizePlayerInvitationEmail(invitation.invited_email);
       const existingUser = await tx.user.findUnique({ where: { email: invitedEmail }, select: { user_id: true } });
       if (existingUser) return { error: "EXISTING_ACCOUNT" };

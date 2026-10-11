@@ -40,6 +40,7 @@ import NewsDetailsPage from "./features/news/pages/NewsDetailsPage";
 import LoginPage from "./features/auth/pages/LoginPage";
 
 import RegisterPage from "./features/auth/pages/RegisterPage";
+import VerifyEmailPage from "./features/auth/pages/VerifyEmailPage";
 
 import RefereesPage from "./features/referees/pages/RefereesPage";
 
@@ -111,6 +112,10 @@ const AdminClubDetailsPage = lazy(() =>
 
 const AdminTeamsPage = lazy(() =>
   import("./features/admin/pages/AdminTeamsPage")
+);
+
+const AdminTeamRegistrationRequestsPage = lazy(() =>
+  import("./features/admin/pages/AdminTeamRegistrationRequestsPage")
 );
 
 const AdminTeamFormPage = lazy(() =>
@@ -319,6 +324,10 @@ const TeamOwnerProfilePage = lazy(() =>
   )
 );
 
+const TeamOwnerVerificationPage = lazy(() =>
+  import("./features/teamOwner/pages/TeamOwnerVerificationPage")
+);
+
 const TeamOwnerTeamEditPage = lazy(() =>
   import("./features/teamOwner/pages/TeamOwnerWorkflowPages").then(
     (module) => ({
@@ -373,6 +382,10 @@ const TeamOwnerMatchesPage = lazy(() =>
 
 const TeamOwnerMatchDetailPage = lazy(() =>
   import("./features/teamOwner/pages/TeamOwnerMatchDetailPage")
+);
+
+const IndependentTeamRegistrationPage = lazy(() =>
+  import("./features/teams/pages/IndependentTeamRegistrationPage")
 );
 
 /* =========================
@@ -517,6 +530,11 @@ function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route
+              path="/teams/register-independent"
+              element={<IndependentTeamRegistrationPage />}
+            />
+
+            <Route
               path="/competitions/:competitionId/register"
               element={<CompetitionRegistrationPage />}
             />
@@ -594,6 +612,11 @@ function App() {
               <Route
                 path="/admin/teams"
                 element={<AdminTeamsPage />}
+              />
+
+              <Route
+                path="/admin/team-registration-requests"
+                element={<AdminTeamRegistrationRequestsPage />}
               />
 
               <Route
@@ -873,6 +896,11 @@ function App() {
               />
 
               <Route
+                path="/team/verification"
+                element={<TeamOwnerVerificationPage />}
+              />
+
+              <Route
                 path="/team/teams/:teamId"
                 element={<TeamOwnerProfilePage />}
               />
@@ -953,6 +981,11 @@ function App() {
             element={<RegisterPage />}
           />
         </Route>
+
+        <Route
+          path="/verify-email"
+          element={<VerifyEmailPage />}
+        />
       </Routes>
     </Suspense>
   );
