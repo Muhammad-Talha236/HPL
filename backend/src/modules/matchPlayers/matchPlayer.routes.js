@@ -19,6 +19,7 @@ import {
 } from "./matchPlayer.validation.js";
 
 import { handleValidationErrors } from "../../middleware/auth/validation.middleware.js";
+import { broadcastSuccessfulMatchChange } from "../matches/match.realtime.middleware.js";
 
 const router = express.Router();
 
@@ -41,6 +42,7 @@ router.post(
   ),
   createMatchPlayerValidation,
   handleValidationErrors,
+  broadcastSuccessfulMatchChange("lineup-created"),
   createMatchPlayer
 );
 
@@ -55,6 +57,7 @@ router.patch(
   ),
   updateMatchPlayerValidation,
   handleValidationErrors,
+  broadcastSuccessfulMatchChange("lineup-updated"),
   updateMatchPlayer
 );
 
@@ -69,6 +72,7 @@ router.delete(
   ),
   matchPlayerIdValidation,
   handleValidationErrors,
+  broadcastSuccessfulMatchChange("lineup-removed"),
   removeMatchPlayer
 );
 

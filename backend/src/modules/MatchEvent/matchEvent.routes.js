@@ -21,6 +21,7 @@ import {
 } from "./matchEvent.validation.js";
 
 import { handleValidationErrors } from "../../middleware/auth/validation.middleware.js";
+import { broadcastSuccessfulMatchChange } from "../matches/match.realtime.middleware.js";
 
 const router = express.Router();
 
@@ -42,6 +43,7 @@ router.post(
   authorizeAssignedRefereeOrAdmin,
   createMatchEventValidation,
   handleValidationErrors,
+  broadcastSuccessfulMatchChange("event-created"),
   createMatchEvent
 );
 
@@ -79,6 +81,7 @@ router.patch(
   ),
   updateMatchEventValidation,
   handleValidationErrors,
+  broadcastSuccessfulMatchChange("event-updated"),
   updateMatchEvent
 );
 

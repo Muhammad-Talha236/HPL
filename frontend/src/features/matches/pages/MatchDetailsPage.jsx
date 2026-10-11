@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import LiveMatchDetails from "../components/LiveMatchDetails";
 import StandardMatchDetails from "../components/StandardMatchDetails";
 import { getMatchById } from "../services/matchService";
 import MediaGallery from "../../media/components/MediaGallery";
+import { useMatchRealtime } from "../hooks/useMatchRealtime";
 
 const DetailsSkeleton = () => (
   <div className="animate-pulse"><div className="h-52 rounded-lg bg-[#19313c]" /><div className="mt-3 grid gap-3 xl:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-72 rounded-lg bg-white" />)}</div></div>
@@ -16,6 +17,8 @@ const MatchDetailsPage = () => {
   const [state, setState] = useState({ data: null, status: validId ? "loading" : "not-found" });
   const [reloadToken, setReloadToken] = useState(0);
   const isLive = state.data?.match?.status === "LIVE";
+  const refreshFromRealtime = useCallback(() => setReloadToken((value) => value + 1), []);
+  useMatchRealtime(matchId, refreshFromRealtime);
 
   useEffect(() => {
     if (!validId) return undefined;

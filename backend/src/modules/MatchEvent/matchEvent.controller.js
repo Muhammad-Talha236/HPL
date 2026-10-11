@@ -466,6 +466,30 @@ export const createMatchEvent = async (req, res) => {
           }
 
           /*
+           * A repeated click/retry must not create a second football event or
+           * increment the score twice.  The comparison deliberately excludes
+           * the free-text description so a changed note cannot bypass this
+           * operational duplicate guard.  The surrounding Serializable
+           * transaction remains the concurrency boundary.
+           */
+          const duplicateEvent = await tx.matchEvent.findFirst({
+            where: {
+              match_id: matchId,
+              team_id: teamId,
+              player_id: playerId,
+              related_player_id: relatedPlayerId,
+              event_type,
+              minute: eventMinute,
+              extra_time: eventExtraTime,
+            },
+            select: { event_id: true },
+          });
+
+          if (duplicateEvent) {
+            throw new Error("DUPLICATE_MATCH_EVENT");
+          }
+
+          /*
            * ------------------------------------------------
            * FRESH PLAYER STATE
            * ------------------------------------------------
@@ -1075,6 +1099,13 @@ export const createMatchEvent = async (req, res) => {
      * --------------------------------------------------
      */
 
+    if (error.code === "P2034" || error.code === "P2002") {
+      return res.status(409).json({
+        success: false,
+        message: "The match changed while recording this event. Refresh and try again.",
+      });
+    }
+
     if (
       error.message ===
       "MATCH_NOT_FOUND"
@@ -1094,6 +1125,13 @@ export const createMatchEvent = async (req, res) => {
         success: false,
         message:
           "Match is no longer live",
+      });
+    }
+
+    if (error.message === "DUPLICATE_MATCH_EVENT") {
+      return res.status(409).json({
+        success: false,
+        message: "An identical match event has already been recorded",
       });
     }
 

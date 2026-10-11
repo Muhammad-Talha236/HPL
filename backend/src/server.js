@@ -1,5 +1,8 @@
 import "dotenv/config";
 
+import http from "http";
+import { Server as SocketIOServer } from "socket.io";
+
 import app from "./app.js";
 import prisma from "./database/prisma.js";
 
@@ -33,6 +36,7 @@ import mediaRoutes from "./modules/media/media.routes.js";
 
 import { errorHandler } from "./middleware/auth/error.middleware.js";
 import { ENV } from "./config/env.js";
+import { configureMatchRealtime } from "./modules/matches/match.realtime.js";
 
 // ======================================================
 // API ROUTES
@@ -186,7 +190,20 @@ app.use(errorHandler);
 
 const PORT = ENV.PORT;
 
-const server = app.listen(
+const server = http.createServer(app);
+const io = new SocketIOServer(server, {
+  cors: {
+    origin(origin, callback) {
+      if (!origin || ENV.FRONTEND_URLS.includes(origin)) return callback(null, true);
+      return callback(new Error("CORS origin is not allowed"));
+    },
+    credentials: true,
+    methods: ["GET", "POST"],
+  },
+});
+configureMatchRealtime(io);
+
+server.listen(
   PORT,
   () => {
     console.log(

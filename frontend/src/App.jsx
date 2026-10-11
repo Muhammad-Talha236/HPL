@@ -750,6 +750,11 @@ function App() {
               />
 
               <Route
+                path="/admin/matches/:matchId/live"
+                element={<AdminMatchDetailsPage />}
+              />
+
+              <Route
                 path="/admin/matches/:matchId/edit"
                 element={<AdminMatchFormPage />}
               />

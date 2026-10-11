@@ -15,6 +15,7 @@ import { authenticate } from "../../middleware/auth/auth.middleware.js";
 import { authorize } from "../../middleware/auth/role.middleware.js";
 import { ROLES } from "../../constants/roles.js";
 import { authorizeMatchOfficial } from "../referees/refereeAssignment.middleware.js";
+import { broadcastSuccessfulMatchChange } from "./match.realtime.middleware.js";
 
 import {
   matchIdValidation,
@@ -56,6 +57,7 @@ router.post(
   authorize(ROLES.SUPER_ADMIN),
   createMatchValidation,
   handleValidationErrors,
+  broadcastSuccessfulMatchChange("fixture-created"),
   createMatch
 );
 
@@ -66,6 +68,7 @@ router.patch(
   authorize(ROLES.SUPER_ADMIN),
   updateMatchValidation,
   handleValidationErrors,
+  broadcastSuccessfulMatchChange("fixture-updated"),
   updateMatch
 );
 
@@ -76,6 +79,7 @@ router.patch(
   authorize(ROLES.SUPER_ADMIN),
   matchIdValidation,
   handleValidationErrors,
+  broadcastSuccessfulMatchChange("match-cancelled"),
   cancelMatch
 );
 
@@ -85,6 +89,7 @@ router.patch(
   authorize(ROLES.SUPER_ADMIN),
   matchIdValidation,
   handleValidationErrors,
+  broadcastSuccessfulMatchChange("match-postponed"),
   postponeMatch
 );
 
@@ -95,6 +100,7 @@ router.patch(
   authorizeMatchOfficial,
   matchIdValidation,
   handleValidationErrors,
+  broadcastSuccessfulMatchChange("match-completed"),
   completeMatch
 );
 
@@ -105,6 +111,7 @@ router.post(
   authorizeMatchOfficial,
   startMatchValidation,
   handleValidationErrors,
+  broadcastSuccessfulMatchChange("match-started"),
   startMatch
 );
 export default router;

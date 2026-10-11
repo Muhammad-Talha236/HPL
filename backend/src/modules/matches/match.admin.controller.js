@@ -5,6 +5,7 @@ const positive = (value) => {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
 };
+const isBlank = (value) => value === undefined || value === null || (typeof value === "string" && value.trim() === "");
 const dateOnly = (value) => {
   if (!value) return null;
   const date = new Date(value);
@@ -17,8 +18,8 @@ const listSelect = {
   home_score: true, away_score: true, created_at: true, updated_at: true,
   competition: { select: { competition_id: true, name: true, gender: true } },
   season: { select: { season_id: true, name: true } },
-  home_team: { select: { team_id: true, name: true } },
-  away_team: { select: { team_id: true, name: true } },
+  home_team: { select: { team_id: true, name: true, logo: true } },
+  away_team: { select: { team_id: true, name: true, logo: true } },
   venue: { select: { venue_id: true, name: true, city: true, surface_type: true } },
   referee: { select: { referee_id: true, name: true, license_number: true } },
 };
@@ -29,23 +30,23 @@ export const getAdminMatches = async (req, res, next) => {
     const pageNumber = positive(page);
     const limitNumber = positive(limit);
     if (!pageNumber || !limitNumber || limitNumber > 50) return res.status(400).json({ success: false, message: "page must be positive and limit must be between 1 and 50" });
-    if (status && !STATUSES.includes(status)) return res.status(400).json({ success: false, message: "Invalid match status" });
-    if (gender && !["MEN", "WOMEN"].includes(gender)) return res.status(400).json({ success: false, message: "Invalid competition gender" });
+    if (!isBlank(status) && !STATUSES.includes(status)) return res.status(400).json({ success: false, message: "Invalid match status" });
+    if (!isBlank(gender) && !["MEN", "WOMEN"].includes(gender)) return res.status(400).json({ success: false, message: "Invalid competition gender" });
     const where = {};
     const numericFilters = [["competition_id", competition_id], ["season_id", season_id], ["venue_id", venue_id], ["referee_id", referee_id]];
     for (const [key, value] of numericFilters) {
-      if (value === undefined) continue;
+      if (isBlank(value)) continue;
       const parsed = positive(value);
       if (!parsed) return res.status(400).json({ success: false, message: `${key} must be a positive integer` });
       where[key] = parsed;
     }
-    if (team_id !== undefined) {
+    if (!isBlank(team_id)) {
       const teamId = positive(team_id);
       if (!teamId) return res.status(400).json({ success: false, message: "team_id must be a positive integer" });
       where.OR = [{ home_team_id: teamId }, { away_team_id: teamId }];
     }
-    if (status) where.status = status;
-    if (gender) where.competition = { gender };
+    if (!isBlank(status)) where.status = status;
+    if (!isBlank(gender)) where.competition = { gender };
     const from = dateOnly(date_from), to = dateOnly(date_to);
     if ((date_from && !from) || (date_to && !to) || (from && to && from > to)) return res.status(400).json({ success: false, message: "Invalid date range" });
     if (from || to) where.match_date = { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) };
@@ -96,8 +97,8 @@ export const getAdminMatchOptions = async (req, res, next) => {
       prisma.competition.findMany({ where: { status: "ACTIVE" }, select: { competition_id: true, name: true, season_id: true, gender: true, competition_start_date: true, competition_end_date: true, season: { select: { season_id: true, name: true, start_date: true, end_date: true } } }, orderBy: [{ season: { start_date: "desc" } }, { name: "asc" }], take: 50 }),
       prisma.venue.findMany({ where: { status: "ACTIVE" }, select: { venue_id: true, name: true, city: true, capacity: true, surface_type: true }, orderBy: { name: "asc" }, take: 100 }),
       prisma.referee.findMany({ where: { status: "ACTIVE" }, select: { referee_id: true, name: true, license_number: true, city: true }, orderBy: { name: "asc" }, take: 100 }),
-      prisma.team.findMany({ where: { status: "ACTIVE" }, select: { team_id: true, name: true, gender: true }, orderBy: { name: "asc" }, take: 100 }),
-      prisma.competitionRegistration.findMany({ where: { competition_id: competitionId || -1, registration_status: "APPROVED", team: { status: "ACTIVE" } }, select: { team: { select: { team_id: true, name: true, gender: true } } }, orderBy: { team: { name: "asc" } }, take: 100 }),
+      prisma.team.findMany({ where: { status: "ACTIVE" }, select: { team_id: true, name: true, gender: true, logo: true }, orderBy: { name: "asc" }, take: 100 }),
+      prisma.competitionRegistration.findMany({ where: { competition_id: competitionId || -1, registration_status: "APPROVED", team: { status: "ACTIVE" } }, select: { team: { select: { team_id: true, name: true, gender: true, logo: true } } }, orderBy: { team: { name: "asc" } }, take: 100 }),
     ]);
     const seasons = Array.from(new Map(competitions.map((competition) => [competition.season.season_id, competition.season])).values());
     return res.json({ success: true, data: { competitions, seasons, venues, referees, teams: competitionId ? registrations.map((registration) => registration.team) : teams } });
