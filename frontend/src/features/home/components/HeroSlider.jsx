@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 import heroImage from "../../../assets/hunza-football-hero.png";
 import heroAlternateImage from "../../../assets/hunza-football-hero-alt.png";
-import heroThirdImage from "../../../assets/Hero.png";
+import heroThirdImage from "../../../assets/hero.png";
 import { FEATURES } from "../../../constants/features";
 
 const heroSlides = [
