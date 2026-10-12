@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { ArrowUpRight, Bell, ChevronRight, LayoutDashboard, LogOut, Shield, Trophy, UserRound, UsersRound } from "lucide-react";
 
 import Logo from "../common/Logo";
 import useAuth from "../../hooks/useAuth";
@@ -98,6 +99,15 @@ const BellIcon = ({ className = "h-5 w-5" }) => (
       strokeLinecap="round"
     />
   </svg>
+);
+
+const AccountMenuLink = ({ to, icon: Icon, onClick, children, badge }) => (
+  <NavLink to={to} end onClick={onClick}
+    className={({ isActive }) => `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B5D46] ${isActive ? "bg-[#EDF6F0] text-[#0B5D46]" : "text-[#43564B] hover:bg-[#F5F8F6] hover:text-[#0B5D46]"}`}>
+    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#F3F7F4] text-[#718879] group-hover:text-[#0B5D46]"><Icon size={17} strokeWidth={1.7} aria-hidden="true" /></span>
+    <span className="flex-1">{children}</span>
+    {badge != null ? <span className="rounded-full bg-[#E4F1E9] px-2 py-0.5 text-[10px] font-bold text-[#0B5D46]" aria-label={`${badge} unread notifications`}>{badge}</span> : <ChevronRight size={14} className="text-[#A4B5AB]" aria-hidden="true" />}
+  </NavLink>
 );
 
 const Navbar = () => {
@@ -383,6 +393,12 @@ const Navbar = () => {
                 <div
                   ref={userMenuRef}
                   className="relative"
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setIsUserMenuOpen(false);
+                      userMenuRef.current?.querySelector("button")?.focus();
+                    }
+                  }}
                 >
                   <button
                     type="button"
@@ -392,13 +408,15 @@ const Navbar = () => {
                       )
                     }
                     aria-expanded={isUserMenuOpen}
-                    aria-haspopup="menu"
+                    aria-controls="account-dropdown"
+                    aria-label={`Account options for ${user.name || "user"}`}
                     className="
                       flex min-h-[46px]
                       items-center gap-2.5
                       rounded-full
+                      border border-[#D6E6DD]
                       bg-[#0B5D46]
-                      py-1.5 pl-1.5 pr-4
+                      py-1.5 pl-1.5 pr-3
                       text-left text-white
                       shadow-[0_6px_18px_rgba(11,93,70,0.16)]
                       transition-colors
@@ -452,216 +470,54 @@ const Navbar = () => {
                     </svg>
                   </button>
 
-                  {/* Desktop User Dropdown */}
-
+                  {/* Account dropdown */}
                   {isUserMenuOpen && (
                     <div
-                      role="menu"
-                      className="
-                        absolute right-0
-                        top-[calc(100%+12px)]
-                        w-64 overflow-hidden
-                        rounded-2xl
-                        border border-[#E5E7EB]
-                        bg-white
-                        shadow-[0_18px_50px_rgba(15,23,42,0.16)]
-                      "
+                      id="account-dropdown"
+                      aria-label="Account navigation"
+                      className="absolute right-0 top-[calc(100%+14px)] z-50 w-[300px] max-w-[calc(100vw-32px)] overflow-hidden rounded-[20px] border border-[#DDE8E2] bg-white shadow-[0_20px_60px_-12px_rgba(11,46,35,0.24)]"
                     >
-                      {/* User Information */}
-
-                      <div className="border-b border-[#EEF0F2] px-4 py-4">
-                        <p className="truncate text-sm font-bold text-[#18202C]">
-                          {user.name}
-                        </p>
-
-                        <p className="mt-1 truncate text-xs text-[#697386]">
-                          {user.email}
-                        </p>
-
-                        <span
-                          className="
-                            mt-3 inline-flex
-                            rounded-full
-                            bg-[#EEF7F3]
-                            px-2.5 py-1
-                            text-[10px] font-bold
-                            tracking-wider
-                            text-[#0B5D46]
-                          "
-                        >
-                          {formatRole(
-                            user.role
-                          ).toUpperCase()}
-                        </span>
+                      <div className="border-b border-[#EAF0EC] bg-linear-to-br from-[#F0F8F3] to-white px-5 py-5">
+                        <div className="flex items-center gap-3">
+                          <Avatar user={user} className="h-11 w-11 shrink-0 rounded-2xl border-2 border-white text-lg shadow-sm" />
+                          <div className="min-w-0">
+                            <p className="truncate text-[15px] font-bold tracking-tight text-[#142C23]" title={user.name}>{user.name}</p>
+                            <span className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-medium text-[#547264]">
+                              <span className="h-1.5 w-1.5 rounded-full bg-[#13875E]" aria-hidden="true" />
+                              {formatRole(user.role)}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="mt-3 break-all text-[12px] leading-5 text-[#6A7D73]">{user.email}</p>
                       </div>
 
-                      {/* Dropdown Actions */}
-
-                      <div className="p-2">
-                        {/* Normal User */}
-
+                      <div className="space-y-1 p-2.5">
                         {user.role === "USER" && (
                           <>
-                            <NavLink
-                              to="/account"
-                              onClick={closeMenus}
-                              role="menuitem"
-                              className="
-                                flex rounded-xl
-                                px-3 py-2.5
-                                text-sm font-semibold
-                                text-[#344054]
-                                hover:bg-[#F5F8F7]
-                              "
-                            >
-                              My Account
-                            </NavLink>
-
-                            <NavLink
-                              to="/account/notifications"
-                              onClick={closeMenus}
-                              role="menuitem"
-                              className="
-                                flex rounded-xl
-                                px-3 py-2.5
-                                text-sm font-semibold
-                                text-[#344054]
-                                hover:bg-[#F5F8F7]
-                              "
-                            >
-                              Notifications
-                              {unreadCount > 0
-                                ? ` (${
-                                    unreadCount > 9
-                                      ? "9+"
-                                      : unreadCount
-                                  })`
-                                : ""}
-                            </NavLink>
-
-                            <NavLink
-                              to="/teams/register-independent"
-                              onClick={closeMenus}
-                              role="menuitem"
-                              className="flex rounded-xl px-3 py-2.5 text-sm font-semibold text-[#0B5D46] hover:bg-[#F5F8F7]"
-                            >
-                              Register Independent Team
+                            <AccountMenuLink to="/account" icon={UserRound} onClick={closeMenus}>My Account</AccountMenuLink>
+                            <AccountMenuLink to="/account/notifications" icon={Bell} onClick={closeMenus} badge={unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : null}>Notifications</AccountMenuLink>
+                            <NavLink to="/teams/register-independent" onClick={closeMenus}
+                              className="group mt-2 flex items-center gap-3 rounded-xl border border-[#DEEEE4] bg-[#F1F8F4] px-3 py-3 text-[#0B5D46] transition-colors hover:border-[#BDDACB] hover:bg-[#E7F3EC] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B5D46]">
+                              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white"><UsersRound size={17} strokeWidth={1.7} aria-hidden="true" /></span>
+                              <span className="min-w-0 flex-1 text-[12px] font-semibold leading-5">Register Independent Team</span>
+                              <ArrowUpRight size={15} aria-hidden="true" className="shrink-0 text-[#6B9983]" />
                             </NavLink>
                           </>
                         )}
-
-                        {/* Team Owner */}
-
-                        {user.role ===
-                          "TEAM_OWNER" && (
-                          <NavLink
-                            to="/team"
-                            onClick={closeMenus}
-                            role="menuitem"
-                            className="
-                              flex rounded-xl
-                              px-3 py-2.5
-                              text-sm font-semibold
-                              text-[#344054]
-                              hover:bg-[#F5F8F7]
-                            "
-                          >
-                            Team Portal
-                          </NavLink>
-                        )}
-
-                        {/* Club Owner */}
-
-                        {FEATURES.CLUBS_ENABLED && user.role ===
-                          "CLUB_OWNER" && (
-                          <NavLink
-                            to="/club"
-                            onClick={closeMenus}
-                            role="menuitem"
-                            className="
-                              flex rounded-xl
-                              px-3 py-2.5
-                              text-sm font-semibold
-                              text-[#344054]
-                              hover:bg-[#F5F8F7]
-                            "
-                          >
-                            Club Portal
-                          </NavLink>
-                        )}
-
-                        {/* Super Admin */}
-
-                        {user.role ===
-                          "SUPER_ADMIN" && (
-                          <NavLink
-                            to="/admin"
-                            onClick={closeMenus}
-                            role="menuitem"
-                            className="
-                              flex rounded-xl
-                              px-3 py-2.5
-                              text-sm font-semibold
-                              text-[#344054]
-                              hover:bg-[#F5F8F7]
-                            "
-                          >
-                            Admin Portal
-                          </NavLink>
-                        )}
-
-                        {/* Referee */}
-
-                        {user.role ===
-                          "REFEREE" && (
+                        {user.role === "TEAM_OWNER" && <AccountMenuLink to="/team" icon={UsersRound} onClick={closeMenus}>Team Portal</AccountMenuLink>}
+                        {FEATURES.CLUBS_ENABLED && user.role === "CLUB_OWNER" && <AccountMenuLink to="/club" icon={Shield} onClick={closeMenus}>Club Portal</AccountMenuLink>}
+                        {user.role === "SUPER_ADMIN" && <AccountMenuLink to="/admin" icon={LayoutDashboard} onClick={closeMenus}>Admin Portal</AccountMenuLink>}
+                        {user.role === "REFEREE" && (
                           <>
-                            <NavLink
-                              to="/referee/dashboard"
-                              onClick={closeMenus}
-                              role="menuitem"
-                              className="
-                                flex rounded-xl
-                                px-3 py-2.5
-                                text-sm font-semibold
-                                text-[#344054]
-                                hover:bg-[#F5F8F7]
-                              "
-                            >
-                              Referee Dashboard
-                            </NavLink>
-
-                            <NavLink
-                              to="/referee/matches"
-                              onClick={closeMenus}
-                              role="menuitem"
-                              className="
-                                flex rounded-xl
-                                px-3 py-2.5
-                                text-sm font-semibold
-                                text-[#344054]
-                                hover:bg-[#F5F8F7]
-                              "
-                            >
-                              My Matches
-                            </NavLink>
+                            <AccountMenuLink to="/referee/dashboard" icon={LayoutDashboard} onClick={closeMenus}>Referee Dashboard</AccountMenuLink>
+                            <AccountMenuLink to="/referee/matches" icon={Trophy} onClick={closeMenus}>My Matches</AccountMenuLink>
                           </>
                         )}
-
-                        {/* Logout */}
-
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={handleLogout}
-                          className="
-                            mt-1 flex w-full
-                            rounded-xl px-3 py-2.5
-                            text-sm font-semibold
-                            text-[#B42318]
-                            transition-colors
-                            hover:bg-[#FEF3F2]
-                          "
-                        >
+                      </div>
+                      <div className="border-t border-[#EAF0EC] p-2.5">
+                        <button type="button" onClick={handleLogout}
+                          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold text-[#BD433A] transition-colors hover:bg-[#FFF3F1] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#BD433A]">
+                          <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#FFF4F2]"><LogOut size={17} strokeWidth={1.7} aria-hidden="true" /></span>
                           Logout
                         </button>
                       </div>

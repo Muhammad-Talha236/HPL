@@ -58,6 +58,7 @@ export const authenticate = async (req, res, next) => {
         user_id: decoded.user_id,
       },
       select: {
+        session_version: true,
         user_id: true,
         name: true,
         email: true,
@@ -74,6 +75,10 @@ export const authenticate = async (req, res, next) => {
         success: false,
         message: "User account no longer exists",
       });
+    }
+
+    if ((decoded.session_version ?? 0) !== (user.session_version ?? 0)) {
+      return res.status(401).json({ success: false, message: "Your session has expired. Please log in again." });
     }
 
     // 11. Check current account status

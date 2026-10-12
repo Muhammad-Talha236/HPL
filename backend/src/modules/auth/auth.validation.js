@@ -1,3 +1,4 @@
+import { normalizeStoredEmail, isValidAccountEmail } from "../../utils/email.util.js";
 import {
   body,
   param,
@@ -23,12 +24,13 @@ export const registerValidation = [
     ),
 
   body("email")
+    .isString().bail()
     .trim()
     .notEmpty()
     .withMessage("Email is required")
-    .isEmail()
+    .custom(isValidAccountEmail)
     .withMessage("Please provide a valid email address")
-    .normalizeEmail(),
+    .customSanitizer(normalizeStoredEmail),
 
   body("password")
     .isString()
@@ -55,12 +57,13 @@ export const registerValidation = [
 
 export const loginValidation = [
   body("email")
+    .isString().bail()
     .trim()
     .notEmpty()
     .withMessage("Email is required")
-    .isEmail()
+    .custom(isValidAccountEmail)
     .withMessage("Please provide a valid email address")
-    .normalizeEmail(),
+    .customSanitizer(normalizeStoredEmail),
 
   body("password")
     .isString()

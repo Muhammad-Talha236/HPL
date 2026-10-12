@@ -1,3 +1,4 @@
+import { normalizeStoredEmail } from "../../utils/email.util.js";
 import prisma from "../../database/prisma.js";
 import { ROLES } from "../../constants/roles.js";
 import { USER_STATUS } from "../../constants/statuses.js";
@@ -37,7 +38,7 @@ export const submitIndependentTeamApplication = async (req, res, next) => {
       ]);
       if (!applicant || applicant.status !== USER_STATUS.ACTIVE || ![ROLES.USER, ROLES.TEAM_OWNER].includes(applicant.role)) throw new Error("INELIGIBLE_APPLICANT");
       if (!applicant.email_verified) throw new Error("EMAIL_NOT_VERIFIED");
-      fields.contact_email = applicant.email.trim().toLowerCase();
+      fields.contact_email = normalizeStoredEmail(applicant.email);
       if (!venue) throw new Error("VENUE_NOT_FOUND");
       if (venue.status !== "ACTIVE") throw new Error("VENUE_INACTIVE");
       if (existingOpen) throw new Error("OPEN_APPLICATION_EXISTS");
@@ -73,7 +74,7 @@ export const resubmitIndependentTeamApplication = async (req, res, next) => {
       if (request.status !== REQUEST_STATUS.CHANGES_REQUESTED) throw new Error("REQUEST_NOT_EDITABLE");
       const applicant = await tx.user.findUnique({ where: { user_id: req.user.user_id }, select: { email: true, email_verified: true } });
       if (!applicant?.email_verified) throw new Error("EMAIL_NOT_VERIFIED");
-      const fields = applicationFields(req.body, applicant.email.trim().toLowerCase());
+      const fields = applicationFields(req.body, normalizeStoredEmail(applicant.email));
       const venue = await tx.venue.findUnique({ where: { venue_id: fields.home_venue_id }, select: { status: true } });
       if (!venue || venue.status !== "ACTIVE") throw new Error("VENUE_INACTIVE");
       const updated = await tx.teamRegistrationRequest.updateMany({ where: { team_registration_request_id: requestId, applicant_user_id: req.user.user_id, status: REQUEST_STATUS.CHANGES_REQUESTED }, data: { ...fields, status: REQUEST_STATUS.PENDING, review_reason: null, reviewed_at: null, reviewed_by_user_id: null } });

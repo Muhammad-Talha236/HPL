@@ -1,3 +1,4 @@
+import { normalizeStoredEmail } from "../../utils/email.util.js";
 import {
   body,
   param,
@@ -219,7 +220,7 @@ const teamDetailsValidation = () => [
     .withMessage(
       "Contact email must be valid"
     )
-    .normalizeEmail(),
+    .customSanitizer(normalizeStoredEmail),
 
   body("contact_phone")
     .optional({
@@ -471,7 +472,7 @@ export const updateTeamValidation = [
     .withMessage(
       "Contact email must be valid"
     )
-    .normalizeEmail(),
+    .customSanitizer(normalizeStoredEmail),
 
   body("contact_phone")
     .optional({

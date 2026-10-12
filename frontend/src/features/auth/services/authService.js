@@ -47,3 +47,6 @@ export const resendEmailVerification = async () => {
   const response = await apiClient.post("/auth/me/email-verification/resend");
   return response.data;
 };
+
+export const requestPasswordReset = async (email) => (await apiClient.post("/auth/forgot-password", { email })).data;
+export const resetPassword = async (token, newPassword) => (await apiClient.post("/auth/reset-password", { token, newPassword })).data;

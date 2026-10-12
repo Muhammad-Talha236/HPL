@@ -1,3 +1,4 @@
+import { normalizeStoredEmail, getEmailLookupKey, isValidAccountEmail } from "../../utils/email.util.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
@@ -22,10 +23,13 @@ export const register = async (req, res) => {
   try {
     const {
       name,
-      email,
+      email: submittedEmail,
       password,
       phone,
     } = req.body;
+
+    const email = normalizeStoredEmail(submittedEmail);
+    if (!isValidAccountEmail(email)) return res.status(400).json({ success: false, message: "Please provide a valid email address" });
 
     // 1. Validate required fields
     if (!name || !email || !password) {
@@ -48,14 +52,14 @@ export const register = async (req, res) => {
     // 3. Check whether email already exists
     const existingUser = await prisma.user.findUnique({
       where: {
-        email,
+        email_key: getEmailLookupKey(email),
       },
     });
 
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message: "Email is already registered",
+        message: "An account already exists for this email. Please log in or reset your password.",
       });
     }
 
@@ -90,6 +94,9 @@ export const register = async (req, res) => {
     // 6. Never send password_hash to client
     const {
       password_hash: _,
+      email_key: _emailKey,
+      session_version: _sessionVersion,
+      password_reset_requested_at: _resetRequestedAt,
       ...userWithoutPassword
     } = user;
 
@@ -101,7 +108,8 @@ export const register = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Registration error:", error);
+    if (error.code === "P2002") return res.status(409).json({ success: false, message: "An account already exists for this email. Please log in or reset your password." });
+    console.error("Registration failed", { code: error.code || "UNKNOWN" });
 
     return res.status(500).json({
       success: false,
@@ -117,9 +125,12 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const {
-      email,
+      email: submittedEmail,
       password,
     } = req.body;
+
+    const email = normalizeStoredEmail(submittedEmail);
+    if (!isValidAccountEmail(email)) return res.status(400).json({ success: false, message: "Please provide a valid email address" });
 
     // 1. Validate required fields
     if (!email || !password) {
@@ -132,7 +143,7 @@ export const login = async (req, res) => {
     // 2. Find user by email
     const user = await prisma.user.findUnique({
       where: {
-        email,
+        email_key: getEmailLookupKey(email),
       },
     });
 
@@ -169,6 +180,7 @@ export const login = async (req, res) => {
     const tokenPayload = {
       user_id: user.user_id,
       role: user.role,
+      session_version: user.session_version,
     };
 
     // 7. Generate JWT
@@ -183,6 +195,9 @@ export const login = async (req, res) => {
     // 8. Never send password_hash
     const {
       password_hash: _,
+      email_key: _emailKey,
+      session_version: _sessionVersion,
+      password_reset_requested_at: _resetRequestedAt,
       ...userWithoutPassword
     } = user;
 
@@ -514,6 +529,9 @@ export const updateUserRole = async (req, res) => {
     // 8. Never send password_hash
     const {
       password_hash: _,
+      email_key: _emailKey,
+      session_version: _sessionVersion,
+      password_reset_requested_at: _resetRequestedAt,
       ...userWithoutPassword
     } = updatedUser;
 

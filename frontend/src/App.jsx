@@ -37,6 +37,8 @@ import NewsPage from "./features/news/pages/NewsPage";
 
 import NewsDetailsPage from "./features/news/pages/NewsDetailsPage";
 
+import ForgotPasswordPage from "./features/auth/pages/ForgotPasswordPage";
+import ResetPasswordPage from "./features/auth/pages/ResetPasswordPage";
 import LoginPage from "./features/auth/pages/LoginPage";
 
 import RegisterPage from "./features/auth/pages/RegisterPage";
@@ -975,6 +977,8 @@ function App() {
             NO FOOTER
         ====================================== */}
 
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route element={<GuestRoute />}>
           <Route
             path="/login"

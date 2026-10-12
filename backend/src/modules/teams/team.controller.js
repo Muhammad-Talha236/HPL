@@ -1,3 +1,4 @@
+import { normalizeStoredEmail } from "../../utils/email.util.js";
 import prisma from "../../database/prisma.js";
 
 import { ROLES } from "../../constants/roles.js";
@@ -231,7 +232,7 @@ export const createIndependentTeam = async (
     const normalizedEmail =
       contact_email === undefined || contact_email === null
         ? undefined
-        : contact_email.trim();
+        : normalizeStoredEmail(contact_email);
 
     if (
       normalizedEmail !== undefined &&
@@ -702,7 +703,7 @@ export const createTeam = async (
                 contact_email:
                   contact_email !== undefined &&
                   contact_email !== null
-                    ? contact_email.trim()
+                    ? normalizeStoredEmail(contact_email)
                     : undefined,
 
                 contact_phone:
@@ -1095,7 +1096,7 @@ export const updateTeam = async (
       updateData.contact_email =
         contact_email === null
           ? null
-          : contact_email.trim();
+          : normalizeStoredEmail(contact_email);
     }
 
     if (

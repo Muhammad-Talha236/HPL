@@ -1,3 +1,4 @@
+import { isValidAccountEmail } from "../../utils/email.util.js";
 import { body, param, query, checkExact } from "express-validator";
 import { normalizePlayerInvitationEmail } from "../../utils/playerInvitationEmail.util.js";
 
@@ -6,7 +7,7 @@ const invitationStatuses = ["PENDING", "ACCEPTED", "EXPIRED", "REVOKED"];
 export const createPlayerInvitationValidation = [
   body("player_id").isInt({ min: 1 }).withMessage("Player ID must be a positive integer").toInt(),
   body("team_id").isInt({ min: 1 }).withMessage("Team ID must be a positive integer").toInt(),
-  body("invited_email").trim().isEmail().withMessage("Please provide a valid invitation email").customSanitizer(normalizePlayerInvitationEmail),
+  body("invited_email").isString().bail().trim().custom(isValidAccountEmail).withMessage("Please provide a valid invitation email").customSanitizer(normalizePlayerInvitationEmail),
   checkExact([], { message: "Unexpected fields are not allowed" }),
 ];
 

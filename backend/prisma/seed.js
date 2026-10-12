@@ -1,3 +1,4 @@
+import { normalizeStoredEmail, getEmailLookupKey } from "../src/utils/email.util.js";
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import prisma from "../src/database/prisma.js";
@@ -6,13 +7,13 @@ import { USER_STATUS } from "../src/constants/statuses.js";
 
 const createSuperAdmin = async () => {
   try {
-    const email = "admin@hpl.com";
+    const email = normalizeStoredEmail("admin@hpl.com");
     const password = "ChangeMe123!";
 
     // Check whether Super Admin already exists
     const existingAdmin = await prisma.user.findUnique({
       where: {
-        email,
+        email_key: getEmailLookupKey(email),
       },
     });
 

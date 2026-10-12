@@ -1,9 +1,6 @@
-import validator from "validator";
+import { normalizeStoredEmail } from "./email.util.js";
 
-export const normalizePlayerInvitationEmail = (email) => {
-  const input = String(email || "").trim();
-  return validator.normalizeEmail(input) || input.toLowerCase();
-};
+export const normalizePlayerInvitationEmail = normalizeStoredEmail;
 
 export const maskPlayerInvitationEmail = (email) => {
   const [local, domain] = normalizePlayerInvitationEmail(email).split("@");

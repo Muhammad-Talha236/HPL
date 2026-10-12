@@ -2,6 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="referrer" content="no-referrer" />
+    <script>
+      // Remove reset credentials before app imports, resources, or analytics load.
+      if (window.location.pathname === "/reset-password") {
+        window.__hplResetToken = new URLSearchParams(window.location.search).get("token") || "";
+        window.history.replaceState(window.history.state, "", "/reset-password");
+      }
+    </script>
      <link rel="icon" type="image/png" href="./src/assets/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hunza Premier League</title>

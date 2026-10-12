@@ -1,3 +1,4 @@
+import { getEmailLookupKey } from "../../utils/email.util.js";
 import prisma from "../../database/prisma.js";
 import bcrypt from "bcryptjs";
 import { ROLES } from "../../constants/roles.js";
@@ -374,7 +375,7 @@ export const acceptPlayerInvitation = async (req, res, next) => {
       const user = await tx.user.findUnique({ where: { user_id: req.user.user_id }, select: { user_id: true, email: true, role: true, status: true, player: { select: { player_id: true } } } });
       if (!user || user.role !== ROLES.USER || user.status !== "ACTIVE") return { error: "ROLE" };
       if (user.player) return { error: "USER_LINKED" };
-      if (normalizePlayerInvitationEmail(user.email) !== normalizePlayerInvitationEmail(invitation.invited_email)) return { error: "EMAIL" };
+      if (getEmailLookupKey(user.email) !== getEmailLookupKey(invitation.invited_email)) return { error: "EMAIL" };
       const membership = await tx.teamPlayer.findFirst({ where: { team_id: invitation.team_id, player_id: invitation.player_id, status: "ACTIVE" }, select: { team_player_id: true } });
       if (!membership) return { error: "MEMBERSHIP" };
       const linked = await tx.player.updateMany({ where: { player_id: invitation.player_id, user_id: null }, data: { user_id: user.user_id } });
@@ -416,7 +417,7 @@ export const registerPlayerInvitationAccount = async (req, res, next) => {
       }
       if (!isEligibleInvitationTeam(invitation.team) || invitation.player.status !== "ACTIVE" || invitation.player.user_id !== null) return { error: "UNAVAILABLE" };
       const invitedEmail = normalizePlayerInvitationEmail(invitation.invited_email);
-      const existingUser = await tx.user.findUnique({ where: { email: invitedEmail }, select: { user_id: true } });
+      const existingUser = await tx.user.findUnique({ where: { email_key: getEmailLookupKey(invitedEmail) }, select: { user_id: true } });
       if (existingUser) return { error: "EXISTING_ACCOUNT" };
       const membership = await tx.teamPlayer.findFirst({ where: { team_id: invitation.team_id, player_id: invitation.player_id, status: "ACTIVE" }, select: { team_player_id: true } });
       if (!membership) return { error: "MEMBERSHIP" };

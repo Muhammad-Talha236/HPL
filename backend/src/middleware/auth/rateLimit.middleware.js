@@ -1,3 +1,5 @@
+import { getEmailLookupKey } from "../../utils/email.util.js";
+import crypto from "node:crypto";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 // Protect login from brute-force attacks
@@ -73,4 +75,10 @@ export const playerInvitationResendActorRateLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => String(req.user?.user_id ?? "anonymous"),
   message: { success: false, message: "Too many invitation resend attempts. Please try again later." },
+});
+
+export const passwordResetIpLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: "draft-8", legacyHeaders: false, message: { message: "Too many password reset attempts. Please try again later." } });
+export const passwordResetEmailLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 1, standardHeaders: false, legacyHeaders: false,
+  keyGenerator: (req) => crypto.createHash("sha256").update(getEmailLookupKey(req.body.email)).digest("hex"),
+  handler: (req, res) => res.json({ message: "If an account exists with this email, a password reset link has been sent." }),
 });
