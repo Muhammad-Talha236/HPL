@@ -1,4 +1,4 @@
-import hplLogo from "../../../assets/Logo.png";
+import hplLogo from "../../../assets/logo.png";
 
 // TEMPORARY: Display HPL logo for all teams on the Season Details page. Replace with actual team logos later.
 export const getSeasonTeamLogo = () => hplLogo;

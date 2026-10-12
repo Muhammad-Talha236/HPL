@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import hplLogo from "../../assets/Logo.png";
+import hplLogo from "../../assets/logo.png";
 
 const Logo = ({ className = "" }) => {
   return (

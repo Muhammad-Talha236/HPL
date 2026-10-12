@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Link, matchPath, NavLink, useLocation } from "react-router-dom";
 import { LogOut, X } from "lucide-react";
-import hplLogo from "../../assets/Logo.png";
+import hplLogo from "../../assets/logo.png";
 import { adminNavigation } from "./adminNavigation";
 
 const isRouteActive = (pathname, item) => item.end

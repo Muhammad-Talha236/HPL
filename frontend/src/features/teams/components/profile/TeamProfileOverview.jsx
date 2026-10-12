@@ -1,11 +1,11 @@
-import AboutTeam from "./profile/overview/AboutTeam";
-import Achievements from "./profile/overview/Achievements";
-import ClubInformation from "./profile/overview/ClubInformation";
-import KeyPlayers from "./profile/overview/KeyPlayers";
-import MatchListCard from "./profile/overview/MatchListCard";
-import TeamKit from "./profile/overview/TeamKit";
+import AboutTeam from "./overview/AboutTeam";
+import Achievements from "./overview/Achievements";
+import ClubInformation from ".overview/ClubInformation";
+import KeyPlayers from ".overview/KeyPlayers";
+import MatchListCard from "./overview/MatchListCard";
+import TeamKit from "./overview/TeamKit";
 
-import TeamSquad from "./profile/squad/TeamSquad";
+import TeamSquad from "./squad/TeamSquad";
 
 /* =========================================================
    PLACEHOLDER TAB
