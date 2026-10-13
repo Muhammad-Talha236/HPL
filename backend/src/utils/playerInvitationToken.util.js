@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-export const PLAYER_INVITATION_EXPIRY_HOURS = 72;
+export const PLAYER_INVITATION_EXPIRY_HOURS = 168;
 
 export const hashPlayerInvitationToken = (rawToken) => crypto
   .createHash("sha256")
@@ -16,6 +16,6 @@ export const createPlayerInvitationToken = () => {
 
 export const getPlayerInvitationExpiry = (now = new Date()) => {
   const expiresAt = new Date(now);
-  expiresAt.setHours(expiresAt.getHours() + PLAYER_INVITATION_EXPIRY_HOURS);
+  expiresAt.setTime(expiresAt.getTime() + PLAYER_INVITATION_EXPIRY_HOURS * 60 * 60 * 1000);
   return expiresAt;
 };

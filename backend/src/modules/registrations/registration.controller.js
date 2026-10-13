@@ -1,3 +1,4 @@
+import { isPlayerGenderCompatible } from "../../utils/playerEligibility.util.js";
 import prisma from "../../database/prisma.js";
 
 import { ROLES } from "../../constants/roles.js";
@@ -256,8 +257,7 @@ export const createRegistration = async (
           // ------------------------------------------------
 
           if (
-            team.gender !==
-            competition.gender
+            !isPlayerGenderCompatible(team.gender, competition.gender)
           ) {
             throw new Error(
               "GENDER_MISMATCH"

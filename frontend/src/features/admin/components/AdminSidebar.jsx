@@ -1,7 +1,5 @@
 
 import { NavLink } from "react-router-dom";
-import { useEffect, useState } from "react";
-import apiClient from "../../../services/apiClient";
 import {
   LayoutDashboard,
   Users,
@@ -36,7 +34,6 @@ const menuGroups = [
     items: [
       { label: "Users", to: "/admin/users", icon: Users },
       { label: "Teams", to: "/admin/teams", icon: Shield },
-      { label: "Team Registration Requests", to: "/admin/team-registration-requests", icon: ClipboardList, badge: true },
       { label: "Players", to: "/admin/players", icon: UserRound },
     ],
   },
@@ -90,14 +87,6 @@ export default function AdminSidebar({
   collapsed = false,
   onNavigate,
 }) {
-  const [pendingCount, setPendingCount] = useState(null);
-  useEffect(() => {
-    let active = true;
-    apiClient.get("/admin/team-registration-requests", { params: { status: "PENDING", limit: 1 } })
-      .then((response) => { if (active) setPendingCount(response.data?.data?.pagination?.total ?? 0); })
-      .catch(() => { if (active) setPendingCount(null); });
-    return () => { active = false; };
-  }, []);
   return (
     <aside className="relative flex h-full flex-col overflow-hidden bg-[#081827] text-white">
       {/* Background decoration */}
@@ -187,12 +176,6 @@ export default function AdminSidebar({
                             <span className="min-w-0 flex-1 truncate">
                               {item.label}
                             </span>
-
-                            {item.badge && pendingCount > 0 && (
-                              <span className="mr-1 rounded-full bg-[#EEC058] px-1.5 py-0.5 text-[10px] font-bold text-[#10213F]" aria-label={`${pendingCount} pending requests`}>
-                                {pendingCount > 99 ? "99+" : pendingCount}
-                              </span>
-                            )}
 
                             {isActive && (
                               <ChevronRight

@@ -1,5 +1,7 @@
 # Normal Team Registration Process
 
+**Archived:** new team application submission and initial approval have been removed from the application. This document records the former flow. See [TeamRegistrationRemoval.md](TeamRegistrationRemoval.md) for current scope and preserved verification/history functionality.
+
 ## 1. Overview
 
 A Normal User can register an independent football team without being associated with an existing club.

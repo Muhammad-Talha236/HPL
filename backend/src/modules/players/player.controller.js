@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import { generateRegistrationNumber } from "../../utils/playerRegistration.util.js";
 
 import prisma from "../../database/prisma.js";
 
@@ -60,14 +60,6 @@ const publicPlayerSelect = {
 // ======================================================
 // GENERATE REGISTRATION NUMBER
 // ======================================================
-
-const generateRegistrationNumber = () => {
-  return `HPL-${crypto
-    .randomUUID()
-    .replace(/-/g, "")
-    .substring(0, 12)
-    .toUpperCase()}`;
-};
 
 // ======================================================
 // CREATE PLAYER
@@ -136,6 +128,7 @@ export const createPlayer = async (req, res) => {
             ? bio.trim()
             : undefined,
 
+        profile_completed_at: new Date(),
         registration_number:
           registrationNumber,
 

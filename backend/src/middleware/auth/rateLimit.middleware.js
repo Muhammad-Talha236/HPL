@@ -82,3 +82,5 @@ export const passwordResetEmailLimiter = rateLimit({ windowMs: 15 * 60 * 1000, l
   keyGenerator: (req) => crypto.createHash("sha256").update(getEmailLookupKey(req.body.email)).digest("hex"),
   handler: (req, res) => res.json({ message: "If an account exists with this email, a password reset link has been sent." }),
 });
+
+export const playerInvitationSendRateLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: "draft-8", legacyHeaders: false, keyGenerator: req => String(req.user.user_id), message: { success: false, message: "Too many invitation requests. Please try again later." } });

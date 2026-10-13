@@ -84,7 +84,7 @@ export const register = async (req, res) => {
     await prisma.emailVerificationToken.create({
       data: { user_id: user.user_id, token_hash: verification.tokenHash, email_snapshot: user.email, expires_at: verification.expiresAt },
     });
-    let verificationMessage = "Check your account email to verify it before submitting an independent team application.";
+    let verificationMessage = "Check your account email to verify ownership.";
     try {
       await sendVerificationEmail({ email: user.email, name: user.name, rawToken: verification.rawToken });
     } catch {
@@ -145,6 +145,7 @@ export const login = async (req, res) => {
       where: {
         email_key: getEmailLookupKey(email),
       },
+      include: { player: { select: { player_id: true, status: true } } },
     });
 
     // 3. Use the same message whether email exists or not
@@ -233,6 +234,7 @@ export const getMe = async (req, res) => {
         user_id: req.user.user_id,
       },
       select: {
+        player: { select: { player_id: true, status: true } },
         user_id: true,
         name: true,
         email: true,
@@ -297,7 +299,7 @@ export const verifyEmail = async (req, res) => {
     if (updated.count !== 1) throw new Error("EMAIL_VERIFICATION_CONFLICT");
     await tx.emailVerificationToken.updateMany({ where: { user_id: token.user_id, used_at: null }, data: { used_at: new Date() } });
   });
-  return res.json({ success: true, message: "Email verified successfully. You can now submit an independent team application." });
+  return res.json({ success: true, message: "Email verified successfully." });
 };
 
 export const resendEmailVerification = async (req, res) => {

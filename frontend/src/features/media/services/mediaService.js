@@ -48,21 +48,7 @@ export const uploadMedia = async ({ file, category, title, description, altText,
 };
 
 export const getMedia = async (params = {}) => (await apiClient.get("/media", { params })).data;
-export const getOwnTeamLogoMedia = async (signal) => (await apiClient.get("/media/team-logo", { signal })).data;
-export const uploadOwnTeamLogoMedia = async ({ file, altText, signal }) => {
-  const fileError = validateMediaFile(file);
-  if (fileError || !file.type.startsWith("image/")) throw new Error(fileError || "Team logos must be images.");
-  const signatureResponse = await apiClient.post("/media/team-logo/upload-signature", {}, { signal });
-  const upload = signatureResponse.data?.data;
-  const formData = new FormData();
-  Object.entries(upload.fields).forEach(([key, value]) => formData.append(key, String(value)));
-  formData.append("file", file);
-  const cloudinaryResponse = await fetch(upload.upload_url, { method: "POST", body: formData, signal });
-  const cloudinaryBody = await cloudinaryResponse.json().catch(() => ({}));
-  if (!cloudinaryResponse.ok) throw new Error(cloudinaryBody.error?.message || "Logo upload failed. Please retry.");
-  const registered = await apiClient.post("/media/team-logo", { upload_intent_id: upload.upload_intent_id, public_id: cloudinaryBody.public_id, asset_id: cloudinaryBody.asset_id, version: cloudinaryBody.version, resource_type: cloudinaryBody.resource_type, alt_text: altText || "Team logo" }, { signal });
-  return registered.data?.data;
-};
+
 export const updateMedia = async (mediaId, data) => (await apiClient.patch(`/media/${mediaId}`, data)).data;
 export const deleteMedia = async (mediaId) => (await apiClient.delete(`/media/${mediaId}`)).data;
 export const attachMedia = async (mediaId, data) => (await apiClient.post(`/media/${mediaId}/attachments`, data)).data;

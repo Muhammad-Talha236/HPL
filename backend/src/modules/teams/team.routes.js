@@ -45,52 +45,10 @@ import {
 } from "./team.validation.js";
 
 import {
-  getMyIndependentTeamApplications,
-  resubmitIndependentTeamApplication,
-  submitIndependentTeamApplication,
-} from "./teamRegistration.controller.js";
-
-import {
-  independentTeamApplicationIdValidation,
-  independentTeamApplicationResubmitValidation,
-  independentTeamApplicationValidation,
-} from "./teamRegistration.validation.js";
-
-import {
   handleValidationErrors,
 } from "../../middleware/auth/validation.middleware.js";
 
 const router = express.Router();
-
-// ======================================================
-// INDEPENDENT TEAM REGISTRATION
-// ======================================================
-// Submission creates a reviewable application only. An administrator performs
-// the guarded provisional approval and any USER -> TEAM_OWNER promotion later.
-router.post(
-  "/independent",
-  authenticate,
-  authorize(ROLES.USER, ROLES.TEAM_OWNER),
-  independentTeamApplicationValidation,
-  handleValidationErrors,
-  submitIndependentTeamApplication
-);
-
-router.get(
-  "/independent/my",
-  authenticate,
-  authorize(ROLES.USER, ROLES.TEAM_OWNER),
-  getMyIndependentTeamApplications
-);
-
-router.patch(
-  "/independent/:request_id",
-  authenticate,
-  authorize(ROLES.USER, ROLES.TEAM_OWNER),
-  independentTeamApplicationResubmitValidation,
-  handleValidationErrors,
-  resubmitIndependentTeamApplication
-);
 
 // ======================================================
 // PUBLIC ROUTES

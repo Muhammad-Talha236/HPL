@@ -89,9 +89,7 @@ router.post(
   "/",
   authenticate,
   authorize(
-    ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
+    ROLES.SUPER_ADMIN
   ),
   createTeamPlayerValidation,
   handleValidationErrors,

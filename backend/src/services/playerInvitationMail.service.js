@@ -25,7 +25,10 @@ export class PlayerInvitationDeliveryError extends Error {
 export const buildPlayerInvitationEmail = ({ invited_email, player_name, team_name, club_name, expires_at, rawToken }) => {
   if (!isSafeMailbox(invited_email)) throw new PlayerInvitationDeliveryError();
   const config = getPlayerInvitationMailConfig();
-  const acceptanceUrl = `${config.frontendUrl}/invitations/player/${encodeURIComponent(rawToken)}`;
+  const link = new URL("/player-invitation", config.frontendUrl);
+  if (process.env.NODE_ENV === "production" && (link.protocol !== "https:" || /^(localhost|127\.0\.0\.1)$/.test(link.hostname))) throw new PlayerInvitationDeliveryError();
+  link.searchParams.set("token", rawToken);
+  const acceptanceUrl = link.href;
   const expiry = new Date(expires_at).toUTCString();
   const safe = {
     player: escapeHtml(player_name),
@@ -38,9 +41,9 @@ export const buildPlayerInvitationEmail = ({ invited_email, player_name, team_na
   return {
     from: `${config.emailFromName} <${config.emailUser}>`,
     to: invited_email,
-    subject: "You're invited to join Hunza Premier League",
-    text: `Hello ${player_name},\n\nYou have been invited to join Hunza Premier League as a player for ${team_name} (${club_name}).\n\nAccept your invitation: ${acceptanceUrl}\n\nThis link expires on ${expiry}. If you were not expecting this invitation, you can ignore this email.`,
-    html: `<p>Hello ${safe.player},</p><p>You have been invited to join <strong>Hunza Premier League</strong> as a player for <strong>${safe.team}</strong> (${safe.club}).</p><p><a href="${safe.url}">Accept your invitation</a></p><p>This link expires on ${safe.expiry}.</p><p>If you were not expecting this invitation, you can ignore this email.</p>`,
+    subject: "You've Been Invited to Join a Team \u2014 HPL",
+    text: `Hello ${player_name},\n\nYou have been invited to join Hunza Premier League as a player for ${team_name} (${club_name}).\n\nAccept your invitation: ${acceptanceUrl}\n\nThis invitation is valid for 7 days and expires on ${expiry}. Membership becomes active when you accept using the invited account. You can complete your player profile later. If you were not expecting this invitation, you can ignore this email.`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:520px;padding:32px;color:#0B1D2F"><h2>Hunza Premier League</h2><h1>Join ${safe.team}</h1><p>You have been invited to join <strong>${safe.team}</strong> as a player. Accept the invitation using the invited account to join the team. Player profile details can be completed later.</p><p><a href="${safe.url}" style="display:inline-block;background:#087554;color:white;padding:14px 24px;border-radius:8px;text-decoration:none">Accept Invitation</a></p><p>This invitation is valid for 7 days and expires on ${safe.expiry}.</p><p>If this invitation was not intended for you, ignore this email. Never share your invitation link.</p></div>`,
   };
 };
 

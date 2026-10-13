@@ -1,3 +1,4 @@
+import { isPlayerGenderCompatible } from "../../utils/playerEligibility.util.js";
 import prisma from "../../database/prisma.js";
 
 import { createAuditLog } from "../../utils/auditLog.util.js";
@@ -144,20 +145,7 @@ const hasActiveClubWhenRequired = (team) =>
   MEN   -> MALE
   WOMEN -> FEMALE
 */
-const isGenderCompatible = (
-  teamGender,
-  playerGender
-) => {
-  if (teamGender === "MEN") {
-    return playerGender === "MALE";
-  }
-
-  if (teamGender === "WOMEN") {
-    return playerGender === "FEMALE";
-  }
-
-  return false;
-};
+const isGenderCompatible = isPlayerGenderCompatible;
 
 /*
   GET ALL TEAM PLAYER RECORDS
@@ -171,7 +159,7 @@ export const getTeamPlayers = async (
   try {
     const teamPlayers =
       await prisma.teamPlayer.findMany({
-        where: { team: { status: TEAM_STATUS.ACTIVE, verification_status: "VERIFIED" } },
+        where: { status: "ACTIVE", player: { status: "ACTIVE" }, team: { status: TEAM_STATUS.ACTIVE, verification_status: "VERIFIED" } },
         select: publicTeamPlayerSelect,
         orderBy: {
           created_at: "desc",
@@ -331,6 +319,7 @@ export const getTeamPlayerById =
 */
 export const createTeamPlayer =
   async (req, res) => {
+    if (req.user?.role !== ROLES.SUPER_ADMIN) return res.status(403).json({ success: false, message: "Use the player invitation flow to add members." });
     try {
       const teamId =
         Number(req.body.team_id);
@@ -347,10 +336,7 @@ export const createTeamPlayer =
             )
           : null;
 
-      const joinedAt =
-        new Date(
-          req.body.joined_at
-        );
+      const joinedAt = new Date();
 
       const leftAt =
         req.body.left_at !==
@@ -833,6 +819,8 @@ export const updateTeamPlayer =
                   "FORBIDDEN",
               };
             }
+
+            if (req.body.jersey_number !== undefined && existing.status !== "ACTIVE") return { error: "PLAYER_INACTIVE" };
 
             if (!isTeamRosterOperable(existing.team)) {
               return {

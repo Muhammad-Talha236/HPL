@@ -1,8 +1,10 @@
+import { isPlayerGenderCompatible, isPlayerProfileComplete } from "../../utils/playerEligibility.util.js";
 import prisma from "../../database/prisma.js";
 
 import { createAuditLog } from "../../utils/auditLog.util.js";
 import { AUDIT_ACTIONS } from "../../constants/auditActions.js";
 import { ROLES } from "../../constants/roles.js";
+const MATCH_STATUS = { SCHEDULED: "SCHEDULED" };
 // ======================================================
 // CREATE MATCH PLAYER
 // ======================================================
@@ -146,6 +148,8 @@ export const createMatchPlayer = async (req, res) => {
         player_id: true,
         name: true,
         gender: true,
+        date_of_birth: true,
+        position: true,
         status: true,
       },
     });
@@ -168,12 +172,12 @@ export const createMatchPlayer = async (req, res) => {
     }
 
     if (
-      player.gender !== team.gender
+      !isPlayerProfileComplete(player) || !isPlayerGenderCompatible(team.gender, player.gender)
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "Player gender does not match the team",
+          "Complete required player eligibility details and match the team gender",
       });
     }
 

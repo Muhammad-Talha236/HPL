@@ -102,6 +102,7 @@ export const createTeamPlayerValidation = [
     ),
 
   body("joined_at")
+    .optional()
     .exists()
     .withMessage(
       "Joined date is required"

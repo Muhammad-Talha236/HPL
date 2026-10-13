@@ -8,7 +8,7 @@ const listSelect = {
   club: { select: { club_id: true, name: true, status: true } },
   owner: { select: ownerSelect },
   home_venue: { select: { venue_id: true, name: true, city: true } },
-  _count: { select: { team_players: true } },
+  _count: { select: { team_players: { where: { status: "ACTIVE" } } } },
 };
 
 const parseDate = (value, endOfDay = false) => {

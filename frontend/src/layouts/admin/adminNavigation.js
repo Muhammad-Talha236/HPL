@@ -27,7 +27,6 @@ export const adminNavigation = [
       { label: "Users", to: "/admin/users", icon: UsersRound },
       ...(FEATURES.CLUBS_ENABLED ? [{ label: "Clubs", to: "/admin/clubs", icon: Warehouse }] : []),
       { label: "Teams", to: "/admin/teams", icon: ShieldCheck },
-      { label: "Team Applications", to: "/admin/team-registration-requests", icon: ShieldEllipsis },
       { label: "Players", to: "/admin/players", icon: UserSquare2 },
       { label: "Referees", to: "/admin/referees", icon: UserRoundCog },
     ],

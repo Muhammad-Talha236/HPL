@@ -116,10 +116,6 @@ const AdminTeamsPage = lazy(() =>
   import("./features/admin/pages/AdminTeamsPage")
 );
 
-const AdminTeamRegistrationRequestsPage = lazy(() =>
-  import("./features/admin/pages/AdminTeamRegistrationRequestsPage")
-);
-
 const AdminTeamFormPage = lazy(() =>
   import("./features/admin/pages/AdminTeamFormPage")
 );
@@ -310,6 +306,9 @@ const ClubOwnerPlayerDetailsPage = lazy(() =>
    TEAM OWNER LAZY PAGES
 ========================= */
 
+const PlayerInvitationAcceptancePage = lazy(() => import("./features/playerInvitations/pages/PlayerInvitationAcceptancePage"));
+const MyPlayerPage = lazy(() => import("./features/playerInvitations/pages/MyPlayerPage"));
+
 const TeamOwnerDashboardPage = lazy(() =>
   import("./features/teamOwner/pages/TeamOwnerPages").then(
     (module) => ({
@@ -384,10 +383,6 @@ const TeamOwnerMatchesPage = lazy(() =>
 
 const TeamOwnerMatchDetailPage = lazy(() =>
   import("./features/teamOwner/pages/TeamOwnerMatchDetailPage")
-);
-
-const IndependentTeamRegistrationPage = lazy(() =>
-  import("./features/teams/pages/IndependentTeamRegistrationPage")
 );
 
 /* =========================
@@ -531,10 +526,9 @@ function App() {
           ========================= */}
 
           <Route element={<ProtectedRoute />}>
-            <Route
-              path="/teams/register-independent"
-              element={<IndependentTeamRegistrationPage />}
-            />
+            <Route path="/player" element={<MyPlayerPage />} />
+            <Route path="/player/profile" element={<MyPlayerPage />} />
+            <Route path="/player/invitations" element={<MyPlayerPage />} />
 
             <Route
               path="/competitions/:competitionId/register"
@@ -614,11 +608,6 @@ function App() {
               <Route
                 path="/admin/teams"
                 element={<AdminTeamsPage />}
-              />
-
-              <Route
-                path="/admin/team-registration-requests"
-                element={<AdminTeamRegistrationRequestsPage />}
               />
 
               <Route
@@ -977,6 +966,8 @@ function App() {
             NO FOOTER
         ====================================== */}
 
+        <Route path="/player-invitation" element={<PlayerInvitationAcceptancePage />} />
+        <Route path="/invitations/player/:token" element={<PlayerInvitationAcceptancePage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route element={<GuestRoute />}>

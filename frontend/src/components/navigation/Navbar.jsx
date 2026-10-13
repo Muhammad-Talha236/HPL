@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { ArrowUpRight, Bell, ChevronRight, LayoutDashboard, LogOut, Shield, Trophy, UserRound, UsersRound } from "lucide-react";
+import { Bell, ChevronRight, LayoutDashboard, LogOut, Shield, Trophy, UserRound, UsersRound } from "lucide-react";
 
 import Logo from "../common/Logo";
 import useAuth from "../../hooks/useAuth";
@@ -496,12 +496,6 @@ const Navbar = () => {
                           <>
                             <AccountMenuLink to="/account" icon={UserRound} onClick={closeMenus}>My Account</AccountMenuLink>
                             <AccountMenuLink to="/account/notifications" icon={Bell} onClick={closeMenus} badge={unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : null}>Notifications</AccountMenuLink>
-                            <NavLink to="/teams/register-independent" onClick={closeMenus}
-                              className="group mt-2 flex items-center gap-3 rounded-xl border border-[#DEEEE4] bg-[#F1F8F4] px-3 py-3 text-[#0B5D46] transition-colors hover:border-[#BDDACB] hover:bg-[#E7F3EC] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B5D46]">
-                              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white"><UsersRound size={17} strokeWidth={1.7} aria-hidden="true" /></span>
-                              <span className="min-w-0 flex-1 text-[12px] font-semibold leading-5">Register Independent Team</span>
-                              <ArrowUpRight size={15} aria-hidden="true" className="shrink-0 text-[#6B9983]" />
-                            </NavLink>
                           </>
                         )}
                         {user.role === "TEAM_OWNER" && <AccountMenuLink to="/team" icon={UsersRound} onClick={closeMenus}>Team Portal</AccountMenuLink>}
@@ -513,6 +507,7 @@ const Navbar = () => {
                             <AccountMenuLink to="/referee/matches" icon={Trophy} onClick={closeMenus}>My Matches</AccountMenuLink>
                           </>
                         )}
+                        <AccountMenuLink to="/player" icon={UserRound} onClick={closeMenus}>{user.player?.status === "ACTIVE" ? "My Player Profile" : "Player Invitations"}</AccountMenuLink>
                       </div>
                       <div className="border-t border-[#EAF0EC] p-2.5">
                         <button type="button" onClick={handleLogout}
@@ -774,14 +769,6 @@ const Navbar = () => {
                             </span>
                           )}
                         </NavLink>
-
-                        <NavLink
-                          onClick={closeMobileMenu}
-                          to="/teams/register-independent"
-                          className="rounded-xl border border-[#DDE5E1] bg-white p-2.5 text-center text-xs font-bold text-[#0B5D46]"
-                        >
-                          Register Team
-                        </NavLink>
                       </div>
                     )}
 
@@ -876,6 +863,8 @@ const Navbar = () => {
                         </NavLink>
                       </div>
                     )}
+
+                    <NavLink to="/player" onClick={closeMenus} className="block rounded-lg px-4 py-3 text-sm font-semibold text-[#0B5D46]">{user.player?.status === "ACTIVE" ? "My Player Profile" : "Player Invitations"}</NavLink>
 
                     {/* Logout */}
 

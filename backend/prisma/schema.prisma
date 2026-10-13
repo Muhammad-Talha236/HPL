@@ -32,6 +32,7 @@ model User {
   news                                News[]                        @relation("NewsAuthor")
   notifications                       Notification[]
   player                              Player?                       @relation("PlayerUser")
+  accepted_player_invitations         PlayerInvitation[] @relation("PlayerInvitationAcceptor")
   sent_player_invitations             PlayerInvitation[]            @relation("PlayerInvitationInviter")
   referee_profile                     Referee?
   referee_evaluations                 RefereeEvaluation[]
@@ -171,8 +172,8 @@ model Player {
   player_id             Int                  @id @default(autoincrement())
   name                  String
   profile_photo         String?
-  date_of_birth         DateTime             @db.Date
-  gender                String
+  date_of_birth         DateTime?            @db.Date
+  gender                String?
   position              String?
   phone                 String?
   nationality           String?
@@ -190,7 +191,8 @@ model Player {
   related_event_players MatchEvent[]         @relation("RelatedEventPlayer")
   match_players         MatchPlayer[]
   user                  User?                @relation("PlayerUser", fields: [user_id], references: [user_id])
-  invitations           PlayerInvitation?
+  profile_completed_at  DateTime?
+  invitations           PlayerInvitation[]
   team_players          TeamPlayer[]
   achievements          PlayerAchievement[]
   gallery_photos        PlayerGalleryPhoto[]
@@ -617,8 +619,14 @@ model Notification {
 
 model PlayerInvitation {
   invitation_id      Int       @id @default(autoincrement())
-  player_id          Int       @unique(map: "PlayerInvitation_one_pending_per_player_key", where: raw("(status = 'PENDING'::text)"))
+  player_id          Int?
   invited_email      String
+  invited_email_key  String @default(dbgenerated())
+  accepted_user_id   Int?
+  accepted_email_snapshot String?
+  delivered_at      DateTime?
+  last_sent_at      DateTime?
+  accepted_user     User? @relation("PlayerInvitationAcceptor", fields: [accepted_user_id], references: [user_id])
   token_hash         String    @unique
   expires_at         DateTime
   accepted_at        DateTime?
@@ -628,9 +636,11 @@ model PlayerInvitation {
   team_id            Int?
   invited_by_user_id Int?
   invited_by         User?     @relation("PlayerInvitationInviter", fields: [invited_by_user_id], references: [user_id])
-  player             Player    @relation(fields: [player_id], references: [player_id])
+  player             Player?   @relation(fields: [player_id], references: [player_id])
   team               Team?     @relation(fields: [team_id], references: [team_id])
 
+  @@unique([team_id, invited_email_key], map: "PlayerInvitation_one_open_per_team_email_key", where: raw("(status IN ('PENDING', 'ACCEPTED_PENDING_PROFILE'))"))
+  @@index([accepted_user_id, status])
   @@index([invited_email])
   @@index([player_id])
   @@index([expires_at])

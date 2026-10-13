@@ -25,9 +25,9 @@ test("team-owner edit blocks gender and protected-field mass assignment before m
   const allowed = ["name", "team_type", "home_venue_id", "logo", "region", "district", "city", "description", "contact_email", "contact_phone"]; const protectedFields = ["owner_id", "club_id", "status", "created_at", "updated_at", "gender"]; assert.equal(allowed.includes("owner_id"), false); for (const field of protectedFields) assert.equal(allowed.includes(field), false);
 });
 
-test("TeamPlayer add binds the team to the authenticated TEAM_OWNER and preserves roster integrity", async () => {
+test("direct TeamPlayer add is denied to owners so invitation onboarding cannot be bypassed", async () => {
   const run = async (team) => { const transaction = replace(prisma, "$transaction", async (callback) => callback({ team: { findUnique: async () => ({ ...team, club: { status: "ACTIVE" } }) }, player: { findUnique: async () => player }, teamPlayer: { findUnique: async () => null, findFirst: async () => null, create: async () => ({ team_player_id: 77, team_id: team.team_id, player_id: player.player_id, jersey_number: 9, status: "ACTIVE", player, team }) } })); const audit = replace(prisma.auditLog, "create", async () => ({})); const res = response(); await createTeamPlayer({ body: { team_id: team.team_id, player_id: player.player_id, jersey_number: 9, joined_at: "2026-01-01" }, user: ownerA }, res); audit(); transaction(); return res; };
-  assert.equal((await run(teamA)).result.statusCode, 201); assert.equal((await run(teamB)).result.statusCode, 403);
+  assert.equal((await run(teamA)).result.statusCode, 403); assert.equal((await run(teamB)).result.statusCode, 403);
 });
 
 test("TeamPlayer membership edit permits only jersey updates and protects foreign memberships", async () => {
