@@ -79,9 +79,7 @@ router.get(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   listTeamStaff
 );
 
@@ -90,9 +88,7 @@ router.post(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   createTeamStaff
 );
 
@@ -101,9 +97,7 @@ router.patch(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   updateTeamStaff
 );
 
@@ -112,9 +106,7 @@ router.delete(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   deleteTeamStaff
 );
 
@@ -123,9 +115,7 @@ router.get(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   listTeamKits
 );
 
@@ -134,9 +124,7 @@ router.post(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   createTeamKit
 );
 
@@ -145,9 +133,7 @@ router.patch(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   updateTeamKit
 );
 
@@ -156,9 +142,7 @@ router.delete(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   deleteTeamKit
 );
 
@@ -167,9 +151,7 @@ router.get(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   listTeamDocuments
 );
 
@@ -178,9 +160,7 @@ router.post(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   createTeamDocument
 );
 
@@ -189,9 +169,7 @@ router.patch(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   updateTeamDocument
 );
 
@@ -200,9 +178,7 @@ router.delete(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   deleteTeamDocument
 );
 
@@ -234,9 +210,6 @@ router.post(
 // ------------------------------------------------------
 // UPDATE TEAM
 // ------------------------------------------------------
-// TEAM_OWNER:
-//   Can update their own team.
-//
 // CLUB_OWNER:
 //   Can update teams inside their own club.
 //
@@ -247,7 +220,6 @@ router.patch(
   "/:team_id",
   authenticate,
   authorize(
-    ROLES.TEAM_OWNER,
     ROLES.CLUB_OWNER,
     ROLES.SUPER_ADMIN
   ),
@@ -259,9 +231,6 @@ router.patch(
 // ------------------------------------------------------
 // DEACTIVATE TEAM
 // ------------------------------------------------------
-// TEAM_OWNER:
-//   Can deactivate their own team.
-//
 // CLUB_OWNER:
 //   Can deactivate teams inside their own club.
 //
@@ -275,7 +244,6 @@ router.patch(
   "/:team_id/deactivate",
   authenticate,
   authorize(
-    ROLES.TEAM_OWNER,
     ROLES.CLUB_OWNER,
     ROLES.SUPER_ADMIN
   ),
@@ -305,16 +273,13 @@ router.patch(
 // ------------------------------------------------------
 // TRANSFER TEAM OWNERSHIP
 // ------------------------------------------------------
-// TEAM_OWNER:
-//   Can transfer their own team.
-//
 // CLUB_OWNER:
 //   Can transfer teams inside their own club.
 //
 // SUPER_ADMIN:
 //   Can transfer any team.
 //
-// New owner must be an active TEAM_OWNER.
+// New owner must be an active account.
 
 router.patch(
   "/:team_id/owner",

@@ -59,7 +59,7 @@ const PlayerMembershipModal = ({ player, membership, onClose, onSaved }) => {
           </label>
           <div className="mt-2 max-h-40 overflow-y-auto rounded border border-slate-200">
             {teams.map((team) => <button type="button" key={team.team_id} onClick={() => setSelectedTeam(team)} className={`block w-full p-3 text-left text-sm ${selectedTeam?.team_id === team.team_id ? "bg-[#078052]/15" : "hover:bg-white/5"}`}><b>{team.name}</b>{FEATURES.CLUBS_ENABLED && team.club?.name ? ` Â· ${team.club.name}` : ""} Â· {team.gender}</button>)}
-            {!teams.length && <p className="p-3 text-sm text-[#10213F]/50">{gender ? "No compatible active teams found." : "Add the player's gender to their profile before using manual team assignment. Existing invitation memberships remain active."}</p>}
+            {!teams.length && <p className="p-3 text-sm text-[#10213F]/50">{gender ? "No compatible active teams found." : "Add the player's gender to their profile before using manual team assignment. Existing memberships remain active."}</p>}
           </div>
         </> : <div className="mt-5 rounded bg-[#F8FAFC] p-3 text-sm"><b>{membership.team.name}</b><span className="ml-2 text-slate-500">Team and player cannot be changed.</span></div>}
 

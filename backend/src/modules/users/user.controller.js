@@ -513,6 +513,7 @@ export const updateUserRole = async (
     );
 
     const { role } = req.body;
+    if (role === "TEAM_OWNER") return res.status(400).json({ success: false, message: "Invalid user role" });
 
     const existingUser =
       await prisma.user.findUnique({
@@ -597,9 +598,9 @@ export const updateUserRole = async (
             throw new Error("USER_OWNS_CLUBS");
           }
 
-          if (currentUser._count.owned_teams > 0 && role !== ROLES.TEAM_OWNER) {
-            throw new Error("USER_OWNS_TEAMS");
-          }
+
+
+          if (currentUser._count.owned_teams > 0) throw new Error("USER_OWNS_TEAMS");
 
           if (currentUser.referee_profile && role !== ROLES.REFEREE) {
             throw new Error("USER_HAS_REFEREE_PROFILE");

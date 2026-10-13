@@ -168,7 +168,6 @@ export const updateUserRoleValidation = [
     .isIn([
       "SUPER_ADMIN",
       "CLUB_OWNER",
-      "TEAM_OWNER",
       "REFEREE",
       "USER",
     ])

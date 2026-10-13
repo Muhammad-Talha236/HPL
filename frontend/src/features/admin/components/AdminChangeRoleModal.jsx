@@ -30,7 +30,7 @@ export default function AdminChangeRoleModal({
 
   const blockedByRelationship =
     (ownsClubs && role !== ROLES.CLUB_OWNER) ||
-    (ownsTeams && role !== ROLES.TEAM_OWNER) ||
+    (ownsTeams && role !== user.role) ||
     (hasRefereeProfile && role !== ROLES.REFEREE);
 
   useEffect(() => {
@@ -143,7 +143,7 @@ export default function AdminChangeRoleModal({
               onChange={(event) => setRole(event.target.value)}
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#078052]"
             >
-              {Object.values(ROLES).map((value) => (
+              {Object.values(ROLES).filter(value => value !== "TEAM_OWNER").map((value) => (
                 <option key={value} value={value}>
                   {labels[value] || value}
                 </option>

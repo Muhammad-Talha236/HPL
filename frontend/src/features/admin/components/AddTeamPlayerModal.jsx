@@ -140,7 +140,7 @@ export default function AddTeamPlayerModal({
 
             <p className="mt-1 text-xs text-slate-500">
               Use the Player ID from the existing Players module.
-              New-player invitations use the separate invitation workflow.
+              Create new player records through Player Management.
             </p>
           </div>
 

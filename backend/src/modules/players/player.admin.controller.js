@@ -69,14 +69,13 @@ export const getAdminPlayerById = async (req, res, next) => {
     if (!Number.isInteger(id) || id < 1) return res.status(400).json({ success: false, message: "Player ID must be a positive integer" });
     const player = await prisma.player.findUnique({ where: { player_id: id }, select: playerDetail });
     if (!player) return res.status(404).json({ success: false, message: "Player not found" });
-    const [invitations, matches, events, audits] = await Promise.all([
-      prisma.playerInvitation.findMany({ where: { player_id: id }, select: { invitation_id: true, status: true, invited_email: true, expires_at: true, accepted_at: true, created_at: true, team: { select: { team_id: true, name: true } } }, orderBy: { created_at: "desc" }, take: 100 }),
+    const [matches, events, audits] = await Promise.all([
       prisma.matchPlayer.count({ where: { player_id: id, match: { status: "COMPLETED" } } }),
       prisma.matchEvent.findMany({ where: { player_id: id, match: { status: "COMPLETED" } }, select: { event_type: true } }),
       prisma.auditLog.findMany({ where: { entity_type: "PLAYER", entity_id: id }, select: { audit_id: true, action: true, details: true, created_at: true, actor: { select: { user_id: true, name: true } } }, orderBy: { created_at: "desc" }, take: 100 }),
     ]);
     const count = (type) => events.filter((event) => event.event_type === type).length;
-    return res.json({ success: true, data: { ...player, invitations, statistics: { appearances: matches, goals: count("GOAL"), assists: null, yellow_cards: count("YELLOW_CARD"), red_cards: count("RED_CARD") }, administrative_history: audits } });
+    return res.json({ success: true, data: { ...player, statistics: { appearances: matches, goals: count("GOAL"), assists: null, yellow_cards: count("YELLOW_CARD"), red_cards: count("RED_CARD") }, administrative_history: audits } });
   } catch (error) {
     next(error);
   }

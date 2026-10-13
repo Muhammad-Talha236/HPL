@@ -131,7 +131,6 @@ export default function AdminTeamFormPage() {
 
   const activeOwners = options.owners.filter(
     (owner) =>
-      owner.role === "TEAM_OWNER" &&
       owner.status === "ACTIVE"
   );
 
@@ -369,7 +368,7 @@ export default function AdminTeamFormPage() {
 
             {activeOwners.length === 0 && (
               <p className="mt-3 text-xs text-amber-700">
-                No active TEAM_OWNER accounts available.
+                No active accounts available.
                 Assign an eligible team owner before continuing.
               </p>
             )}

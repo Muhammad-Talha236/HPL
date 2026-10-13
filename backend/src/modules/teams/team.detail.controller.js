@@ -86,8 +86,6 @@ const ensureTeamAccess = async (req, teamId) => {
 
   const allowed =
     req.user.role === ROLES.SUPER_ADMIN ||
-    (req.user.role === ROLES.TEAM_OWNER &&
-      team.owner_id === req.user.user_id) ||
     (req.user.role === ROLES.CLUB_OWNER &&
       team.club_id !== null &&
       team.club?.owner_id === req.user.user_id);

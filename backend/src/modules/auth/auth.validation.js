@@ -154,7 +154,6 @@ export const updateUserRoleValidation = [
     .isIn([
       ROLES.SUPER_ADMIN,
       ROLES.CLUB_OWNER,
-      ROLES.TEAM_OWNER,
       ROLES.USER,
     ])
     .withMessage("Invalid role"),

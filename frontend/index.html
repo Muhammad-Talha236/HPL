@@ -9,10 +9,6 @@
         window.__hplResetToken = new URLSearchParams(window.location.search).get("token") || "";
         window.history.replaceState(window.history.state, "", "/reset-password");
       }
-      if (window.location.pathname === "/player-invitation") {
-        window.__hplPlayerInvitationToken = new URLSearchParams(window.location.search).get("token") || "";
-        window.history.replaceState(window.history.state, "", "/player-invitation");
-      }
     </script>
      <link rel="icon" type="image/png" href="./src/assets/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

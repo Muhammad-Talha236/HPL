@@ -1,3 +1,5 @@
+> Archived: the Team Owner, new team registration and player invitation systems are now removed. Do not follow the former deployment or migration instructions in this document. See [CompleteOwnerSystemRemoval.md](CompleteOwnerSystemRemoval.md) for current status.
+
 # Normal Team Registration Process
 
 **Archived:** new team application submission and initial approval have been removed from the application. This document records the former flow. See [TeamRegistrationRemoval.md](TeamRegistrationRemoval.md) for current scope and preserved verification/history functionality.

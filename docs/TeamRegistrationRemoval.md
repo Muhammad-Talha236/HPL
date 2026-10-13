@@ -1,3 +1,5 @@
+> Archived: the Team Owner, new team registration and player invitation systems are now removed. Do not follow the former deployment or migration instructions in this document. See [CompleteOwnerSystemRemoval.md](CompleteOwnerSystemRemoval.md) for current status.
+
 # Removal of new team registration applications
 
 The independent-team submission/resubmission and initial application approval implementation is removed. No replacement registration flow was added. Existing general Team management, Club management and competition registration are separate features and remain available.

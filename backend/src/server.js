@@ -29,8 +29,6 @@ import standingRoutes from "./modules/standings/standing.routes.js";
 import rankingRoutes from "./modules/rankings/ranking.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import clubOwnerRoutes from "./modules/clubOwner/clubOwner.routes.js";
-import teamOwnerRoutes from "./modules/teamOwner/teamOwner.routes.js";
-import playerInvitationRoutes from "./modules/playerInvitations/playerInvitation.routes.js";
 import homeRoutes from "./modules/home/home.routes.js";
 import mediaRoutes from "./modules/media/media.routes.js";
 
@@ -128,8 +126,6 @@ app.use("/api/standings", standingRoutes);
 app.use("/api/rankings", rankingRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/club-owner", clubOwnerRoutes);
-app.use("/api/team-owner", teamOwnerRoutes);
-app.use("/api/player-invitations", playerInvitationRoutes);
 // ======================================================
 // DATABASE TEST ROUTE
 // DEVELOPMENT ONLY

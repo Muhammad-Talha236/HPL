@@ -80,7 +80,6 @@ router.get(
   Only:
   - SUPER_ADMIN
   - CLUB_OWNER
-  - TEAM_OWNER
 
   Actual ownership is checked
   inside the controller.
@@ -102,7 +101,6 @@ router.post(
   Only:
   - SUPER_ADMIN
   - CLUB_OWNER
-  - TEAM_OWNER
 
   Controller performs ownership
   and IDOR protection.
@@ -112,9 +110,7 @@ router.patch(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   updateTeamPlayerValidation,
   handleValidationErrors,
   updateTeamPlayer
@@ -132,9 +128,7 @@ router.patch(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.CLUB_OWNER,
-    ROLES.TEAM_OWNER
-  ),
+    ROLES.CLUB_OWNER),
   teamPlayerStatusValidation,
   handleValidationErrors,
   removeTeamPlayer

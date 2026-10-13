@@ -145,7 +145,6 @@ export const login = async (req, res) => {
       where: {
         email_key: getEmailLookupKey(email),
       },
-      include: { player: { select: { player_id: true, status: true } } },
     });
 
     // 3. Use the same message whether email exists or not
@@ -234,7 +233,6 @@ export const getMe = async (req, res) => {
         user_id: req.user.user_id,
       },
       select: {
-        player: { select: { player_id: true, status: true } },
         user_id: true,
         name: true,
         email: true,
@@ -451,7 +449,6 @@ export const updateUserRole = async (req, res) => {
     const allowedRoles = [
       ROLES.SUPER_ADMIN,
       ROLES.CLUB_OWNER,
-      ROLES.TEAM_OWNER,
       ROLES.REFEREE,
       ROLES.USER,
     ];

@@ -86,7 +86,6 @@ router.get(
   Allowed roles:
   - SUPER_ADMIN
   - USER
-  - TEAM_OWNER
   - CLUB_OWNER
 
   Controller performs the actual
@@ -98,7 +97,6 @@ router.patch(
   authorize(
     ROLES.SUPER_ADMIN,
     ROLES.USER,
-    ROLES.TEAM_OWNER,
     ROLES.CLUB_OWNER
     ,ROLES.REFEREE
   ),

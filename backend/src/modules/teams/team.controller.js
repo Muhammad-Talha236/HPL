@@ -77,7 +77,7 @@ const teamSelect = {
   },
 };
 
-// Public discovery must not reuse the operational/team-owner projection.
+// Public discovery must not reuse the operational management projection.
 // Team contact and ownership data are managed data, not football directory data.
 const publicTeamSelect = {
   team_id: true,
@@ -117,13 +117,7 @@ const canManageTeam = async ({
     return true;
   }
 
-  // Team Owner can manage own team
-  if (
-    req.user.role === ROLES.TEAM_OWNER &&
-    team.owner_id === req.user.user_id
-  ) {
-    return true;
-  }
+
 
   // Club Owner can manage teams
   // belonging to their own club
@@ -154,344 +148,6 @@ const canManageTeam = async ({
   }
 
   return false;
-};
-
-// ======================================================
-// CREATE INDEPENDENT TEAM
-// ======================================================
-
-export const createIndependentTeam = async (
-  req,
-  res
-) => {
-  try {
-    const authenticatedUserId = Number(req.user?.user_id);
-
-    if (!Number.isInteger(authenticatedUserId) || authenticatedUserId < 1) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication is required",
-      });
-    }
-
-    // Deliberately allow-list writable fields. owner_id, club_id, role, and
-    // status are derived by the server and are never read from the request.
-    const {
-      home_venue_id,
-      name,
-      logo,
-      gender,
-      region,
-      district,
-      city,
-      description,
-      contact_email,
-      contact_phone,
-      team_type,
-    } = req.body;
-
-    const venueId = Number(home_venue_id);
-    const normalizedName =
-      typeof name === "string" ? name.trim() : "";
-    const normalizedGender =
-      typeof gender === "string" ? gender.trim() : "";
-    const normalizedTeamType =
-      typeof team_type === "string" ? team_type.trim() : "";
-
-    const optionalFields = [
-      [logo, 500],
-      [region, 100],
-      [district, 100],
-      [city, 100],
-      [description, 1000],
-      [contact_email, 254],
-      [contact_phone, 30],
-    ];
-
-    if (
-      !Number.isInteger(venueId) ||
-      venueId < 1 ||
-      normalizedName.length < 2 ||
-      normalizedName.length > 100 ||
-      !["MEN", "WOMEN"].includes(normalizedGender) ||
-      !normalizedTeamType ||
-      normalizedTeamType.length > 50 ||
-      optionalFields.some(
-        ([value, maxLength]) =>
-          value !== undefined &&
-          value !== null &&
-          (typeof value !== "string" || value.trim().length > maxLength)
-      )
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid independent team details",
-      });
-    }
-
-    const normalizedEmail =
-      contact_email === undefined || contact_email === null
-        ? undefined
-        : normalizeStoredEmail(contact_email);
-
-    if (
-      normalizedEmail !== undefined &&
-      (!normalizedEmail ||
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail))
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Contact email must be valid",
-      });
-    }
-
-    const registration = await prisma.$transaction(
-      async (tx) => {
-        // The database record is the authority for identity and role; a stale
-        // or forged JWT/body cannot select another owner or self-promote.
-        const owner = await tx.user.findUnique({
-          where: {
-            user_id: authenticatedUserId,
-          },
-          select: {
-            user_id: true,
-            role: true,
-            status: true,
-            _count: {
-              select: {
-                owned_clubs: true,
-                owned_teams: true,
-              },
-            },
-            referee_profile: {
-              select: {
-                referee_id: true,
-              },
-            },
-          },
-        });
-
-        if (!owner || owner.status !== TEAM_STATUS.ACTIVE) {
-          throw new Error("INDEPENDENT_OWNER_INELIGIBLE");
-        }
-
-        // A normal member may receive this one narrowly-scoped role change
-        // only while registering their first team. This is deliberately not a
-        // reusable self-service role endpoint: club owners, referees and all
-        // other roles remain governed by the existing admin role policy.
-        const isFirstTimeOwner = owner.role === ROLES.USER;
-
-        if (
-          owner.role !== ROLES.USER &&
-          owner.role !== ROLES.TEAM_OWNER
-        ) {
-          throw new Error("INDEPENDENT_OWNER_INELIGIBLE");
-        }
-
-        if (
-          isFirstTimeOwner &&
-          (owner._count.owned_clubs > 0 ||
-            owner._count.owned_teams > 0 ||
-            owner.referee_profile)
-        ) {
-          throw new Error("INDEPENDENT_OWNER_ROLE_CONFLICT");
-        }
-
-        const venue = await tx.venue.findUnique({
-          where: {
-            venue_id: venueId,
-          },
-          select: {
-            venue_id: true,
-            status: true,
-          },
-        });
-
-        if (!venue) {
-          throw new Error("INDEPENDENT_VENUE_NOT_FOUND");
-        }
-
-        if (venue.status !== TEAM_STATUS.ACTIVE) {
-          throw new Error("INDEPENDENT_VENUE_INACTIVE");
-        }
-
-        const existingTeam = await tx.team.findFirst({
-          where: {
-            club_id: null,
-            name: normalizedName,
-          },
-          select: {
-            team_id: true,
-          },
-        });
-
-        if (existingTeam) {
-          throw new Error("INDEPENDENT_TEAM_NAME_EXISTS");
-        }
-
-        // The conditional update is the concurrency guard for first-time
-        // registration. A second concurrent request cannot promote the same
-        // USER twice and therefore cannot create a duplicate first team.
-        if (isFirstTimeOwner) {
-          const promotion = await tx.user.updateMany({
-            where: {
-              user_id: owner.user_id,
-              role: ROLES.USER,
-              status: TEAM_STATUS.ACTIVE,
-            },
-            data: {
-              role: ROLES.TEAM_OWNER,
-            },
-          });
-
-          if (promotion.count !== 1) {
-            throw new Error("INDEPENDENT_OWNER_PROMOTION_CONFLICT");
-          }
-        }
-
-        const team = await tx.team.create({
-          data: {
-            club_id: null,
-            owner_id: owner.user_id,
-            home_venue_id: venueId,
-            name: normalizedName,
-            logo:
-              logo !== undefined && logo !== null
-                ? logo.trim()
-                : undefined,
-            gender: normalizedGender,
-            region:
-              region !== undefined && region !== null
-                ? region.trim()
-                : undefined,
-            district:
-              district !== undefined && district !== null
-                ? district.trim()
-                : undefined,
-            city:
-              city !== undefined && city !== null
-                ? city.trim()
-                : undefined,
-            description:
-              description !== undefined && description !== null
-                ? description.trim()
-                : undefined,
-            contact_email: normalizedEmail,
-            contact_phone:
-              contact_phone !== undefined && contact_phone !== null
-                ? contact_phone.trim()
-                : undefined,
-            team_type: normalizedTeamType,
-            status: TEAM_STATUS.ACTIVE,
-          },
-          select: teamSelect,
-        });
-
-        // Keep the team creation and narrowly-scoped role change auditable in
-        // the same transaction. A failed audit insert rolls the registration
-        // back rather than leaving a partially recorded ownership change.
-        if (isFirstTimeOwner) {
-          await tx.auditLog.create({
-            data: {
-              actor_user_id: owner.user_id,
-              action: AUDIT_ACTIONS.USER_ROLE_UPDATED,
-              entity_type: "USER",
-              entity_id: owner.user_id,
-              details: {
-                old_role: ROLES.USER,
-                new_role: ROLES.TEAM_OWNER,
-                reason: "INDEPENDENT_TEAM_REGISTRATION",
-              },
-            },
-          });
-        }
-
-        await tx.auditLog.create({
-          data: {
-            actor_user_id: owner.user_id,
-            action: AUDIT_ACTIONS.TEAM_CREATED,
-            entity_type: "TEAM",
-            entity_id: team.team_id,
-            details: {
-              name: team.name,
-              club_id: null,
-              owner_id: team.owner_id,
-              registration_type: "INDEPENDENT",
-            },
-          },
-        });
-
-        return {
-          team,
-          owner: {
-            user_id: owner.user_id,
-            role: isFirstTimeOwner ? ROLES.TEAM_OWNER : owner.role,
-          },
-        };
-      },
-      {
-        isolationLevel: "Serializable",
-      }
-    );
-
-    return res.status(201).json({
-      success: true,
-      message: "Independent team created successfully",
-      data: registration.team,
-      // authenticate reloads the database identity on every request, so the
-      // existing signed token remains safe and immediately reflects this
-      // server-side role change. The client can refresh /auth/me from this
-      // explicit session hint before routing to the team portal.
-      session: registration.owner,
-    });
-  } catch (error) {
-    const expectedErrors = {
-      INDEPENDENT_OWNER_INELIGIBLE: [
-        403,
-        "Only an active USER or TEAM_OWNER account can create an independent team",
-      ],
-      INDEPENDENT_OWNER_ROLE_CONFLICT: [
-        409,
-        "This account has an existing platform role or ownership record and cannot be promoted through team registration",
-      ],
-      INDEPENDENT_OWNER_PROMOTION_CONFLICT: [
-        409,
-        "This account changed while registration was in progress. Please refresh and try again.",
-      ],
-      INDEPENDENT_VENUE_NOT_FOUND: [404, "Home venue not found"],
-      INDEPENDENT_VENUE_INACTIVE: [
-        400,
-        "Cannot assign an inactive venue to a team",
-      ],
-      INDEPENDENT_TEAM_NAME_EXISTS: [
-        409,
-        "An independent team with this name already exists",
-      ],
-    };
-
-    if (expectedErrors[error.message]) {
-      const [status, message] = expectedErrors[error.message];
-      return res.status(status).json({
-        success: false,
-        message,
-      });
-    }
-
-    if (error.code === "P2034") {
-      return res.status(409).json({
-        success: false,
-        message:
-          "Team creation conflicted with another request. Please try again.",
-      });
-    }
-
-    console.error("Create independent team error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Something went wrong while creating the team",
-    });
-  }
 };
 
 // ======================================================
@@ -612,7 +268,7 @@ export const createTeam = async (
     // TEAM OWNER
     // --------------------------------------------------
 
-    let teamOwnerId =
+    let responsibleUserId =
       req.user.role ===
       ROLES.SUPER_ADMIN
         ? club.owner_id
@@ -622,9 +278,8 @@ export const createTeam = async (
       if (req.user.role !== ROLES.SUPER_ADMIN) return res.status(403).json({ success: false, message: "Only SUPER_ADMIN can assign a team owner" });
       const selectedOwner = await prisma.user.findUnique({ where: { user_id: Number(owner_id) }, select: { user_id: true, role: true, status: true } });
       if (!selectedOwner) return res.status(404).json({ success: false, message: "Selected owner not found" });
-      if (selectedOwner.role !== ROLES.TEAM_OWNER) return res.status(400).json({ success: false, message: "Selected user must have TEAM_OWNER role" });
       if (selectedOwner.status !== "ACTIVE") return res.status(400).json({ success: false, message: "Selected user account is not active" });
-      teamOwnerId = selectedOwner.user_id;
+      responsibleUserId = selectedOwner.user_id;
     }
 
     // --------------------------------------------------
@@ -660,7 +315,7 @@ export const createTeam = async (
               data: {
                 club_id: clubId,
                 owner_id:
-                  teamOwnerId,
+                  responsibleUserId,
                 home_venue_id:
                   venueId,
 
@@ -951,15 +606,7 @@ export const updateTeam = async (
       team_type,
     } = req.body;
 
-    if (
-      req.user.role === ROLES.TEAM_OWNER &&
-      gender !== undefined
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Team owners cannot change team gender",
-      });
-    }
+
 
     // --------------------------------------------------
     // BUILD UPDATE DATA
@@ -1693,16 +1340,7 @@ export const transferTeamOwnership =
         });
       }
 
-      if (
-        newOwner.role !==
-        ROLES.TEAM_OWNER
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Selected user must have TEAM_OWNER role",
-        });
-      }
+
 
       if (
         newOwner.status !==

@@ -1,3 +1,5 @@
+> Archived: the Team Owner, new team registration and player invitation systems are now removed. Do not follow the former deployment or migration instructions in this document. See [CompleteOwnerSystemRemoval.md](CompleteOwnerSystemRemoval.md) for current status.
+
 # Immediate invitation membership activation
 
 For the subsequent automatic signup/login/acceptance integration, pending/history separation, latest migration status and test results, see [PlayerInvitationRegistrationIntegration.md](PlayerInvitationRegistrationIntegration.md).

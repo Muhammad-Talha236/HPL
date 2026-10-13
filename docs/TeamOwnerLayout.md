@@ -1,3 +1,5 @@
+> Archived: the Team Owner, new team registration and player invitation systems are now removed. Do not follow the former deployment or migration instructions in this document. See [CompleteOwnerSystemRemoval.md](CompleteOwnerSystemRemoval.md) for current status.
+
 # Team Owner portal layout
 
 The Team Owner portal now uses one responsive application shell. Its previous shared PortalShell mounted separate desktop and mobile Outlets, rendering hidden duplicate pages and allowing duplicate data requests. The new TeamOwnerLayout renders one Outlet at every viewport size. Club/Referee shells and the Super Admin portal were not edited.

@@ -1,3 +1,5 @@
+> Archived: the Team Owner, new team registration and player invitation systems are now removed. Do not follow the former deployment or migration instructions in this document. See [CompleteOwnerSystemRemoval.md](CompleteOwnerSystemRemoval.md) for current status.
+
 # Invitation signup and automatic membership integration
 
 The subsequent P2028 and pg concurrency root cause has now been reproduced and corrected; see [PlayerInvitationTransactionTimeout.md](PlayerInvitationTransactionTimeout.md) for measured timings, changed files and current deployment limitations.

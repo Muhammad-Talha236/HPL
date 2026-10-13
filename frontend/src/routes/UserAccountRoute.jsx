@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 
-const destinationForRole = (role) => ({ TEAM_OWNER: "/team", CLUB_OWNER: "/club", SUPER_ADMIN: "/admin", REFEREE: "/referee/dashboard" }[role] || "/");
+const destinationForRole = (role) => ({ CLUB_OWNER: "/club", SUPER_ADMIN: "/admin", REFEREE: "/referee/dashboard" }[role] || "/");
 
 export default function UserAccountRoute() {
   const { user, isAuthenticated, isAuthLoading } = useAuth();

@@ -1,4 +1,4 @@
-const invalidMailConfiguration = () => new Error("Player invitation email service is not configured");
+const invalidMailConfiguration = () => new Error("Account email service is not configured");
 const containsHeaderControlCharacter = (value) => /[\u0000-\u001F\u007F]/.test(value);
 
 const requiredValue = (name) => {
@@ -7,7 +7,7 @@ const requiredValue = (name) => {
   return value;
 };
 
-export const getPlayerInvitationMailConfig = () => {
+export const getAccountMailConfig = () => {
   const emailUser = requiredValue("EMAIL_USER");
   const emailAppPassword = requiredValue("EMAIL_APP_PASSWORD");
   const emailFromName = requiredValue("EMAIL_FROM_NAME");

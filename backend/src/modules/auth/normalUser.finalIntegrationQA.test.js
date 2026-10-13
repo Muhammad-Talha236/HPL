@@ -12,7 +12,7 @@ test("public football directories retain the public shell while portal roots rem
   ]);
 
   assert.match(layout, /const isOperationalPortal = \(root\) => pathname === root \|\| pathname\.startsWith\(`\$\{root\}\/`\)/);
-  assert.match(layout, /isOperationalPortal\("\/admin"\) \|\| isOperationalPortal\("\/club"\) \|\| isOperationalPortal\("\/team"\)/);
+  assert.match(layout, /isOperationalPortal\("\/admin"\) \|\| isOperationalPortal\("\/club"\)/);
   assert.equal(layout.includes('pathname.startsWith("/club")'), false);
   assert.equal(layout.includes('pathname.startsWith("/team")'), false);
   for (const path of ["/clubs", "/clubs/:clubId", "/teams", "/teams/:teamId"]) assert.match(app, new RegExp(`path="${path.replaceAll("/", "\\/").replace(":", "\\:")}"`));
@@ -31,7 +31,7 @@ test("normal-user account, role gates, and public discovery remain explicitly ro
 
   for (const path of ["/account", "/account/profile", "/account/password", "/account/notifications"]) assert.match(app, new RegExp(`path="${path.replaceAll("/", "\\/")}"`));
   assert.match(accountGate, /user\?\.role === "USER"/);
-  for (const [role, path] of [["TEAM_OWNER", "/team"], ["CLUB_OWNER", "/club"], ["SUPER_ADMIN", "/admin"], ["REFEREE", "/referee/dashboard"]]) assert.match(accountGate, new RegExp(`${role}: "${path.replaceAll("/", "\\/")}"`));
+  for (const [role, path] of [["CLUB_OWNER", "/club"], ["SUPER_ADMIN", "/admin"], ["REFEREE", "/referee/dashboard"]]) assert.match(accountGate, new RegExp(`${role}: "${path.replaceAll("/", "\\/")}"`));
   for (const path of ["/clubs", "/players", "/competitions", "/matches", "/standings", "/rankings", "/news", "/referees"]) assert.match(footer, new RegExp(`path: "${path.replaceAll("/", "\\/")}"`));
   assert.match(navbar, /user\.role === "USER"[\s\S]{0,260}\/account\/notifications/);
   assert.match(authService, /ME: "\/auth\/me"/);

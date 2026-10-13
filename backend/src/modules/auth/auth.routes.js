@@ -8,7 +8,7 @@ import { authenticate } from "../../middleware/auth/auth.middleware.js";
 
 import { authorize } from "../../middleware/auth/role.middleware.js";
 import { ROLES } from "../../constants/roles.js";
-import { loginRateLimiter, playerInvitationResendActorRateLimiter } from "../../middleware/auth/rateLimit.middleware.js";
+import { loginRateLimiter, emailVerificationResendRateLimiter } from "../../middleware/auth/rateLimit.middleware.js";
 import {
   registerValidation,
   loginValidation,
@@ -36,7 +36,7 @@ router.post(
 
 router.get("/me", authenticate, getMe);
 router.get("/verify-email", verifyEmail);
-router.post("/me/email-verification/resend", authenticate, playerInvitationResendActorRateLimiter, resendEmailVerification);
+router.post("/me/email-verification/resend", authenticate, emailVerificationResendRateLimiter, resendEmailVerification);
 
 router.patch(
   "/me",

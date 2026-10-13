@@ -91,11 +91,10 @@ export const getClubOwnerPlayer = async (req, res, next) => {
   try {
     const playerId = Number(req.params.player_id);
     if (!Number.isInteger(playerId) || playerId < 1) return res.status(400).json({ success: false, message: "Valid player ID is required" });
-    const data = await prisma.teamPlayer.findFirst({ where: { player_id: playerId, status: "ACTIVE", team: { club: { owner_id: req.user.user_id } } }, select: { team_player_id: true, jersey_number: true, joined_at: true, player: { select: { player_id: true, name: true, profile_photo: true, date_of_birth: true, gender: true, position: true, nationality: true, registration_number: true, status: true, user_id: true, team_players: { where: { status: "ACTIVE", team: { status: "ACTIVE", club: { owner_id: req.user.user_id, status: "ACTIVE" } } }, select: { team: { select: { team_id: true, name: true } } }, orderBy: { team_id: "asc" } } } }, team: { select: { team_id: true, name: true, gender: true } } } });
+    const data = await prisma.teamPlayer.findFirst({ where: { player_id: playerId, status: "ACTIVE", team: { club: { owner_id: req.user.user_id } } }, select: { team_player_id: true, jersey_number: true, joined_at: true, player: { select: { player_id: true, name: true, profile_photo: true, date_of_birth: true, gender: true, position: true, nationality: true, registration_number: true, status: true, user_id: true } }, team: { select: { team_id: true, name: true, gender: true } } } });
     if (!data) return res.status(404).json({ success: false, message: "Player not found" });
-    const { user_id, team_players, ...safePlayer } = data.player;
-    const eligible_invitation_teams = (team_players || []).map((membership) => membership.team);
-    return res.json({ success: true, data: { ...data, player: { ...safePlayer, account_linked: Boolean(user_id) }, eligible_invitation_teams } });
+    const { user_id, ...safePlayer } = data.player;
+    return res.json({ success: true, data: { ...data, player: { ...safePlayer, account_linked: Boolean(user_id) } } });
   } catch (error) { next(error); }
 };
 

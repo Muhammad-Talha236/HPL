@@ -22,7 +22,6 @@ export const adminTeamCreateService = {
           params: {
             page: 1,
             limit: 50,
-            role: "TEAM_OWNER",
             status: "ACTIVE",
           },
           signal,

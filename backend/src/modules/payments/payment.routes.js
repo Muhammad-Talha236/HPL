@@ -25,13 +25,12 @@ import {
 import {
   handleValidationErrors,
 } from "../../middleware/auth/validation.middleware.js";
-import { requireOwnedRegistrationForPayment } from "../teamOwner/teamOwner.payment.middleware.js";
 
 const router = express.Router();
 
 // ======================================================
 // CREATE PAYMENT
-// USER / TEAM OWNER / CLUB OWNER / SUPER ADMIN
+// USER / CLUB OWNER / SUPER ADMIN
 // ======================================================
 
 router.post(
@@ -39,13 +38,12 @@ router.post(
   authenticate,
   authorize(
     ROLES.USER,
-    ROLES.TEAM_OWNER,
     ROLES.CLUB_OWNER,
     ROLES.SUPER_ADMIN
   ),
   createPaymentValidation,
   handleValidationErrors,
-  requireOwnedRegistrationForPayment,
+
   createPayment
 );
 

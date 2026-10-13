@@ -82,9 +82,6 @@ const publicTeamPlayerSelect = {
   SUPER_ADMIN:
   Can manage every team.
 
-  TEAM_OWNER:
-  Can manage only their own team.
-
   CLUB_OWNER:
   Can manage teams belonging
   to their club.
@@ -112,14 +109,7 @@ const canManageTeam = ({
     return true;
   }
 
-  if (
-    req.user.role ===
-      ROLES.TEAM_OWNER &&
-    team.owner_id ===
-      req.user.user_id
-  ) {
-    return true;
-  }
+
 
   if (
     req.user.role ===
@@ -319,7 +309,7 @@ export const getTeamPlayerById =
 */
 export const createTeamPlayer =
   async (req, res) => {
-    if (req.user?.role !== ROLES.SUPER_ADMIN) return res.status(403).json({ success: false, message: "Use the player invitation flow to add members." });
+    if (req.user?.role !== ROLES.SUPER_ADMIN) return res.status(403).json({ success: false, message: "Only SUPER_ADMIN can add player memberships." });
     try {
       const teamId =
         Number(req.body.team_id);
@@ -750,15 +740,7 @@ export const updateTeamPlayer =
         left_at,
       } = req.body;
 
-      if (
-        req.user.role === ROLES.TEAM_OWNER &&
-        (joined_at !== undefined || left_at !== undefined)
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "Team owners can only update jersey number",
-        });
-      }
+
 
       const result =
         await prisma.$transaction(

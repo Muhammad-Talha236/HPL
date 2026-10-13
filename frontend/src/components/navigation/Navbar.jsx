@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Bell, ChevronRight, LayoutDashboard, LogOut, Shield, Trophy, UserRound, UsersRound } from "lucide-react";
+import { Bell, ChevronRight, LayoutDashboard, LogOut, Shield, Trophy, UserRound } from "lucide-react";
 
 import Logo from "../common/Logo";
 import useAuth from "../../hooks/useAuth";
@@ -498,7 +498,6 @@ const Navbar = () => {
                             <AccountMenuLink to="/account/notifications" icon={Bell} onClick={closeMenus} badge={unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : null}>Notifications</AccountMenuLink>
                           </>
                         )}
-                        {user.role === "TEAM_OWNER" && <AccountMenuLink to="/team" icon={UsersRound} onClick={closeMenus}>Team Portal</AccountMenuLink>}
                         {FEATURES.CLUBS_ENABLED && user.role === "CLUB_OWNER" && <AccountMenuLink to="/club" icon={Shield} onClick={closeMenus}>Club Portal</AccountMenuLink>}
                         {user.role === "SUPER_ADMIN" && <AccountMenuLink to="/admin" icon={LayoutDashboard} onClick={closeMenus}>Admin Portal</AccountMenuLink>}
                         {user.role === "REFEREE" && (
@@ -507,7 +506,6 @@ const Navbar = () => {
                             <AccountMenuLink to="/referee/matches" icon={Trophy} onClick={closeMenus}>My Matches</AccountMenuLink>
                           </>
                         )}
-                        <AccountMenuLink to="/player" icon={UserRound} onClick={closeMenus}>{user.player?.status === "ACTIVE" ? "My Player Profile" : "Player Invitations"}</AccountMenuLink>
                       </div>
                       <div className="border-t border-[#EAF0EC] p-2.5">
                         <button type="button" onClick={handleLogout}
@@ -772,24 +770,6 @@ const Navbar = () => {
                       </div>
                     )}
 
-                    {/* Team Owner */}
-
-                    {user.role ===
-                      "TEAM_OWNER" && (
-                      <NavLink
-                        onClick={closeMobileMenu}
-                        to="/team"
-                        className="
-                          mt-4 block rounded-xl
-                          border border-[#DDE5E1]
-                          bg-white p-2.5
-                          text-center text-xs
-                          font-bold text-[#0B5D46]
-                        "
-                      >
-                        Team Portal
-                      </NavLink>
-                    )}
 
                     {/* Club Owner */}
 
@@ -864,7 +844,6 @@ const Navbar = () => {
                       </div>
                     )}
 
-                    <NavLink to="/player" onClick={closeMenus} className="block rounded-lg px-4 py-3 text-sm font-semibold text-[#0B5D46]">{user.player?.status === "ACTIVE" ? "My Player Profile" : "Player Invitations"}</NavLink>
 
                     {/* Logout */}
 

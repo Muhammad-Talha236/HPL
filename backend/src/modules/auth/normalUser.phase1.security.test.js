@@ -77,5 +77,5 @@ test("USER account route and role-aware Navbar destinations remain lightweight a
   ]);
   assert.match(app, /<Route element=\{<UserAccountRoute \/>\}>/); assert.match(app, /path="\/account"/);
   assert.match(guard, /user\?\.role === "USER"/);
-  for (const [role, path] of [["USER", "/account"], ["TEAM_OWNER", "/team"], ["CLUB_OWNER", "/club"], ["SUPER_ADMIN", "/admin"], ["REFEREE", "/referee/dashboard"]]) assert.match(navbar, new RegExp(`user\\.role === "${role}"[\\s\\S]{0,220}${path.replaceAll("/", "\\/")}`));
+  for (const [role, path] of [["USER", "/account"], ["CLUB_OWNER", "/club"], ["SUPER_ADMIN", "/admin"], ["REFEREE", "/referee/dashboard"]]) assert.match(navbar, new RegExp(`user\\.role === "${role}"[\\s\\S]{0,220}${path.replaceAll("/", "\\/")}`));
 });

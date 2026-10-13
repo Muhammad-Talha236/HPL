@@ -28,7 +28,7 @@ const router = express.Router();
 // ==================================================
 // CREATE MATCH EVENT
 // ==================================================
-// SUPER_ADMIN, TEAM_OWNER, CLUB_OWNER can create
+// SUPER_ADMIN and CLUB_OWNER can create
 // live match events.
 
 router.post(
@@ -36,7 +36,6 @@ router.post(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.TEAM_OWNER,
     ROLES.CLUB_OWNER,
     ROLES.REFEREE
   ),
@@ -75,7 +74,6 @@ router.patch(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.TEAM_OWNER,
     ROLES.CLUB_OWNER,
     ROLES.REFEREE
   ),
@@ -91,7 +89,6 @@ router.delete(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.TEAM_OWNER,
     ROLES.CLUB_OWNER
   ),
   deleteMatchEventValidation,

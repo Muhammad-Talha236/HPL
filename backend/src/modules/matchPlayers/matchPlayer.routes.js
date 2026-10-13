@@ -37,7 +37,6 @@ router.post(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.TEAM_OWNER,
     ROLES.CLUB_OWNER
   ),
   createMatchPlayerValidation,
@@ -52,7 +51,6 @@ router.patch(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.TEAM_OWNER,
     ROLES.CLUB_OWNER
   ),
   updateMatchPlayerValidation,
@@ -67,7 +65,6 @@ router.delete(
   authenticate,
   authorize(
     ROLES.SUPER_ADMIN,
-    ROLES.TEAM_OWNER,
     ROLES.CLUB_OWNER
   ),
   matchPlayerIdValidation,

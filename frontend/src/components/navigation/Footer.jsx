@@ -27,7 +27,6 @@ const quickLinks = [
 ];
 
 const userLinks = [
-  { label: "Register Team", path: "/teams" },
   ...(FEATURES.CLUBS_ENABLED ? [{ label: "Find Clubs", path: "/clubs" }] : []),
   { label: "Browse Players", path: "/players" },
   { label: "View Fixtures", path: "/matches" },
@@ -36,7 +35,6 @@ const userLinks = [
 ];
 
 const teamLinks = [
-  { label: "Team Registration", path: "/teams" },
   { label: "Competition Entry", path: "/competitions" },
   { label: "Player Management", path: "/players" },
   { label: "Referees", path: "/referees" },

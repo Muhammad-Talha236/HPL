@@ -113,17 +113,12 @@ export const createMatchPlayer = async (req, res) => {
     const isSuperAdmin =
       req.user.role === ROLES.SUPER_ADMIN;
 
-    const isTeamOwner =
-      req.user.role === ROLES.TEAM_OWNER &&
-      team.owner_id === req.user.user_id;
-
-    const isClubOwner =
+const isClubOwner =
       req.user.role === ROLES.CLUB_OWNER &&
       team.club?.owner_id === req.user.user_id;
 
     if (
       !isSuperAdmin &&
-      !isTeamOwner &&
       !isClubOwner
     ) {
       return res.status(403).json({
@@ -1057,13 +1052,7 @@ export const updateMatchPlayer = async (req, res) => {
       req.user.role ===
       ROLES.SUPER_ADMIN;
 
-    const isTeamOwner =
-      req.user.role ===
-        ROLES.TEAM_OWNER &&
-      matchPlayer.team.owner_id ===
-        req.user.user_id;
-
-    const isClubOwner =
+const isClubOwner =
       req.user.role ===
         ROLES.CLUB_OWNER &&
       matchPlayer.team.club?.owner_id ===
@@ -1071,7 +1060,6 @@ export const updateMatchPlayer = async (req, res) => {
 
     if (
       !isSuperAdmin &&
-      !isTeamOwner &&
       !isClubOwner
     ) {
       return res.status(403).json({
@@ -1619,14 +1607,7 @@ export const removeMatchPlayer = async (
       req.user.role ===
       ROLES.SUPER_ADMIN;
 
-    const isTeamOwner =
-      req.user.role ===
-        ROLES.TEAM_OWNER &&
-      existingMatchPlayer.team
-        .owner_id ===
-        req.user.user_id;
-
-    const isClubOwner =
+const isClubOwner =
       req.user.role ===
         ROLES.CLUB_OWNER &&
       existingMatchPlayer.team
@@ -1635,7 +1616,6 @@ export const removeMatchPlayer = async (
 
     if (
       !isSuperAdmin &&
-      !isTeamOwner &&
       !isClubOwner
     ) {
       return res.status(403).json({

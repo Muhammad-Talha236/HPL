@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import nodemailer from "nodemailer";
-import { getPlayerInvitationMailConfig } from "../config/playerInvitationMail.config.js";
+import { getAccountMailConfig } from "../config/accountMail.config.js";
 
 export const RESET_MESSAGE = "If an account exists with this email, a password reset link has been sent.";
 export const hashResetToken = (token) => typeof token === "string" && /^[a-f0-9]{64}$/.test(token)
@@ -10,7 +10,7 @@ export const createResetToken = () => {
   return { rawToken, tokenHash: hashResetToken(rawToken), expiresAt: new Date(Date.now() + 15 * 60 * 1000) };
 };
 export const sendPasswordResetEmail = async ({ email, rawToken }) => {
-  const config = getPlayerInvitationMailConfig();
+  const config = getAccountMailConfig();
   const url = new URL("/reset-password", config.frontendUrl);
   if (process.env.NODE_ENV === "production" && (url.protocol !== "https:" || /^(localhost|127\.0\.0\.1)$/.test(url.hostname))) throw new Error("RESET_MAIL_CONFIGURATION");
   url.searchParams.set("token", rawToken);

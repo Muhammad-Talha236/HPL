@@ -1,3 +1,5 @@
+> Archived: the Team Owner, new team registration and player invitation systems are now removed. Do not follow the former deployment or migration instructions in this document. See [CompleteOwnerSystemRemoval.md](CompleteOwnerSystemRemoval.md) for current status.
+
 # Player invitation and membership handoff
 
 **Superseded lifecycle:** membership now activates on authenticated invitation acceptance, without mandatory profile completion. See [PlayerMembershipActivation.md](PlayerMembershipActivation.md) for current behavior, schema prerequisites and validation. The remainder of this document records the original implementation.

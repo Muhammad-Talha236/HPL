@@ -6,7 +6,6 @@ const ownerWhere = (userId) => ({ OR: [{ registered_by: userId }, { team: { owne
 const managedTeamWhere = (user) => {
   if (!user || (user.status !== undefined && user.status !== "ACTIVE")) return { team_id: -1 };
   if (user.role === ROLES.SUPER_ADMIN) return {};
-  if (user.role === ROLES.TEAM_OWNER) return { owner_id: user.user_id };
   if (user.role === ROLES.CLUB_OWNER) return { club: { owner_id: user.user_id } };
   return { team_id: -1 };
 };
@@ -14,7 +13,6 @@ const controlsRegistrationTeam = (user, registration) =>
   Boolean(user) && (
     user.role === ROLES.SUPER_ADMIN ||
     registration.registered_by === user.user_id ||
-    (user.role === ROLES.TEAM_OWNER && registration.team.owner_id === user.user_id) ||
     (user.role === ROLES.CLUB_OWNER && registration.team.club_id !== null && registration.team.club?.owner_id === user.user_id)
   );
 const registrationSelect = { registration_id: true, registration_status: true, payment_status: true, registration_date: true, approved_at: true, rejection_reason: true, competition: { select: { competition_id: true, name: true, gender: true, registration_fee: true, squad_size: true, season: { select: { season_id: true, name: true } } } }, team: { select: { team_id: true, name: true, logo: true, gender: true, city: true } }, payments: { select: { payment_id: true, amount: true, payment_method: true, transaction_reference: true, payment_status: true, paid_at: true }, orderBy: { created_at: "desc" }, take: 1 }, players: { select: { competition_player_id: true, player_id: true, player: { select: { name: true, position: true } } } } };

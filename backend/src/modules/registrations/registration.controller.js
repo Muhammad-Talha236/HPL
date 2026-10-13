@@ -30,7 +30,6 @@ const canManageRegistrationTeam = (user, team) => {
   if (!user || !team) return false;
   if (user.status !== undefined && user.status !== "ACTIVE") return false;
   if (user.role === ROLES.SUPER_ADMIN) return true;
-  if (user.role === ROLES.TEAM_OWNER) return team.owner_id === user.user_id;
 
   return user.role === ROLES.CLUB_OWNER &&
     team.club_id !== null &&

@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import nodemailer from "nodemailer";
 import validator from "validator";
-import { getPlayerInvitationMailConfig } from "../config/playerInvitationMail.config.js";
+import { getAccountMailConfig } from "../config/accountMail.config.js";
 
 const TOKEN_BYTES = 32;
 const DEFAULT_EXPIRY_MINUTES = 30;
@@ -28,7 +28,7 @@ export const getVerificationTokenHash = (rawToken) => (
 
 export const sendVerificationEmail = async ({ email, name, rawToken }) => {
   if (!validator.isEmail(email) || typeof rawToken !== "string") throw new Error("EMAIL_VERIFICATION_DELIVERY_FAILED");
-  const config = getPlayerInvitationMailConfig();
+  const config = getAccountMailConfig();
   const verificationUrl = `${config.frontendUrl}/verify-email?token=${encodeURIComponent(rawToken)}`;
   const safeName = String(name || "there").replace(/[<>]/g, "");
   try {

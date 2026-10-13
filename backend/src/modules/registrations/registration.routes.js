@@ -7,7 +7,6 @@ import {
   reviewRegistration,
 } from "./registration.controller.js";
 import { getAdminRegistration, getAdminRegistrations, getEligibleTeams, getMyRegistrations, updateRegistrationSquad } from "./registration.extra.controller.js";
-import { requireOwnedRegistrationForSquad } from "../teamOwner/teamOwner.squad.middleware.js";
 
 import {
   authenticate,
@@ -42,7 +41,6 @@ router.post(
   authenticate,
   authorize(
     ROLES.USER,
-    ROLES.TEAM_OWNER,
     ROLES.CLUB_OWNER,
     ROLES.SUPER_ADMIN
   ),
@@ -97,22 +95,22 @@ router.get(
 router.get(
   "/my",
   authenticate,
-  authorize(ROLES.USER, ROLES.TEAM_OWNER, ROLES.CLUB_OWNER, ROLES.SUPER_ADMIN),
+  authorize(ROLES.USER, ROLES.CLUB_OWNER, ROLES.SUPER_ADMIN),
   getMyRegistrations
 );
 router.get(
   "/eligible-teams",
   authenticate,
-  authorize(ROLES.USER, ROLES.TEAM_OWNER, ROLES.CLUB_OWNER, ROLES.SUPER_ADMIN),
+  authorize(ROLES.USER, ROLES.CLUB_OWNER, ROLES.SUPER_ADMIN),
   getEligibleTeams
 );
 router.put(
   "/:registration_id/squad",
   authenticate,
-  authorize(ROLES.USER, ROLES.TEAM_OWNER, ROLES.CLUB_OWNER, ROLES.SUPER_ADMIN),
+  authorize(ROLES.USER, ROLES.CLUB_OWNER, ROLES.SUPER_ADMIN),
   registrationIdValidation,
   handleValidationErrors,
-  requireOwnedRegistrationForSquad,
+
   updateRegistrationSquad
 );
 router.get(
@@ -120,7 +118,6 @@ router.get(
   authenticate,
   authorize(
     ROLES.USER,
-    ROLES.TEAM_OWNER,
     ROLES.CLUB_OWNER,
     ROLES.SUPER_ADMIN
   ),

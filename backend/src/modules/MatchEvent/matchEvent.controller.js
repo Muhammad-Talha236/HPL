@@ -234,13 +234,7 @@ export const createMatchEvent = async (req, res) => {
       req.user.role ===
       ROLES.SUPER_ADMIN;
 
-    const isTeamOwner =
-      req.user.role ===
-        ROLES.TEAM_OWNER &&
-      team.owner_id ===
-        req.user.user_id;
-
-    const isClubOwner =
+const isClubOwner =
       req.user.role ===
         ROLES.CLUB_OWNER &&
       team.club?.owner_id ===
@@ -250,7 +244,6 @@ export const createMatchEvent = async (req, res) => {
 
     if (
       !isSuperAdmin &&
-      !isTeamOwner &&
       !isClubOwner &&
       !isAssignedReferee
     ) {
@@ -1920,11 +1913,7 @@ export const updateMatchEvent = async (req, res) => {
     const isSuperAdmin =
       req.user.role === ROLES.SUPER_ADMIN;
 
-    const isTeamOwner =
-      req.user.role === ROLES.TEAM_OWNER &&
-      event.team.owner_id === req.user.user_id;
-
-    const isClubOwner =
+const isClubOwner =
       req.user.role === ROLES.CLUB_OWNER &&
       event.team.club?.owner_id === req.user.user_id;
 
@@ -1935,7 +1924,6 @@ export const updateMatchEvent = async (req, res) => {
 
     if (
       !isSuperAdmin &&
-      !isTeamOwner &&
       !isClubOwner &&
       !isAssignedReferee
     ) {

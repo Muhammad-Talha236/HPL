@@ -198,7 +198,7 @@ export default function AdminAddUserModal({
 
           <p className="rounded-lg bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-700">
             This creates a normal user through the existing
-            registration endpoint. Team Owner and Referee roles
+            registration endpoint. Referee roles
             follow their own application workflows.
             Share credentials securely.
           </p>
