@@ -11,7 +11,7 @@ export const getSeasonById = async (seasonId) => {
 };
 
 export const getSeasonCompetitions = async (seasonId) => {
-  const response = await apiClient.get("/competitions");
+  const response = await apiClient.get("/competitions", { params: { season_id: seasonId } });
   const competitions = response.data?.data || [];
 
   return competitions.filter(

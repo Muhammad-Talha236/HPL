@@ -74,6 +74,7 @@ const menuGroups = [
   {
     label: "SYSTEM",
     items: [
+      { label: "Payment Accounts", to: "/admin/settings/payment-accounts", icon: History },
       {
         label: "Audit Logs",
         to: "/admin/audit-logs",

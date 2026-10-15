@@ -86,6 +86,9 @@ import { FEATURES } from "./constants/features";
    ADMIN LAZY PAGES
 ========================= */
 
+const LegacyCompetitionEditForm = lazy(() => import("./features/admin/pages/LegacyCompetitionEditForm"));
+const PaymentAccountSettingsPage = lazy(() => import("./features/admin/pages/PaymentAccountSettingsPage"));
+
 const AdminDashboardPage = lazy(() =>
   import("./features/admin/pages/AdminDashboardPage")
 );
@@ -441,6 +444,7 @@ function App() {
           ========================= */}
 
           <Route element={<ProtectedRoute />}>
+            <Route path="/my/registrations/:registrationId/edit" element={<CompetitionRegistrationPage />} />
 
             <Route
               path="/competitions/:competitionId/register"
@@ -487,6 +491,8 @@ function App() {
 
           <Route element={<AdminRoute />}>
             <Route element={<AdminLayout />}>
+              <Route path="/admin/competitions/:competitionId/tournament-settings" element={<LegacyCompetitionEditForm />} />
+              <Route path="/admin/settings/payment-accounts" element={<PaymentAccountSettingsPage />} />
               <Route
                 path="/admin"
                 element={<AdminDashboardPage />}

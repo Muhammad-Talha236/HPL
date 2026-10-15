@@ -1,0 +1,8 @@
+@keyframes workflow-step-enter {
+  from { opacity: .35; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.workflow-step { animation: workflow-step-enter 180ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .workflow-step { animation: none; }
+}

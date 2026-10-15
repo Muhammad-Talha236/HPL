@@ -1,7 +1,9 @@
+import { guardLegacyRegistration } from "./workflow.guard.js";
+import * as workflow from "./workflow.controller.js";
+import { rateLimit } from "express-rate-limit";
 import express from "express";
 
 import {
-  createRegistration,
   getRegistrations,
   getRegistrationById,
   reviewRegistration,
@@ -22,7 +24,6 @@ import {
 
 import {
   registrationIdValidation,
-  createRegistrationValidation,
   reviewRegistrationValidation,
 } from "./registration.validation.js";
 
@@ -31,6 +32,17 @@ import {
 } from "../../middleware/auth/validation.middleware.js";
 
 const router = express.Router();
+router.post("/submissions/:registration_id/release-name", authenticate, authorize(ROLES.SUPER_ADMIN), workflow.releaseName);
+const submissionLimit = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: "draft-8", legacyHeaders: false, keyGenerator: req => String(req.user.user_id), message: { success: false, message: "Too many registration requests. Please try again later." } });
+const uploadLimit = rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: "draft-8", legacyHeaders: false, keyGenerator: req => String(req.user.user_id), message: { success: false, message: "Too many uploads. Please try again later." } });
+router.get("/submissions", authenticate, workflow.list);
+router.post("/submissions", authenticate, submissionLimit, workflow.submit);
+router.get("/submissions/:registration_id", authenticate, workflow.detail);
+router.put("/submissions/:registration_id", authenticate, submissionLimit, workflow.resubmit);
+router.post("/submissions/:registration_id/:kind", authenticate, authorize(ROLES.SUPER_ADMIN), (req, res, next) => ["review", "payment-review"].includes(req.params.kind) ? workflow.review(req, res) : next());
+router.post("/:kind", authenticate, uploadLimit, (req, res, next) => ["receipt-upload", "image-upload"].includes(req.params.kind) ? workflow.upload(req, res) : next());
+router.get("/receipts/:receipt_id", authenticate, workflow.download);
+
 
 // ======================================================
 // CREATE REGISTRATION
@@ -44,9 +56,8 @@ router.post(
     ROLES.CLUB_OWNER,
     ROLES.SUPER_ADMIN
   ),
-  createRegistrationValidation,
-  handleValidationErrors,
-  createRegistration
+  submissionLimit,
+  workflow.submit
 );
 
 // ======================================================
@@ -76,6 +87,7 @@ router.patch(
   ),
   reviewRegistrationValidation,
   handleValidationErrors,
+  guardLegacyRegistration,
   reviewRegistration
 );
 
@@ -111,6 +123,7 @@ router.put(
   registrationIdValidation,
   handleValidationErrors,
 
+  guardLegacyRegistration,
   updateRegistrationSquad
 );
 router.get(

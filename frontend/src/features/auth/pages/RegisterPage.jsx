@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
-  Check,
   Mail,
   Phone,
   UserRound,
@@ -12,7 +11,7 @@ import PasswordInput from "../components/PasswordInput";
 import { registerUser } from "../services/authService";
 
 import {
-  getPasswordRequirements,
+  getPasswordStrength,
   validateRegisterField,
   validateRegisterForm,
 } from "../utils/registerValidation";
@@ -158,50 +157,6 @@ const RegisterInput = ({
 };
 
 /* =========================================================
-   PASSWORD REQUIREMENT
-========================================================= */
-
-const PasswordRequirement = ({ passed, children }) => {
-  return (
-    <li
-      className={`
-        flex items-center gap-1.5
-        text-[10px]
-        sm:text-[11px]
-        ${
-          passed
-            ? "text-[#087554]"
-            : "text-[#7E8B95]"
-        }
-      `}
-    >
-      <span
-        className={`
-          grid h-4 w-4
-          shrink-0
-          place-items-center
-          rounded-full
-
-          ${
-            passed
-              ? "bg-[#E3F4ED] text-[#087554]"
-              : "bg-[#EDF1F3] text-[#89959D]"
-          }
-        `}
-      >
-        {passed ? (
-          <Check size={10} strokeWidth={3} />
-        ) : (
-          <span className="h-1 w-1 rounded-full bg-current" />
-        )}
-      </span>
-
-      {children}
-    </li>
-  );
-};
-
-/* =========================================================
    REGISTER PAGE
 ========================================================= */
 
@@ -215,8 +170,7 @@ const RegisterPage = () => {
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const passwordRequirements =
-    getPasswordRequirements(formData.password);
+  const passwordStrength = getPasswordStrength(formData.password);
 
   /* =======================================================
      CHANGE
@@ -567,19 +521,34 @@ const RegisterPage = () => {
                 sm:gap-3
               "
             >
-              <PasswordInput
-                id="register-password"
-                name="password"
-                label="PASSWORD"
-                placeholder="Create password"
-                value={formData.password}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                autoComplete="new-password"
-                error={errors.password}
-                disabled={isSubmitting}
-                required
-              />
+              <div>
+                <PasswordInput
+                  id="register-password"
+                  name="password"
+                  label="PASSWORD"
+                  placeholder="Create password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  autoComplete="new-password"
+                  error={errors.password}
+                  disabled={isSubmitting}
+                  aria-describedby={[errors.password && "register-password-error", formData.password && "register-password-strength"].filter(Boolean).join(" ") || undefined}
+                  required
+                />
+                {formData.password && (
+                  <div id="register-password-strength" role="status" aria-live="polite" aria-atomic="true" className="mt-2 flex items-center gap-2.5">
+                    <div aria-hidden="true" className="flex w-24 shrink-0 gap-1">
+                      {[1, 2, 3].map(segment => (
+                        <span key={segment} className={`h-1 flex-1 rounded-full ${segment <= passwordStrength.segments ? passwordStrength.barClass : "bg-[#E1E8E5]"}`} />
+                      ))}
+                    </div>
+                    <span className={`text-[11px] font-medium ${passwordStrength.textClass}`}>
+                      {passwordStrength.label}<span className="sr-only"> password strength</span>
+                    </span>
+                  </div>
+                )}
+              </div>
 
               <PasswordInput
                 id="confirm-password"
@@ -595,84 +564,6 @@ const RegisterPage = () => {
                 required
               />
             </div>
-
-            {/* =========================
-                PASSWORD REQUIREMENTS
-            ========================== */}
-
-            {formData.password && (
-              <div
-                className="
-                  rounded-lg
-                  border border-[#E1E8E5]
-                  bg-[#F8FAF9]
-                  p-3
-                "
-              >
-                <p
-                  className="
-                    mb-2
-                    text-[10px]
-                    font-bold
-                    tracking-[0.08em]
-                    text-[#52625B]
-                  "
-                >
-                  PASSWORD REQUIREMENTS
-                </p>
-
-                <ul
-                  className="
-                    grid
-                    grid-cols-1
-                    gap-x-3
-                    gap-y-1.5
-
-                    sm:grid-cols-2
-                  "
-                >
-                  <PasswordRequirement
-                    passed={
-                      passwordRequirements.minLength
-                    }
-                  >
-                    At least 8 characters
-                  </PasswordRequirement>
-
-                  <PasswordRequirement
-                    passed={
-                      passwordRequirements.uppercase
-                    }
-                  >
-                    One uppercase letter
-                  </PasswordRequirement>
-
-                  <PasswordRequirement
-                    passed={
-                      passwordRequirements.lowercase
-                    }
-                  >
-                    One lowercase letter
-                  </PasswordRequirement>
-
-                  <PasswordRequirement
-                    passed={
-                      passwordRequirements.number
-                    }
-                  >
-                    One number
-                  </PasswordRequirement>
-
-                  <PasswordRequirement
-                    passed={
-                      passwordRequirements.specialCharacter
-                    }
-                  >
-                    One special character
-                  </PasswordRequirement>
-                </ul>
-              </div>
-            )}
 
             {/* =========================
                 TERMS

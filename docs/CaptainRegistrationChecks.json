@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-14",
+  "focused": { "tests": 42, "passed": 42, "failed": 0 },
+  "fullBackend": { "tests": 191, "passed": 179, "failed": 12, "failures": "Previously observed unrelated routing, account, club and season cases" },
+  "prismaValidate": "passed",
+  "prismaGenerate": "passed",
+  "frontendBuildExit": 0,
+  "frontendLintExit": 0,
+  "warnings": ["Large frontend chunks", "Existing React lint warnings"],
+  "migrationApplied": false,
+  "productionDataModified": false,
+  "liveSMTPVerified": false,
+  "browserVisualTesting": false,
+  "databaseConcurrencyIntegrationTested": false,
+  "captainIdentityConflicts": [
+    { "competitionId": 2, "userId": 16, "registrationIds": [1, 4, 7, 10] },
+    { "competitionId": 2, "userId": 17, "registrationIds": [2, 5, 8] },
+    { "competitionId": 2, "userId": 18, "registrationIds": [3, 6, 9] }
+  ]
+}

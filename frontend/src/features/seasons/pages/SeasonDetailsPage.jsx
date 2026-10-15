@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import CompetitionDiscovery from "../../competitions/components/CompetitionDiscovery";
+import { listApplications } from "../../registrations/services/workflowService";
+import useAuth from "../../../hooks/useAuth";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getCompetitionStandings } from "../../competitions/services/competitionService";
@@ -23,30 +26,39 @@ const matchMoment = (match) => `${match.match_date || ""}T${String(match.start_t
 
 const SeasonDetailsPage = () => {
   const { seasonId } = useParams();
+  const { isAuthenticated } = useAuth();
+  const [selectedId, setSelectedId] = useState(null);
+  const loadVersion = useRef(0);
+  const [registrations, setRegistrations] = useState([]);
+  useEffect(() => { let live = true; if (isAuthenticated) listApplications({ limit: 50 }).then(x => live && setRegistrations(x.items)).catch(() => {}); return () => { live = false; }; }, [isAuthenticated]);
   const [activeSection, setActiveSection] = useState("overview");
   const [state, setState] = useState({ status: "loading", season: null, competitions: [], matches: [], standings: [] });
 
-  const loadSeason = useCallback(async (showLoading = false) => {
+  const loadSeason = useCallback(async (showLoading = false, isCurrent = () => true) => {
+    const version = ++loadVersion.current;
     if (showLoading) setState((current) => ({ ...current, status: "loading" }));
 
     try {
       const [season, competitions, matchData] = await Promise.all([
         getSeasonById(seasonId),
         getSeasonCompetitions(seasonId),
-        getMatches({ season_id: seasonId, limit: 100 }),
+        selectedId ? getMatches({ competition_id: selectedId, limit: 100 }) : Promise.resolve({ matches: [] }),
       ]);
+      if (version !== loadVersion.current || !isCurrent()) return;
+      if (selectedId && !competitions.some(c => c.competition_id === selectedId)) { setSelectedId(null); return; }
       const matches = matchData.matches || [];
-      const selectedCompetition = competitions.find((competition) => competition.status === "ACTIVE") || competitions[0];
+      const selectedCompetition = competitions.find((competition) => competition.competition_id === selectedId);
       const standings = selectedCompetition ? await getCompetitionStandings(selectedCompetition.competition_id) : [];
-      setState({ status: "success", season, competitions, matches, standings });
+      if (version === loadVersion.current && isCurrent()) setState({ status: "success", season, competitions, matches, standings });
     } catch (error) {
-      setState({ status: error.response?.status === 404 ? "notFound" : "error", season: null, competitions: [], matches: [], standings: [] });
+      if (version === loadVersion.current && isCurrent()) setState({ status: error.response?.status === 404 ? "notFound" : "error", season: null, competitions: [], matches: [], standings: [] });
     }
-  }, [seasonId]);
+  }, [seasonId, selectedId]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => { void loadSeason(); }, 0);
-    return () => window.clearTimeout(timer);
+    let current = true;
+    const timer = window.setTimeout(() => { void loadSeason(true, () => current); }, 0);
+    return () => { current = false; window.clearTimeout(timer); };
   }, [loadSeason]);
 
   const dashboard = useMemo(() => {
@@ -64,7 +76,7 @@ const SeasonDetailsPage = () => {
     });
 
     return {
-      primaryCompetition: state.competitions.find((competition) => competition.status === "ACTIVE") || state.competitions[0] || null,
+      primaryCompetition: state.competitions.find((competition) => competition.competition_id === selectedId) || null,
       metrics: { totalMatches: state.matches.length, completedMatches: completed.length, teamCount: teams.size, venueCount: venues.size },
       nextMatch: upcoming[0] || null,
       recentResults,
@@ -72,7 +84,7 @@ const SeasonDetailsPage = () => {
       venues: [...venues.values()].sort((first, second) => first.name.localeCompare(second.name)),
       fixtures: [...state.matches].sort((first, second) => matchMoment(first).localeCompare(matchMoment(second))),
     };
-  }, [state.competitions, state.matches]);
+  }, [state.competitions, state.matches, selectedId]);
 
   if (state.status === "loading") {
     return <main className="min-h-screen bg-[#f5f9f8] pt-[76px]"><div className="h-[255px] animate-pulse bg-[#dce7e5]" /><div className="mx-auto -mt-4 max-w-[1200px] px-5 sm:px-7 lg:px-8"><div className="h-10 animate-pulse rounded bg-white" /><div className="mt-4 grid gap-3 lg:grid-cols-3"><div className="h-36 animate-pulse rounded bg-white" /><div className="h-36 animate-pulse rounded bg-white" /><div className="h-36 animate-pulse rounded bg-white" /></div></div></main>;
@@ -87,7 +99,7 @@ const SeasonDetailsPage = () => {
   const topScorers = season.top_scorers || [];
   const topAppearances = season.top_appearances || [];
   const hasPendingFixture = state.matches.some((match) => ["SCHEDULED", "LIVE", "POSTPONED"].includes(match.status));
-  const isCompletedSeason = season.status === "INACTIVE" && dashboard.metrics.completedMatches > 0 && !hasPendingFixture;
+  const isCompletedSeason = selectedId && season.status === "INACTIVE" && dashboard.metrics.completedMatches > 0 && !hasPendingFixture;
   const champion = isCompletedSeason && state.competitions.length === 1 && state.standings.length
     ? state.standings[0]
     : null;
@@ -96,7 +108,7 @@ const SeasonDetailsPage = () => {
     : null;
 
   if (isCompletedSeason) {
-    return <><CompletedSeasonDetails season={season} metrics={dashboard.metrics} champion={champion} closingMatch={closingMatch} standings={state.standings} competition={dashboard.primaryCompetition} scorers={topScorers} appearances={topAppearances} teams={dashboard.teams} venues={dashboard.venues} fixtures={dashboard.fixtures.filter((match) => match.status === "COMPLETED")} activeSection={activeSection} onChangeSection={setActiveSection} /><div className="mx-auto max-w-[1200px] px-5 pb-12 sm:px-7 lg:px-8"><MediaGallery entityType="SEASON" entityId={season.season_id} title="Season gallery and highlights" /></div></>;
+    return <><CompletedSeasonDetails season={season} metrics={dashboard.metrics} champion={champion} closingMatch={closingMatch} standings={state.standings} competition={dashboard.primaryCompetition} scorers={topScorers} appearances={topAppearances} teams={dashboard.teams} venues={dashboard.venues} fixtures={dashboard.fixtures.filter((match) => match.status === "COMPLETED")} activeSection={activeSection} onChangeSection={setActiveSection} /><div className="mx-auto max-w-[1200px] px-5 pb-12 sm:px-7 lg:px-8"><CompetitionDiscovery competitions={state.competitions} registrations={registrations} selectedId={selectedId} onTournament={id => { setState(current => ({ ...current, status: "loading" })); setSelectedId(id); setActiveSection("overview"); }} /><button className="my-5 text-sm font-bold text-emerald-700" onClick={() => setSelectedId(null)}>All competition cards</button><MediaGallery entityType="SEASON" entityId={season.season_id} title="Season gallery and highlights" /></div></>;
   }
 
   const overview = <>
@@ -113,7 +125,7 @@ const SeasonDetailsPage = () => {
     venues: <SeasonVenues venues={dashboard.venues} />,
   }[activeSection];
 
-  return <main className="min-h-screen bg-[#f5f9f8] pb-12 pt-[76px] text-[#13223a]"><SeasonDetailsHero season={season} metrics={dashboard.metrics} /><div className="relative z-10 mx-auto -mt-3 w-full max-w-[1200px] px-5 sm:px-7 lg:px-8"><SeasonDetailsNavigation activeSection={activeSection} onChange={setActiveSection} /><div className="mt-4">{selectedContent}<MediaGallery entityType="SEASON" entityId={season.season_id} title="Season gallery and highlights" /></div></div></main>;
+  return <main className="min-h-screen bg-[#f5f9f8] pb-12 pt-[76px] text-[#13223a]"><SeasonDetailsHero season={season} metrics={dashboard.metrics} competitions={selectedId ? undefined : state.competitions} /><div className="relative z-10 mx-auto -mt-3 w-full max-w-[1200px] px-5 sm:px-7 lg:px-8"><div className="mt-7"><CompetitionDiscovery competitions={state.competitions} registrations={registrations} selectedId={selectedId} onTournament={id => { setState(current => ({ ...current, status: "loading" })); setSelectedId(id); setActiveSection("overview"); }} /></div>{selectedId && <div className="mt-7"><button className="mb-4 text-sm font-bold text-emerald-700" onClick={() => setSelectedId(null)}>Back to competition discovery</button><h2 className="mb-4 text-2xl font-bold">{dashboard.primaryCompetition?.name}</h2><SeasonDetailsNavigation activeSection={activeSection} onChange={setActiveSection} /><div className="mt-4">{state.competitions.length > 1 && <p className="mb-3 text-xs text-slate-500">Fixtures and standings are for this competition. Player leaderboards cover the full season.</p>}{selectedContent}</div></div>}<div className="mt-4"><MediaGallery entityType="SEASON" entityId={season.season_id} title="Season gallery and highlights" /></div></div></main>;
 };
 
-export default SeasonDetailsPage;
+export default function SeasonDetailsRoute() { const { seasonId } = useParams(); return <SeasonDetailsPage key={seasonId} />; }

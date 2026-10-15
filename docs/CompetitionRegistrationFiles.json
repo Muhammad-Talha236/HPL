@@ -1,0 +1,234 @@
+[
+  {
+    "change": "M",
+    "path": "backend/.env.example"
+  },
+  {
+    "change": "M",
+    "path": "backend/prisma/schema.prisma"
+  },
+  {
+    "change": "M",
+    "path": "backend/src/app.js"
+  },
+  {
+    "change": "M",
+    "path": "backend/src/constants/auditActions.js"
+  },
+  {
+    "change": "M",
+    "path": "backend/src/modules/admin/admin.routes.js"
+  },
+  {
+    "change": "M",
+    "path": "backend/src/modules/competitions/competition.controller.js"
+  },
+  {
+    "change": "M",
+    "path": "backend/src/modules/competitions/competition.routes.js"
+  },
+  {
+    "change": "M",
+    "path": "backend/src/modules/matches/match.controller.js"
+  },
+  {
+    "change": "M",
+    "path": "backend/src/modules/payments/payment.routes.js"
+  },
+  {
+    "change": "M",
+    "path": "backend/src/modules/registrations/registration.controller.js"
+  },
+  {
+    "change": "M",
+    "path": "backend/src/modules/registrations/registration.extra.controller.js"
+  },
+  {
+    "change": "M",
+    "path": "backend/src/modules/registrations/registration.routes.js"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/App.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/components/navigation/Navbar.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/admin/components/AdminSidebar.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/admin/pages/AdminCompetitionDetailsPage.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/admin/pages/AdminCompetitionFormPage.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/admin/pages/AdminCompetitionsPage.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/admin/pages/AdminTeamEditPage.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/competitions/components/CompetitionCard.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/competitions/pages/CompetitionDetailsPage.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/notifications/pages/NotificationCenterPage.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/registrations/pages/AdminRegistrationDetailsPage.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/registrations/pages/AdminRegistrationsPage.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/registrations/pages/CompetitionRegistrationPage.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/registrations/pages/MyRegistrationsPage.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/registrations/pages/RegistrationDetailsPage.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/seasons/components/details/SeasonDetailsHero.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/seasons/pages/SeasonDetailsPage.jsx"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/features/seasons/services/seasonService.js"
+  },
+  {
+    "change": "M",
+    "path": "frontend/src/layouts/admin/adminNavigation.js"
+  },
+  {
+    "change": "??",
+    "path": "backend/prisma/migrations/20261016000000_competition_registration_workflow/migration.sql"
+  },
+  {
+    "change": "??",
+    "path": "backend/scripts/registration-workflow-preflight.js"
+  },
+  {
+    "change": "??",
+    "path": "backend/src/modules/registrations/workflow.controller.js"
+  },
+  {
+    "change": "??",
+    "path": "backend/src/modules/registrations/workflow.guard.js"
+  },
+  {
+    "change": "??",
+    "path": "backend/src/modules/registrations/workflow.service.js"
+  },
+  {
+    "change": "??",
+    "path": "backend/src/modules/registrations/workflow.test.js"
+  },
+  {
+    "change": "??",
+    "path": "backend/src/modules/registrations/workflow.transaction.js"
+  },
+  {
+    "change": "??",
+    "path": "backend/src/modules/registrations/workflow.upload.js"
+  },
+  {
+    "change": "??",
+    "path": "backend/src/modules/registrations/workflow.validation.js"
+  },
+  {
+    "change": "??",
+    "path": "backend/src/services/registrationMail.service.js"
+  },
+  {
+    "change": "??",
+    "path": "docs/CompetitionRegistrationChecks.json"
+  },
+  {
+    "change": "??",
+    "path": "docs/CompetitionRegistrationFiles.json"
+  },
+  {
+    "change": "??",
+    "path": "docs/CompetitionRegistrationWorkflow.md"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/admin/pages/LegacyCompetitionEditForm.jsx"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/admin/pages/PaymentAccountSettingsPage.jsx"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/competitions/components/CompetitionDiscovery.jsx"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/competitions/components/PublicCompetitionDetails.jsx"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/registrations/components/ApplicationDetails.jsx"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/registrations/components/ApplicationList.jsx"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/registrations/components/CompetitionManagement.jsx"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/registrations/components/ManualRegistrationWizard.jsx"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/registrations/components/WorkflowUI.jsx"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/registrations/components/workflow.css"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/registrations/pages/LegacyCompetitionRegistrationPage.jsx"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/registrations/pages/LegacyRegistrationDetailsPage.jsx"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/registrations/services/workflowService.js"
+  },
+  {
+    "change": "??",
+    "path": "frontend/src/features/registrations/utils/workflowPresentation.js"
+  }
+]

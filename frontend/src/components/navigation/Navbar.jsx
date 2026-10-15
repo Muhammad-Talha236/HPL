@@ -498,6 +498,7 @@ const Navbar = () => {
                             <AccountMenuLink to="/account/notifications" icon={Bell} onClick={closeMenus} badge={unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : null}>Notifications</AccountMenuLink>
                           </>
                         )}
+                        <AccountMenuLink to="/my/registrations" icon={Trophy} onClick={closeMenus}>My Registrations</AccountMenuLink>
                         {FEATURES.CLUBS_ENABLED && user.role === "CLUB_OWNER" && <AccountMenuLink to="/club" icon={Shield} onClick={closeMenus}>Club Portal</AccountMenuLink>}
                         {user.role === "SUPER_ADMIN" && <AccountMenuLink to="/admin" icon={LayoutDashboard} onClick={closeMenus}>Admin Portal</AccountMenuLink>}
                         {user.role === "REFEREE" && (
@@ -770,6 +771,8 @@ const Navbar = () => {
                       </div>
                     )}
 
+
+                    <NavLink to="/my/registrations" onClick={closeMobileMenu} className="mt-3 block rounded-xl border border-[#DDE5E1] bg-white p-3 text-center text-xs font-bold text-[#0B5D46]">My Registrations</NavLink>
 
                     {/* Club Owner */}
 

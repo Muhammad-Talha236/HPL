@@ -46,6 +46,9 @@ app.use(
   })
 );
 
+// Registration uploads have a dedicated authenticated route and server content checks.
+app.use(["/api/registrations/receipt-upload", "/api/registrations/image-upload"], express.json({ limit: "7mb" }));
+
 // Limit JSON request body size
 app.use(
   express.json({

@@ -1,3 +1,4 @@
+import { guardLegacyRegistration, guardLegacyPayment } from "../registrations/workflow.guard.js";
 import express from "express";
 
 import {
@@ -44,6 +45,7 @@ router.post(
   createPaymentValidation,
   handleValidationErrors,
 
+  guardLegacyRegistration,
   createPayment
 );
 
@@ -60,6 +62,7 @@ router.patch(
   ),
   reviewPaymentValidation,
   handleValidationErrors,
+  guardLegacyPayment,
   reviewPayment
 );
 

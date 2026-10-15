@@ -310,6 +310,9 @@ export const createMatch = async (req, res) => {
                 season_id: true,
                 gender: true,
                 status: true,
+                registration_workflow: true,
+                tournament_state: true,
+                participants_finalized_at: true,
                 competition_start_date:
                   true,
                 competition_end_date:
@@ -331,6 +334,8 @@ export const createMatch = async (req, res) => {
               "COMPETITION_NOT_ACTIVE"
             );
           }
+
+          if (competition.registration_workflow === "MANUAL_ROSTER" && (!competition.participants_finalized_at || competition.tournament_state === "NOT_CONFIGURED" || !competition.competition_start_date || !competition.competition_end_date)) throw new Error("TOURNAMENT_NOT_CONFIGURED");
 
           // ==================================================
           // 8. CHECK SEASON
@@ -886,6 +891,7 @@ export const createMatch = async (req, res) => {
       },
     });
   } catch (error) {
+    if (error.message === "TOURNAMENT_NOT_CONFIGURED") return res.status(409).json({ success: false, message: "Finalize participants and configure the tournament before creating fixtures." });
     // ==================================================
     // EXPECTED ERRORS
     // ==================================================
@@ -2384,6 +2390,8 @@ export const updateMatch = async (req, res) => {
       formatDateOnly(
         finalMatchDate
       );
+
+    if (!competition.competition_start_date || !competition.competition_end_date) return res.status(409).json({ success: false, message: "Tournament dates are not configured." });
 
     const competitionStart =
       formatDateOnly(

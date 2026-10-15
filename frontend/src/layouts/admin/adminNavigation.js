@@ -51,6 +51,7 @@ export const adminNavigation = [
   {
     label: "System",
     items: [
+      { label: "Payment Accounts", to: "/admin/settings/payment-accounts", icon: ShieldEllipsis },
       { label: "Approval History", to: "/admin/audit-logs", icon: ShieldEllipsis },
     ],
   },

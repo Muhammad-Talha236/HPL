@@ -44,6 +44,7 @@ model User {
   uploaded_media                      Media[]                       @relation("MediaUploader")
   uploaded_team_documents             TeamDocument[]                @relation("TeamDocumentUploader")
   media_upload_intents                MediaUploadIntent[]
+  payment_receipts                    PaymentReceipt[]
   email_verification_tokens           EmailVerificationToken[]
 }
 
@@ -70,7 +71,7 @@ model Team {
   team_id              Int                       @id @default(autoincrement())
   club_id              Int?
   owner_id             Int
-  home_venue_id        Int
+  home_venue_id        Int?
   name                 String
   logo                 String?
   gender               String
@@ -92,7 +93,7 @@ model Team {
   match_players        MatchPlayer[]
   player_invitations   PlayerInvitation[]
   club                 Club?                     @relation(fields: [club_id], references: [club_id])
-  home_venue           Venue                     @relation("TeamHomeVenue", fields: [home_venue_id], references: [venue_id])
+  home_venue           Venue?                    @relation("TeamHomeVenue", fields: [home_venue_id], references: [venue_id], onDelete: Restrict)
   owner                User                      @relation("TeamOwner", fields: [owner_id], references: [user_id])
   team_players         TeamPlayer[]
   team_staff           TeamStaff[]
@@ -326,16 +327,27 @@ model Competition {
   registration_fee        Decimal                   @db.Decimal(12, 2)
   registration_start_date DateTime                  @db.Date
   registration_end_date   DateTime                  @db.Date
-  competition_start_date  DateTime                  @db.Date
-  competition_end_date    DateTime                  @db.Date
+  competition_start_date  DateTime?                 @db.Date
+  competition_end_date    DateTime?                 @db.Date
   max_teams               Int?
   squad_size              Int?
-  format                  String
+  format                  String?
   eligibility_rules       String?
   refund_policy           String?
   status                  String
   created_at              DateTime                  @default(now())
   updated_at              DateTime                  @updatedAt
+  publication_status      String @default("PUBLISHED")
+  registration_workflow   String @default("LEGACY")
+  tournament_state        String @default("NOT_CONFIGURED")
+  registration_closed_at  DateTime?
+  participants_finalized_at DateTime?
+  participants_finalized_by Int?
+  min_players             Int @default(11)
+  registration_type       String @default("PAID")
+  registration_instructions String?
+  logo                    String?
+  payment_accounts        PaymentAccount[] @relation("CompetitionPaymentAccounts")
   season                  Season                    @relation(fields: [season_id], references: [season_id])
   competition_players     CompetitionPlayer[]
   registrations           CompetitionRegistration[]
@@ -347,7 +359,7 @@ model Competition {
 model CompetitionRegistration {
   registration_id     Int                           @id @default(autoincrement())
   competition_id      Int
-  team_id             Int
+  team_id             Int?
   registered_by       Int
   registration_status String
   payment_status      String
@@ -356,14 +368,35 @@ model CompetitionRegistration {
   rejection_reason    String?
   created_at          DateTime                      @default(now())
   updated_at          DateTime                      @updatedAt
+  team_snapshot       Json?
+  roster_snapshot     Json?
+  team_name_key       String?
+  fee_snapshot        Decimal? @db.Decimal(12, 2)
+  receipts            PaymentReceipt[]
   players             CompetitionPlayer[]
   competition         Competition                   @relation(fields: [competition_id], references: [competition_id])
   registered_user     User                          @relation("RegistrationUser", fields: [registered_by], references: [user_id])
-  team                Team                          @relation(fields: [team_id], references: [team_id])
+  team                Team?                         @relation(fields: [team_id], references: [team_id], onDelete: Restrict)
   payments            Payment[]
   approval_history    RegistrationApprovalHistory[]
+  approval_email      RegistrationApprovalEmail?
 
   @@unique([competition_id, team_id])
+  @@unique([competition_id, team_name_key])
+  @@unique([competition_id, registered_by])
+}
+
+model RegistrationApprovalEmail {
+  registration_id Int @id
+  status String @default("PENDING")
+  attempts Int @default(0)
+  created_at DateTime @default(now())
+  attempted_at DateTime?
+  sent_at DateTime?
+  message_id String?
+  failure_code String?
+  registration CompetitionRegistration @relation(fields: [registration_id], references: [registration_id], onDelete: Restrict)
+  @@index([status, created_at])
 }
 
 model CompetitionPlayer {
@@ -394,6 +427,13 @@ model Payment {
   refunded_at           DateTime?
   created_at            DateTime                @default(now())
   updated_at            DateTime                @updatedAt
+  receiving_account_snapshot Json?
+  proof_history         Json?
+  receipt_id            String? @unique
+  verified_by           Int?
+  verified_at           DateTime?
+  verification_reason   String?
+  receipt_record        PaymentReceipt? @relation(fields: [receipt_id], references: [receipt_id])
   registration          CompetitionRegistration @relation(fields: [registration_id], references: [registration_id])
 }
 
@@ -745,4 +785,34 @@ model PasswordResetToken {
   user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
   @@index([user_id, created_at])
   @@index([expires_at])
+}
+
+model PaymentAccount {
+  payment_account_id Int @id @default(autoincrement())
+  provider String
+  account_title String
+  account_number String
+  bank_name String?
+  instructions String?
+  status String @default("ACTIVE")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  competitions Competition[] @relation("CompetitionPaymentAccounts")
+  @@unique([provider, account_number])
+}
+
+model PaymentReceipt {
+  receipt_id String @id @default(uuid())
+  owner_id Int
+  public_id String @unique
+  resource_type String
+  format String
+  bytes Int
+  created_at DateTime @default(now())
+  expires_at DateTime
+  consumed_registration_id Int?
+  owner User @relation(fields: [owner_id], references: [user_id])
+  registration CompetitionRegistration? @relation(fields: [consumed_registration_id], references: [registration_id])
+  payment Payment?
+  @@index([owner_id, created_at])
 }

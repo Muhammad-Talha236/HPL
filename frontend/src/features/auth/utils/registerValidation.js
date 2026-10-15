@@ -38,18 +38,18 @@ export const validateRegisterForm = (formData) => {
   } else if (password.length < PASSWORD_MIN_LENGTH) {
     errors.password =
       "Password must be at least 8 characters long.";
-  } else if (!/[A-Z]/.test(password)) {
-    errors.password =
-      "Password must contain at least one uppercase letter.";
-  } else if (!/[a-z]/.test(password)) {
-    errors.password =
-      "Password must contain at least one lowercase letter.";
-  } else if (!/[0-9]/.test(password)) {
-    errors.password =
-      "Password must contain at least one number.";
-  } else if (!/[^A-Za-z0-9]/.test(password)) {
-    errors.password =
-      "Password must contain at least one special character.";
+  } else {
+    const requirements = getPasswordRequirements(password);
+    const missing = [
+      !requirements.uppercase && "one uppercase letter",
+      !requirements.lowercase && "one lowercase letter",
+      !requirements.number && "one number",
+      !requirements.specialCharacter && "one special character",
+    ].filter(Boolean);
+    if (missing.length) {
+      const last = missing.pop();
+      errors.password = `Missing: ${missing.length ? `${missing.join(", ")} and ` : ""}${last}.`;
+    }
   }
 
   if (!confirmPassword) {
@@ -78,3 +78,13 @@ export const getPasswordRequirements = (password) => ({
   number: /[0-9]/.test(password),
   specialCharacter: /[^A-Za-z0-9]/.test(password),
 });
+
+// This is policy coverage feedback, not an estimate of resistance to guessing.
+// Only passwords satisfying every rule are displayed as Strong.
+export const getPasswordStrength = (password) => {
+  const requirements = getPasswordRequirements(password);
+  const passed = Object.values(requirements).filter(Boolean).length;
+  if (passed === 5) return { label: "Strong", segments: 3, barClass: "bg-[#087554]", textClass: "text-[#087554]" };
+  if (requirements.minLength && passed >= 3) return { label: "Medium", segments: 2, barClass: "bg-amber-500", textClass: "text-amber-700" };
+  return { label: "Weak", segments: 1, barClass: "bg-red-500", textClass: "text-red-600" };
+};

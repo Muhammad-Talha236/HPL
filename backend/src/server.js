@@ -1,3 +1,4 @@
+import { startApprovalEmailWorker } from "./services/registrationApprovalEmail.service.js";
 import "dotenv/config";
 
 import http from "http";
@@ -199,6 +200,8 @@ const io = new SocketIOServer(server, {
 });
 configureMatchRealtime(io);
 
+const stopApprovalEmailWorker = ENV.NODE_ENV === "test" ? () => {} : startApprovalEmailWorker(prisma);
+
 server.listen(
   PORT,
   () => {
@@ -219,6 +222,7 @@ const shutdown = async (
     `${signal} received. Shutting down server...`
   );
 
+  stopApprovalEmailWorker();
   server.close(
     async () => {
       try {

@@ -1,9 +1,8 @@
+import prisma from "../../database/prisma.js";
+import { saveCompetition, publicCompetitions, manageCompetitions, competitionAction } from "../registrations/workflow.controller.js";
 import express from "express";
 
 import {
-  createCompetition,
-  getCompetitions,
-  getCompetitionById,
   updateCompetition,
   deactivateCompetition,
   activateCompetition,
@@ -24,7 +23,6 @@ import {
 
 import {
   competitionIdValidation,
-  createCompetitionValidation,
   updateCompetitionValidation,
 } from "./competition.validation.js";
 
@@ -33,6 +31,9 @@ import {
 } from "../../middleware/auth/validation.middleware.js";
 
 const router = express.Router();
+router.get("/management", authenticate, authorize(ROLES.SUPER_ADMIN), manageCompetitions);
+router.get("/management/:competition_id", authenticate, authorize(ROLES.SUPER_ADMIN), manageCompetitions);
+router.post("/:competition_id/:action", authenticate, authorize(ROLES.SUPER_ADMIN), competitionAction);
 
 // ======================================================
 // PUBLIC ROUTES
@@ -44,7 +45,7 @@ const router = express.Router();
 
 router.get(
   "/",
-  getCompetitions
+  publicCompetitions
 );
 
 // ------------------------------------------------------
@@ -61,7 +62,7 @@ router.get(
   "/:competition_id",
   competitionIdValidation,
   handleValidationErrors,
-  getCompetitionById
+  publicCompetitions
 );
 
 // ======================================================
@@ -78,9 +79,8 @@ router.post(
   authorize(
     ROLES.SUPER_ADMIN
   ),
-  createCompetitionValidation,
   handleValidationErrors,
-  createCompetition
+  saveCompetition
 );
 
 // ------------------------------------------------------
@@ -123,6 +123,13 @@ router.patch(
   authorize(
     ROLES.SUPER_ADMIN
   ),
+  async (req, res, next) => {
+    if (req.body?.registration_type) return saveCompetition(req, res);
+    try { const c = await prisma.competition.findUnique({ where: { competition_id: Number(req.params.competition_id) }, select: { registration_workflow: true } });
+      if (c?.registration_workflow === "MANUAL_ROSTER") return res.status(409).json({ success: false, message: "Use the competition settings wizard. Tournament setup follows participant finalization." });
+      next();
+    } catch (error) { next(error); }
+  },
   updateCompetitionValidation,
   handleValidationErrors,
   updateCompetition

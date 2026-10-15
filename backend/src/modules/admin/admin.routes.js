@@ -1,3 +1,4 @@
+import { listAccounts, saveAccount } from "../registrations/workflow.controller.js";
 import express from "express";
 import { authenticate } from "../../middleware/auth/auth.middleware.js";
 import { authorize } from "../../middleware/auth/role.middleware.js";
@@ -27,6 +28,9 @@ import { getAdminNews, getAdminNewsById, getAdminNewsCategories } from "../news/
 import { newsIdValidation } from "../news/news.validation.js";
 import { getAdminAuditLogById, getAdminAuditLogs, getAuditLogFilterOptions } from "../auditLogs/auditLog.admin.controller.js";
 const router = express.Router();
+router.get("/payment-accounts", authenticate, authorize(ROLES.SUPER_ADMIN), listAccounts);
+router.post("/payment-accounts", authenticate, authorize(ROLES.SUPER_ADMIN), saveAccount);
+router.put("/payment-accounts/:account_id", authenticate, authorize(ROLES.SUPER_ADMIN), saveAccount);
 router.get("/dashboard", authenticate, authorize(ROLES.SUPER_ADMIN), getAdminDashboard);
 router.get("/users/stats", authenticate, authorize(ROLES.SUPER_ADMIN), getAdminUserStats);
 router.get("/users/:user_id", authenticate, authorize(ROLES.SUPER_ADMIN), userIdValidation, handleValidationErrors, getAdminUserById);
